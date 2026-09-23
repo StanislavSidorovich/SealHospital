@@ -125,14 +125,13 @@ function makeFish(){
   const e = new THREE.Mesh(SMALL, inkMat); e.scale.setScalar(0.035); e.position.set(0.18, 0.04, 0.1); g.add(e);
   return g;
 }
-function makePill(){
-  const g = new THREE.Group(), a = toon(0xFF7FA3), b = toon(0xFFFFFF);
-  const c1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 16), a); c1.position.y = 0.045; g.add(c1);
-  const c2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 16), b); c2.position.y = -0.045; g.add(c2);
-  const s1 = new THREE.Mesh(SMALL, a); s1.scale.setScalar(0.08); s1.position.y = 0.09; g.add(s1);
-  const s2 = new THREE.Mesh(SMALL, b); s2.scale.setScalar(0.08); s2.position.y = -0.09; g.add(s2);
-  g.children.forEach(m => addOutline(m, 1.12));
-  g.scale.setScalar(1.3); return g;
+function makeSpoon(color){
+  const g = new THREE.Group();
+  const handle = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.06), toon(0xE8EEF4)), 1.1);
+  handle.position.x = -0.32; g.add(handle);
+  const bowl = addOutline(new THREE.Mesh(SMALL, toon(0xE8EEF4)), 1.08); bowl.scale.set(0.16, 0.06, 0.12); g.add(bowl);
+  const syrup = new THREE.Mesh(SMALL, toon(color)); syrup.scale.set(0.13, 0.03, 0.095); syrup.position.y = 0.035; g.add(syrup);
+  return g;
 }
 const camPt = (x, y, z) => { camera.updateMatrixWorld(); return new V3(x, y, z).applyMatrix4(camera.matrixWorld); };
 async function flyTo(obj, from, to, dur, arc = 0.8, spin = 0){

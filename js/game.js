@@ -96,10 +96,7 @@ async function spawnPatient(){
 const TREAT = {
   thermo: s => mgThermo(s),
   async medicine(s){
-    const pill = makePill();
-    await flyTo(pill, camPt(0.3, -1.8, -4), worldOf(s, s.mouthLocal), 0.75, 1, 8);
-    await tween(0.15, k => pill.scale.setScalar(1.3*(1 - k))); scene.remove(pill);
-    await tween(0.35, k => { s.nod = Math.sin(k*Math.PI)*0.25; }); s.nod = 0;
+    await mgMedicine(s);
     floatText('Ам!', headTop(s)); burst(TEX.star, headTop(s), 8, 1.8, 0.3); sfx.pop();
     S.ail.fever = false; S.ail.sneeze = false; applyAilments(s, S.ail);
   },

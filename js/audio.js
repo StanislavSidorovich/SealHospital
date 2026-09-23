@@ -32,6 +32,7 @@ const sfx = {
   arf(){ tone(640, 0.11, {type:'square', vol:0.045, to:360}); tone(700, 0.12, {type:'square', vol:0.045, to:380, delay:0.15}); },
   beep(long){ tone(1760, long ? 0.35 : 0.07, {vol:0.07}); },
   tick(){ tone(1320, 0.035, {vol:0.035}); },
+  pour(){ noise(0.35, {vol:0.12, freq:650, type:'lowpass'}); tone(520, 0.28, {vol:0.05, to:300, delay:0.05}); },
   chomp(){ noise(0.07, {vol:0.3, freq:700}); },
   sneeze(){ tone(700, 0.18, {type:'triangle', vol:0.06, to:1100}); noise(0.3, {vol:0.18, freq:2600, delay:0.2}); },
   splash(){ noise(0.6, {vol:0.25, freq:700, type:'lowpass'}); },

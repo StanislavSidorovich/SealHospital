@@ -138,3 +138,32 @@ body.mg-on:not(.mg-card) #card{display:none!important}
   font-size:22px;display:grid;place-content:center;gap:0;padding:0;touch-action:none}
 .hold .big{font-size:36px;line-height:1.1}
 .hold.on{translate:-50% 4px;box-shadow:0 1px 0 var(--ink);background:#FF7FA3}
+
+/* лекарство: сироп в ложку */
+.mg-panel{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);max-width:420px;margin:0 auto;
+  box-sizing:border-box;background:var(--paper);border:3px solid var(--ink);border-radius:26px;box-shadow:0 5px 0 var(--ink);
+  padding:12px 14px 16px;text-align:center;animation:rise .35s ease-out}
+.mg-panel.away{transition:translate .35s ease-in,opacity .35s;translate:0 120%;opacity:0}
+.recipe{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;font-size:15px;margin-bottom:8px}
+.recipe i{font-style:normal;width:38px;height:38px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:var(--c);
+  border:2.5px solid var(--ink);display:grid;place-items:center;font-size:18px;position:relative}
+.recipe i.now{animation:pulse 1s ease-in-out infinite;box-shadow:0 0 0 5px rgba(217,82,126,.3)}
+.recipe i.ok::after{content:"✓";position:absolute;right:-7px;top:-7px;width:18px;height:18px;border-radius:50%;
+  background:var(--mint);border:2px solid var(--mint-d);color:#236B50;font-size:11px;font-weight:800;display:grid;place-items:center}
+.recipe .arr{color:var(--soft)}
+.spoon{display:flex;align-items:center;justify-content:center;margin:4px 0 12px}
+.spoon .bowl{width:150px;height:62px;border-radius:50%;border:3px solid var(--ink);background:#EEF3F8;overflow:hidden;
+  display:flex;flex-direction:column-reverse}
+.spoon .bowl b{display:block;height:0;background:var(--c);transition:height .45s ease-out}
+.spoon .bowl b.in{height:33.4%}
+.spoon .handle{width:70px;height:14px;border:3px solid var(--ink);border-left:0;border-radius:0 8px 8px 0;background:#EEF3F8;margin-left:-4px}
+.spoon.full .bowl{box-shadow:0 0 0 6px rgba(47,158,114,.35)}
+.bottles{display:flex;justify-content:center;gap:10px}
+.bottle{width:68px;height:92px;padding:0;border:0;background:none;display:flex;flex-direction:column;align-items:center;touch-action:manipulation}
+.bottle .cap{width:22px;height:12px;background:var(--ink);border-radius:4px 4px 2px 2px}
+.bottle .neck{width:16px;height:10px;background:#fff;border:2.5px solid var(--ink);border-block:0}
+.bottle .body{flex:1;width:58px;border:2.5px solid var(--ink);border-radius:14px 14px 16px 16px;box-shadow:0 4px 0 var(--ink);
+  background:linear-gradient(90deg,rgba(255,255,255,.55) 0 18%,transparent 18%),var(--c);display:grid;place-items:center;font-size:24px}
+.bottle:active .body{translate:0 3px;box-shadow:0 1px 0 var(--ink)}
+.bottle.pour{animation:pour .5s ease-in-out}
+@keyframes pour{50%{translate:0 -14px;rotate:-28deg}}

@@ -80,3 +80,50 @@ async function mgThermo(s){
   await tween(0.3, k => th.scale.setScalar(1 - k)); scene.remove(th);
   toast('Жар 38,5°! Теперь дай лекарство.');
 }
+
+/* ---------- Лекарство: налить сироп в ложку по рецепту ---------- */
+const SYRUPS = [
+  {id:'rasp', c:'#FF8FB1', hex:0xFF8FB1, ic:'🍓', name:'Малиновый'},
+  {id:'bana', c:'#FFD66B', hex:0xFFD66B, ic:'🍌', name:'Банановый'},
+  {id:'mint', c:'#86DDB5', hex:0x86DDB5, ic:'🌿', name:'Мятный'},
+  {id:'blue', c:'#A5B3F7', hex:0xA5B3F7, ic:'🫐', name:'Черничный'}
+];
+async function mgMedicine(s){
+  const recipe = SYRUPS.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+  focusCam(worldOf(s, new V3(0, 0, 0)), 2.6, 1.0);
+  mgOpen('Налей сироп по рецепту');
+  const panel = mgNode('div', 'mg-panel', `
+    <div class="recipe"><span>Рецепт:</span>${recipe.map((r, i) => `${i ? '<span class="arr">→</span>' : ''}<i style="--c:${r.c}">${r.ic}</i>`).join('')}</div>
+    <div class="spoon"><div class="bowl">${recipe.map(r => `<b style="--c:${r.c}"></b>`).join('')}</div><div class="handle"></div></div>
+    <div class="bottles">${SYRUPS.map(r => `<button class="bottle" data-id="${r.id}" aria-label="${r.name} сироп"><span class="cap"></span><span class="neck"></span><span class="body" style="--c:${r.c}">${r.ic}</span></button>`).join('')}</div>`);
+  const steps = [...panel.querySelectorAll('.recipe i')], layers = [...panel.querySelectorAll('.bowl b')];
+  let step = 0, pouring = false, finish;
+  const done = new Promise(r => finish = r);
+  const mark = () => steps.forEach((el, i) => { el.classList.toggle('ok', i < step); el.classList.toggle('now', i === step); });
+  mark();
+  panel.querySelectorAll('.bottle').forEach(b => mgOn(b, 'click', async () => {
+    if(pouring || step >= recipe.length) return;
+    const want = recipe[step];
+    if(b.dataset.id !== want.id){
+      sfx.bad(); wiggle(b); mgHint(`Сейчас нужен ${want.ic} — посмотри рецепт!`); return;
+    }
+    pouring = true; sfx.pour();
+    b.classList.remove('pour'); void b.offsetWidth; b.classList.add('pour');
+    await wait(0.25);
+    layers[step].classList.add('in'); step++; mark();
+    await wait(0.3); pouring = false;
+    if(step < recipe.length) mgHint(step === 1 ? 'Так! Теперь следующий' : 'Ещё один!');
+    else finish();
+  }));
+  await done;
+  panel.querySelector('.spoon').classList.add('full'); sfx.good(); mgHint('Готово! Даём лекарство');
+  await wait(0.8);
+  panel.classList.add('away'); await wait(0.35);
+  mgClose();
+  focusCam(worldOf(s, new V3(0, -0.1, 0)), 2.8);
+  const spoon = makeSpoon(recipe[recipe.length - 1].hex); spoon.rotation.y = -0.4;
+  await flyTo(spoon, camPt(0.4, -1.6, -4), worldOf(s, s.mouthLocal).add(new V3(0.2, 0, 0.1)), 0.8, 0.6);
+  await tween(0.35, k => { s.nod = Math.sin(k*Math.PI)*0.25; spoon.position.x += 0.004; });
+  s.nod = 0;
+  await tween(0.2, k => spoon.scale.setScalar(1 - k)); scene.remove(spoon);
+}
