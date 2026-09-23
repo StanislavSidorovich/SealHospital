@@ -1,0 +1,17 @@
+{
+  "name": "Тюленья больница",
+  "short_name": "Тюлени",
+  "description": "Лечи тюленят на льдине, обнимай их и собирай альбом пациентов.",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#BDE5F4",
+  "theme_color": "#BDE5F4",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

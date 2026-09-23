@@ -24,6 +24,10 @@ python -m http.server 8765
 
 и открыть http://localhost:8765/
 
+## Устройство
+
+`index.html` (разметка) + `css/style.css` + `js/` (`data.js` данные и сохранение, `audio.js`, `world.js` сцена, `seal.js` тюлень и предметы, `game.js` ход игры) + `vendor/three.min.js`. Без сборщика и модулей: всё открывается двойным щелчком.
+
 ## Планы
 
 См. [ROADMAP.md](ROADMAP.md).

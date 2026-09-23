@@ -1,0 +1,139 @@
+/* ---------------- seal ---------------- */
+const HEAD_AX = [0.84, 0.76, 0.76];
+function onHead(obj, dx, dy, dz, out = 0){
+  const d = new V3(dx, dy, dz).normalize();
+  const t = 1/Math.sqrt((d.x/HEAD_AX[0])**2 + (d.y/HEAD_AX[1])**2 + (d.z/HEAD_AX[2])**2);
+  obj.position.copy(d).multiplyScalar(t + out); obj.quaternion.setFromUnitVectors(Z, d); return obj;
+}
+function makePlaster(){
+  const g = new THREE.Group();
+  const strip = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.13, 0.025), toon(0xFFB8CB)), 1.08); g.add(strip);
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.03), toon(0xFFF0F4)); g.add(pad);
+  return g;
+}
+function makeSeal(p){
+  const bodyMat = toon(p.color), hits = [];
+  const root = new THREE.Group(), inner = new THREE.Group(); root.add(inner);
+  const body = addOutline(new THREE.Mesh(SPH, bodyMat), 1.045);
+  body.scale.set(1.15, 0.8, 1.3); body.position.set(0, 0.8, -0.2); inner.add(body); hits.push(body);
+  if(p.spot){
+    const sm = toon(p.spot);
+    for(const [x,y,z] of [[0.5,0.6,-0.4],[-0.6,0.5,-0.2],[0.2,0.8,-0.7],[-0.3,0.7,-0.9],[0.75,0.3,-0.8],[-0.8,0.25,-0.6],[0.9,0.4,0.1]]){
+      const d = new V3(x, y, z).normalize(), s = new THREE.Mesh(SMALL, sm);
+      const t = 1/Math.sqrt((d.x/1.15)**2 + (d.y/0.8)**2 + (d.z/1.3)**2);
+      s.position.copy(d).multiplyScalar(t - 0.012).add(new V3(0, 0.8, -0.2));
+      s.quaternion.setFromUnitVectors(Z, d); s.scale.set(0.14, 0.11, 0.03); inner.add(s);
+    }
+  }
+  for(const s of [-1, 1]){
+    const f = addOutline(new THREE.Mesh(SMALL, bodyMat), 1.12);
+    f.scale.set(0.3, 0.08, 0.45); f.position.set(0.22*s, 0.2, -1.52); f.rotation.y = 0.5*s; inner.add(f);
+  }
+  const flippers = [];
+  for(const s of [-1, 1]){
+    const piv = new THREE.Group(); piv.position.set(0.85*s, 0.45, 0.35);
+    const f = addOutline(new THREE.Mesh(SMALL, bodyMat), 1.1); f.scale.set(0.42, 0.11, 0.26); f.position.set(0.3*s, 0, 0);
+    piv.add(f); piv.userData.s = s; inner.add(piv); flippers.push(piv); hits.push(f);
+  }
+  const head = new THREE.Group(); head.position.set(0, 1.5, 0.55); inner.add(head);
+  const hm = addOutline(new THREE.Mesh(SPH, bodyMat), 1.05); hm.scale.set(...HEAD_AX); head.add(hm); hits.push(hm);
+
+  const eyes = [], happy = [], brows = [];
+  const blushMat = new THREE.MeshBasicMaterial({color:0xFFA3B8, transparent:true, opacity:0.85});
+  const arcEye = new THREE.TorusGeometry(0.075, 0.018, 8, 20, Math.PI);
+  for(const s of [-1, 1]){
+    const e = onHead(new THREE.Group(), 0.36*s, 0.16, 0.92, -0.015);
+    const ball = new THREE.Mesh(SMALL, inkMat); ball.scale.set(0.085, 0.1, 0.05); e.add(ball);
+    const hl = new THREE.Mesh(SMALL, whiteMat); hl.scale.setScalar(0.03); hl.position.set(0.028, 0.04, 0.04); e.add(hl);
+    head.add(e); eyes.push(e);
+    const h = onHead(new THREE.Mesh(arcEye, inkMat), 0.36*s, 0.14, 0.92, 0.005); h.visible = false; head.add(h); happy.push(h);
+    const b = onHead(new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.026, 0.02), inkMat), 0.36*s, 0.42, 0.83, 0.005);
+    b.rotateZ(-0.38*s); b.visible = false; head.add(b); brows.push(b);
+    head.add(onHead(new THREE.Mesh(new THREE.CircleGeometry(0.12, 24), blushMat), 0.6*s, -0.06, 0.8, 0.008));
+  }
+  const nose = onHead(new THREE.Mesh(SMALL, inkMat), 0, 0, 1, 0); nose.scale.set(0.07, 0.05, 0.04); head.add(nose);
+  const smile = new THREE.Group(), arcG = new THREE.TorusGeometry(0.05, 0.013, 8, 16, Math.PI);
+  for(const s of [-1, 1]){ const a = new THREE.Mesh(arcG, inkMat); a.rotation.z = Math.PI; a.position.x = 0.05*s; smile.add(a); }
+  onHead(smile, 0, -0.12, 1, 0); head.add(smile);
+  const sad = onHead(new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.013, 8, 16, Math.PI), inkMat), 0, -0.22, 1, 0);
+  sad.visible = false; head.add(sad);
+  const mouthLocal = onHead(new THREE.Object3D(), 0, -0.15, 1, 0.05).position.clone();
+  const noseLocal = nose.position.clone();
+
+  const sweat = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.drop, transparent:true, depthWrite:false}));
+  sweat.scale.set(0.2, 0.26, 1); sweat.position.set(-0.78, 0.35, 0.3); sweat.visible = false; head.add(sweat);
+  const bubble = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.bubble, transparent:true, depthWrite:false}));
+  bubble.scale.setScalar(0.85); bubble.position.set(1.25, 2.55, 0.4); bubble.visible = false; inner.add(bubble);
+  const scratch = new THREE.Group();
+  for(const r of [0.7, -0.7]){ const m = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.026, 0.02), new THREE.MeshBasicMaterial({color:0xE0475B})); m.rotation.z = r; scratch.add(m); }
+  onHead(scratch, 0.5, 0.52, 0.69, 0.006); scratch.visible = false; head.add(scratch);
+  const plaster = makePlaster(); onHead(plaster, 0.5, 0.52, 0.69, 0.012); plaster.rotateZ(0.5);
+  plaster.visible = false; head.add(plaster);
+  const scarf = new THREE.Group(), scMat = toon(0xFF7A9C);
+  const ring = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.15, 12, 40), scMat), 1.03);
+  ring.quaternion.setFromUnitVectors(Z, new V3(0, 1, 0.5).normalize()); scarf.add(ring);
+  const tail = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.46, 0.08), scMat), 1.08);
+  tail.position.set(0.34, -0.36, 0.62); tail.rotation.set(0.35, 0, 0.25); scarf.add(tail);
+  for(const y of [-0.08, -0.22]){ const st = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.04, 0.085), whiteMat); st.position.y = y; tail.add(st); }
+  scarf.position.set(0, 1.02, 0.35); scarf.scale.setScalar(0.001); scarf.visible = false; inner.add(scarf);
+
+  return {p, root, inner, head, body, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf,
+    bodyMat, base:new THREE.Color(p.color), coldCol:new THREE.Color(p.color).lerp(new THREE.Color(0x9FC8EE), 0.45),
+    mouthLocal, noseLocal, hits, nod:0, sneezeNod:0, shake:0, wobble:0, flap:0, blinkT:2, sneezeT:2.5, rumbleT:3.5,
+    swimming:false, cold:false};
+}
+function setMood(s, m){
+  const sad = m === 'sad', hap = m === 'happy';
+  s.brows.forEach(b => b.visible = sad); s.sad.visible = sad; s.smile.visible = !sad;
+  s.eyes.forEach(e => e.visible = !hap); s.happy.forEach(h => h.visible = hap);
+}
+function applyAilments(s, a){
+  s.sweat.visible = !!a.fever;
+  s.blushMat.color.set(a.fever ? 0xFF5C77 : 0xFFA3B8);
+  s.bubble.visible = !!a.hungry;
+  s.scratch.visible = !!a.scratch;
+  s.cold = !!a.cold;
+}
+function updateSeal(s, t, dt){
+  s.body.scale.set(1.15*(1 + s.wobble), 0.8*(1 + Math.sin(t*2.2)*0.025), 1.3);
+  s.head.rotation.set(s.nod + s.sneezeNod, s.shake + Math.sin(t*0.7)*0.08, Math.sin(t*1.1)*0.06);
+  for(const f of s.flippers){ const sd = f.userData.s; f.rotation.z = -0.35*sd + sd*(Math.sin(t*3 + sd)*0.06 + s.flap*Math.sin(t*14)*0.5); }
+  if(s.swimming) s.inner.position.y = Math.sin(t*4)*0.06;
+  s.bodyMat.color.lerp(s.cold ? s.coldCol : s.base, 0.06);
+  s.inner.position.x = s.cold && !s.swimming ? Math.sin(t*55)*0.018 : 0;
+  s.blinkT -= dt;
+  if(s.blinkT < 0){ const sc = s.blinkT > -0.12 ? 0.15 : 1; s.eyes.forEach(e => e.scale.y = sc); if(s.blinkT <= -0.12) s.blinkT = 2 + Math.random()*3; }
+  s.sweat.position.y = 0.35 - ((t*0.6) % 1)*0.12;
+  s.bubble.position.y = 2.55 + Math.sin(t*2)*0.06;
+}
+function worldOf(s, local){ s.root.updateMatrixWorld(true); return s.head.localToWorld(local.clone()); }
+
+/* ---------------- props ---------------- */
+function makeThermo(){
+  const g = new THREE.Group();
+  g.add(addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.62, 12), toon(0xFFFFFF)), 1.12));
+  const red = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.043, 0.24, 12), toon(0xFF5C77)); red.position.y = -0.14; g.add(red);
+  const bulb = addOutline(new THREE.Mesh(SMALL, toon(0xFF5C77)), 1.15); bulb.scale.setScalar(0.065); bulb.position.y = -0.31; g.add(bulb);
+  return g;
+}
+function makeFish(){
+  const g = new THREE.Group(), m = toon(0xFFA552);
+  const b = addOutline(new THREE.Mesh(SMALL, m), 1.08); b.scale.set(0.32, 0.18, 0.12); g.add(b);
+  const tl = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.22, 4), m), 1.1); tl.rotation.z = Math.PI/2; tl.position.x = -0.38; tl.scale.z = 0.4; g.add(tl);
+  const e = new THREE.Mesh(SMALL, inkMat); e.scale.setScalar(0.035); e.position.set(0.18, 0.04, 0.1); g.add(e);
+  return g;
+}
+function makePill(){
+  const g = new THREE.Group(), a = toon(0xFF7FA3), b = toon(0xFFFFFF);
+  const c1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 16), a); c1.position.y = 0.045; g.add(c1);
+  const c2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 16), b); c2.position.y = -0.045; g.add(c2);
+  const s1 = new THREE.Mesh(SMALL, a); s1.scale.setScalar(0.08); s1.position.y = 0.09; g.add(s1);
+  const s2 = new THREE.Mesh(SMALL, b); s2.scale.setScalar(0.08); s2.position.y = -0.09; g.add(s2);
+  g.children.forEach(m => addOutline(m, 1.12));
+  g.scale.setScalar(1.3); return g;
+}
+const camPt = (x, y, z) => { camera.updateMatrixWorld(); return new V3(x, y, z).applyMatrix4(camera.matrixWorld); };
+async function flyTo(obj, from, to, dur, arc = 0.8, spin = 0){
+  obj.position.copy(from); scene.add(obj);
+  await tween(dur, k => { obj.position.lerpVectors(from, to, k); obj.position.y += Math.sin(k*Math.PI)*arc; obj.rotation.y += spin*0.016; });
+}

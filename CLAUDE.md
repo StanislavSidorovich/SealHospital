@@ -10,10 +10,11 @@
 ## Технологии
 
 - Three.js **r128**, лежит в `vendor/three.min.js` (UMD, глобальный `THREE`). CDN не используем, игра должна открываться без интернета.
-- **Без сборщика и без ES-модулей**: только обычные `<script>` в нужном порядке. Игра обязана работать с `file://` (двойной щелчок), на GitHub Pages и как Claude Artifact.
+- **Без сборщика и без ES-модулей**: только обычные `<script>` в нужном порядке (`vendor/three.min.js` → `js/data.js` → `audio.js` → `world.js` → `seal.js` → `game.js`). Файлы делят глобальную область: top-level `const/let/function` видны во всех следующих скриптах, порядок подключения важен. Стили в `css/style.css`. Игра обязана работать с `file://` (двойной щелчок), на GitHub Pages и как Claude Artifact.
 - Шрифты Google Fonts: Pangolin (заголовки, рукописный каваи), Nunito (текст). Без сети подставляются системные, это нормально.
 - Звуки синтезируются Web Audio, аудиофайлов нет. AudioContext создаётся только после нажатия.
-- Сохранение в `localStorage` (сейчас ключи `sh.album`, `sh.progress`, `sh.muted`). Каждое чтение и запись оборачивать в try/catch.
+- Сохранение в `localStorage`: один ключ `sh.save` = `{version, album, progress, muted}`, объект `save` и `persist()` в `js/data.js`. Новое поле: значение по умолчанию в `sanitize()`; меняется смысл старых данных — поднять `SAVE_VERSION` и добавить функцию в `MIGRATIONS`. Старые ключи `sh.album/progress/muted` только читаются при миграции. Каждое чтение и запись оборачивать в try/catch (`store` уже так делает).
+- PWA: `manifest.json`, `icons/` (192, 512, apple-touch). Service worker пока нет.
 
 ## Визуальный стиль
 
@@ -31,7 +32,7 @@
 
 ## Как проверять
 
-- Локальный сервер: `python -m http.server 8765` из корня, затем открыть http://localhost:8765/.
+- Локальный сервер: `python -m http.server 8765` (если порт занят чужим сервером, бери другой, например 8766) из корня, затем открыть http://localhost:8765/.
 - Встроенная панель браузера в Claude Desktop, когда она скрыта, почти останавливает `requestAnimationFrame`. Для проверок открывай `?test=1`: так снимается ограничение на dt и анимации идут по реальному времени, хотя кадров мало.
 - Размер экрана для проверки: мобильный 375×812.
 - Кнопки удобно нажимать из JS: `document.getElementById('tool-scarf').click()`, `#btnStart`, `#hugBtn`, `#btnNext`.
@@ -39,7 +40,7 @@
 ## Публикация
 
 - GitHub Pages: достаточно пуша в `main`.
-- Обновление Artifact: Artifact publish с `url` из списка выше, `file_path` = `index.html`, и `files: {"vendor/three.min.js": "vendor/three.min.js"}`. Сначала сделай artifact read, потом republish.
+- Обновление Artifact: Artifact publish с `url` из списка выше, `file_path` = `index.html`, и `files` со всеми остальными файлами: `vendor/three.min.js`, `css/style.css`, `js/*.js`, `manifest.json`, `icons/*.png` (путь публикации = путь файла). Сначала сделай artifact read, потом republish.
 - Git: коммиты от `StanislavSidorovich` с noreply-адресом (он уже в локальном git config). Личный email в коммиты не ставить.
 
 ## Модели
