@@ -1,0 +1,880 @@
+<meta charset="utf-8">
+<title>Тюленья больница</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pangolin&family=Nunito:wght@600;700;800&display=swap">
+<style>
+  :root{
+    --sky1:#BDE5F4; --sky2:#EAF7FB; --ink:#3B3A4A; --paper:#FFFDF8;
+    --pink:#FF9BB8; --pink-d:#D9527E; --mint:#DDF5EA; --mint-d:#2F9E72; --soft:#6B6A7E;
+    color-scheme: light;
+  }
+  [hidden]{display:none!important}
+  html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,var(--sky1),var(--sky2) 62%);color:var(--ink);
+    font-family:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;
+    -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  #app{position:fixed;inset:0}
+  #c{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  button{font:inherit;color:inherit;cursor:pointer}
+  button:focus-visible{outline:3px solid var(--pink-d);outline-offset:2px}
+  .display{font-family:"Pangolin","Comic Sans MS","Nunito",cursive;font-weight:400}
+
+  /* top bar */
+  .top{position:absolute;top:0;left:0;right:0;display:flex;gap:10px;align-items:flex-start;
+    padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 0;pointer-events:none}
+  .top>*{pointer-events:auto}
+  .card{flex:1;max-width:380px;background:var(--paper);border:2.5px solid var(--ink);border-radius:18px;
+    padding:10px 14px 12px;box-shadow:0 4px 0 var(--ink)}
+  .card-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--soft)}
+  .cross{width:14px;height:14px;position:relative;flex:none}
+  .cross::before,.cross::after{content:"";position:absolute;background:var(--pink-d);border-radius:2px}
+  .cross::before{left:5px;top:0;width:4px;height:14px}
+  .cross::after{top:5px;left:0;width:14px;height:4px}
+  .card h2{margin:2px 0 2px;font-size:28px;line-height:1.05}
+  .card p{margin:0 0 8px;font-size:14.5px;line-height:1.35;font-weight:600;text-wrap:pretty}
+  .needs{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+  .needs li,.needs button{display:inline-flex;align-items:center;gap:5px;border:2px solid var(--ink);border-radius:999px;
+    padding:3px 10px 3px 7px;font-size:13px;font-weight:700;background:#fff;line-height:1.2}
+  .needs .ic{font-size:15px;line-height:1}
+  .needs .done{background:var(--mint);border-color:var(--mint-d);color:#236B50}
+  .needs .done .lbl{text-decoration:line-through;text-decoration-thickness:2px}
+  .needs .lock{opacity:.45;border-style:dashed}
+  .needs .now{background:var(--pink);animation:pulse 1.1s ease-in-out infinite}
+  @keyframes pulse{50%{transform:scale(1.07)}}
+
+  .corner{display:flex;flex-direction:column;gap:8px}
+  .round{width:48px;height:48px;border-radius:50%;border:2.5px solid var(--ink);background:var(--paper);
+    box-shadow:0 3px 0 var(--ink);display:grid;place-items:center;position:relative;padding:0}
+  .round:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+  .round svg{width:24px;height:24px}
+  .badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:10px;background:var(--pink);
+    border:2px solid var(--ink);font-size:11px;font-weight:800;display:grid;place-items:center;padding:0 4px;box-sizing:border-box}
+
+  /* tools */
+  .tools{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:center;gap:6px;flex-wrap:nowrap;
+    padding:10px 12px calc(env(safe-area-inset-bottom,0px) + 14px)}
+  .tool{background:none;border:0;padding:0;width:66px;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .tool .face{width:58px;height:58px;border-radius:50%;background:var(--paper);border:2.5px solid var(--ink);
+    box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;font-size:29px;position:relative;transition:transform .1s}
+  .tool:active .face{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+  .tool .name{font-size:12px;font-weight:800;background:rgba(255,253,248,.85);border-radius:8px;padding:0 5px}
+  .tool.used .face::after{content:"✓";position:absolute;right:-6px;top:-6px;width:22px;height:22px;border-radius:50%;
+    background:var(--mint);border:2px solid var(--mint-d);color:#236B50;font-size:13px;font-weight:800;display:grid;place-items:center}
+  .tools[aria-busy="true"] .tool{opacity:.7}
+
+  .toast{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 118px);transform:translateX(-50%);
+    background:var(--ink);color:#fff;font-weight:700;font-size:15px;padding:9px 16px;border-radius:14px;
+    max-width:calc(100% - 48px);width:max-content;text-align:center;line-height:1.3;pointer-events:none;
+    animation:pop .25s ease-out}
+  @keyframes pop{from{opacity:0;transform:translate(-50%,8px)}}
+
+  /* overlays */
+  .overlay{position:absolute;inset:0;display:grid;place-items:center;padding:16px;
+    background:rgba(234,247,251,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);overflow-y:auto}
+  .panel{background:var(--paper);border:3px solid var(--ink);border-radius:26px;box-shadow:0 6px 0 var(--ink);
+    width:100%;max-width:420px;box-sizing:border-box;padding:24px 22px 22px;text-align:center;animation:rise .35s ease-out}
+  @keyframes rise{from{opacity:0;transform:translateY(14px) scale(.97)}}
+  .panel h1{font-size:42px;line-height:1;margin:6px 0 10px;text-wrap:balance}
+  .panel h2{font-size:34px;line-height:1.05;margin:10px 0 4px}
+  .panel p{font-size:16px;line-height:1.45;font-weight:600;margin:0 0 16px;text-wrap:pretty}
+  .sign{width:64px;height:64px;margin:0 auto;border-radius:50%;background:#fff;border:3px solid var(--ink);display:grid;place-items:center}
+  .sign .cross{width:30px;height:30px}
+  .sign .cross::before{left:10px;width:10px;height:30px;border-radius:3px}
+  .sign .cross::after{top:10px;height:10px;width:30px;border-radius:3px}
+  .btn{font-family:"Pangolin","Comic Sans MS",cursive;font-size:22px;background:var(--pink);border:3px solid var(--ink);
+    border-radius:16px;box-shadow:0 4px 0 var(--ink);padding:10px 22px;color:var(--ink)}
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+  .btn.ghost{background:#fff}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .from{margin-top:14px;font-size:13px;color:var(--soft);font-weight:700}
+
+  .thumb{width:128px;height:128px;border-radius:50%;border:3px solid var(--ink);margin:0 auto;object-fit:cover;display:block;background:#DDF1F8}
+  .thanks{font-size:16px;font-weight:700;margin:0 0 14px}
+  .letter{position:relative;text-align:left;background:
+      repeating-linear-gradient(180deg,transparent 0 31px,#F3D5DF 31px 33px),#FFF7F2;
+    border:2px solid var(--ink);border-radius:14px;padding:14px 18px 10px;margin:0 0 18px;transform:rotate(-1.2deg)}
+  .letter .to{font-size:31px;color:var(--pink-d);line-height:33px;margin:0}
+  .letter .sig{font-size:24px;text-align:right;line-height:33px;margin:0}
+  .stamp{position:absolute;top:-14px;right:12px;width:40px;height:40px;border-radius:8px;background:var(--pink);
+    border:2px dashed var(--ink);display:grid;place-items:center;transform:rotate(8deg)}
+  .stamp svg{width:22px;height:22px}
+
+  .album-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px;margin:4px 0 18px;
+    max-height:52vh;overflow-y:auto;padding:4px}
+  .album-grid figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .album-grid img{width:84px;height:84px;border-radius:50%;border:2.5px solid var(--ink);object-fit:cover;background:#DDF1F8}
+  .album-grid figcaption{font-size:14px;font-weight:800}
+  .empty{color:var(--soft)}
+
+  @media (min-width:700px){
+    .tools{gap:14px}
+    .tool{width:78px}
+    .tool .face{width:66px;height:66px;font-size:33px}
+    .tool .name{font-size:13px}
+  }
+  @media (prefers-reduced-motion:reduce){ .needs .now{animation:none} .panel,.toast{animation:none} }
+</style>
+
+<div id="app">
+  <canvas id="c" aria-label="Льдина с тюленем"></canvas>
+
+  <div class="top">
+    <section class="card" id="card" hidden aria-live="polite">
+      <div class="card-label"><span class="cross"></span>Карта пациента № <span id="pNo">1</span></div>
+      <h2 class="display" id="pName">Моти</h2>
+      <p id="pText"></p>
+      <ul class="needs" id="pNeeds"></ul>
+    </section>
+    <div class="corner" id="corner">
+      <button class="round" id="btnSound" aria-label="Звук">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3B3A4A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="#FF9BB8"/>
+          <path id="waves" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>
+          <path id="cross" d="M16 9.5l5 5M21 9.5l-5 5" hidden/>
+        </svg>
+      </button>
+      <button class="round" id="btnAlbum" aria-label="Альбом пациентов">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#3B3A4A" stroke-width="2.2" stroke-linejoin="round">
+          <rect x="4.5" y="3.5" width="15" height="17" rx="2.5" fill="#FFFDF8"/>
+          <path d="M12 16.2s-3.6-2.2-3.6-4.6a1.9 1.9 0 0 1 3.6-.9 1.9 1.9 0 0 1 3.6.9c0 2.4-3.6 4.6-3.6 4.6z" fill="#FF9BB8" stroke-width="1.6"/>
+        </svg>
+        <span class="badge" id="albumCount">0</span>
+      </button>
+    </div>
+  </div>
+
+  <nav class="tools" id="tools" hidden aria-label="Лечение"></nav>
+  <div class="toast" id="toast" hidden></div>
+
+  <div class="overlay" id="intro">
+    <div class="panel">
+      <div class="sign"><span class="cross"></span></div>
+      <h1 class="display">Тюленья больница</h1>
+      <p>Доктор Сабрина, к тебе приплывают пациенты! Читай карту, выбирай лечение, а в конце обязательно обними тюленя.</p>
+      <p id="introStat" class="thanks" hidden></p>
+      <button class="btn" id="btnStart">Открыть больницу</button>
+      <div class="from">от Dad ♡</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="cured" hidden>
+    <div class="panel">
+      <img class="thumb" id="curedImg" alt="Вылеченный тюлень">
+      <h2 class="display" id="curedTitle">Моти здоров!</h2>
+      <p class="thanks" id="curedThanks"></p>
+      <div class="letter">
+        <div class="stamp"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.3-7-9.2A3.8 3.8 0 0 1 12 9a3.8 3.8 0 0 1 7 1.8C19 15.7 12 20 12 20z" fill="#FFFDF8" stroke="#3B3A4A" stroke-width="1.8"/></svg></div>
+        <p class="to display">Для любимой дочи</p>
+        <p class="sig display">— Dad ♡</p>
+      </div>
+      <div class="row">
+        <button class="btn" id="btnNext">Следующий пациент</button>
+        <button class="btn ghost" id="btnCuredAlbum">Альбом</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="album" hidden>
+    <div class="panel">
+      <h2 class="display">Мои пациенты</h2>
+      <p class="thanks" id="albumSub"></p>
+      <div class="album-grid" id="albumGrid"></div>
+      <button class="btn" id="btnAlbumClose">Вернуться в больницу</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const V3 = THREE.Vector3;
+const INK = 0x3B3A4A;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+
+/* ---------------- sound ---------------- */
+let AC = null, muted = store.get('sh.muted', false);
+function ac(){
+  if(!AC){ try{ AC = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ return null; } }
+  if(AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(f, d, {type='sine', vol=0.12, to=null, delay=0} = {}){
+  const a = ac(); if(!a || muted) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if(to) o.frequency.exponentialRampToValueAtTime(to, t + d);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.05);
+}
+function noise(d, {vol=0.2, freq=1000, type='bandpass', q=0.8, delay=0} = {}){
+  const a = ac(); if(!a || muted) return;
+  const t = a.currentTime + delay, len = Math.floor(a.sampleRate * d);
+  const buf = a.createBuffer(1, len, a.sampleRate), ch = buf.getChannelData(0);
+  for(let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = a.createBufferSource(); src.buffer = buf;
+  const f = a.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+  const g = a.createGain(); g.gain.value = vol;
+  src.connect(f).connect(g).connect(a.destination); src.start(t);
+}
+const sfx = {
+  tap(){ tone(700, 0.07, {type:'triangle', vol:0.08}); },
+  good(){ [523,659,784,1047].forEach((f,i) => tone(f, 0.22, {type:'triangle', vol:0.11, delay:i*0.09})); },
+  bad(){ tone(330, 0.16, {type:'square', vol:0.04, to:250}); tone(250, 0.2, {type:'square', vol:0.04, to:200, delay:0.17}); },
+  arf(){ tone(640, 0.11, {type:'square', vol:0.045, to:360}); tone(700, 0.12, {type:'square', vol:0.045, to:380, delay:0.15}); },
+  beep(long){ tone(1760, long ? 0.35 : 0.07, {vol:0.07}); },
+  chomp(){ noise(0.07, {vol:0.3, freq:700}); },
+  sneeze(){ tone(700, 0.18, {type:'triangle', vol:0.06, to:1100}); noise(0.3, {vol:0.18, freq:2600, delay:0.2}); },
+  splash(){ noise(0.6, {vol:0.25, freq:700, type:'lowpass'}); },
+  whoosh(){ noise(0.4, {vol:0.14, freq:1500}); },
+  pop(){ tone(420, 0.1, {vol:0.12, to:900}); },
+  hug(){ [659,784,988,1319,1568].forEach((f,i) => tone(f, 0.3, {vol:0.09, delay:i*0.08})); }
+};
+function renderMute(){
+  $('#waves').toggleAttribute('hidden', muted);
+  $('#cross').toggleAttribute('hidden', !muted);
+  $('#btnSound').setAttribute('aria-label', muted ? 'Включить звук' : 'Выключить звук');
+}
+
+/* ---------------- three setup ---------------- */
+const canvas = $('#c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xE2F3F9, 20, 58);
+const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 120);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xA9D4E6, 0.75));
+const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(4, 8, 6); scene.add(sun);
+
+const toon = c => new THREE.MeshToonMaterial({color:c});
+const outlineMat = new THREE.MeshBasicMaterial({color:INK, side:THREE.BackSide});
+function addOutline(mesh, s = 1.05){
+  const o = new THREE.Mesh(mesh.geometry, outlineMat); o.scale.setScalar(s); mesh.add(o); return mesh;
+}
+const SPH = new THREE.SphereGeometry(1, 40, 28);
+const SMALL = new THREE.SphereGeometry(1, 16, 12);
+const inkMat = new THREE.MeshBasicMaterial({color:INK});
+const whiteMat = new THREE.MeshBasicMaterial({color:0xffffff});
+const Z = new V3(0, 0, 1);
+
+/* canvas textures */
+function canvasTex(size, draw, h = size){
+  const c = document.createElement('canvas'); c.width = size; c.height = h;
+  draw(c.getContext('2d'), size, h); return new THREE.CanvasTexture(c);
+}
+function heartPath(g, s, x = 0, y = 0){
+  g.beginPath(); g.moveTo(x + s/2, y + s*0.84);
+  g.bezierCurveTo(x + s*0.04, y + s*0.52, x + s*0.14, y + s*0.12, x + s/2, y + s*0.3);
+  g.bezierCurveTo(x + s*0.86, y + s*0.12, x + s*0.96, y + s*0.52, x + s/2, y + s*0.84);
+}
+const TEX = {
+  heart: canvasTex(128, (g, s) => { heartPath(g, s); g.fillStyle = '#FF7FA3'; g.fill(); g.lineWidth = 7; g.strokeStyle = '#3B3A4A'; g.stroke(); }),
+  star: canvasTex(128, (g, s) => {
+    g.beginPath();
+    for(let i = 0; i < 10; i++){ const r = i % 2 ? s*0.2 : s*0.44, a = -Math.PI/2 + i*Math.PI/5; g.lineTo(s/2 + Math.cos(a)*r, s/2 + Math.sin(a)*r); }
+    g.closePath(); g.fillStyle = '#FFD66B'; g.fill(); g.lineWidth = 6; g.lineJoin = 'round'; g.strokeStyle = '#3B3A4A'; g.stroke();
+  }),
+  puff: canvasTex(64, (g, s) => { const r = g.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2); r.addColorStop(0,'rgba(255,255,255,1)'); r.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0,0,s,s); }),
+  dot: canvasTex(32, (g, s) => { g.beginPath(); g.arc(s/2,s/2,s/2-2,0,7); g.fillStyle = '#fff'; g.fill(); }),
+  drop: canvasTex(64, (g, s) => {
+    g.beginPath(); g.moveTo(s/2, 4); g.bezierCurveTo(s*0.1, s*0.55, s*0.2, s-4, s/2, s-4); g.bezierCurveTo(s*0.8, s-4, s*0.9, s*0.55, s/2, 4);
+    g.fillStyle = '#8FD3F5'; g.fill(); g.lineWidth = 4; g.strokeStyle = '#3B3A4A'; g.stroke();
+  }),
+  bubble: canvasTex(256, (g, s) => {
+    g.lineWidth = 8; g.strokeStyle = '#3B3A4A'; g.fillStyle = '#fff';
+    for(const [x,y,r] of [[48,214,14],[78,182,22],[150,104,82]]){ g.beginPath(); g.arc(x,y,r,0,7); g.fill(); g.stroke(); }
+    g.font = '86px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText('🐟', 152, 110);
+  })
+};
+function textSprite(text, color = '#3B3A4A'){
+  const tex = canvasTex(512, (g, w, h) => {
+    g.font = '112px Pangolin, "Comic Sans MS", Nunito, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineJoin = 'round'; g.lineWidth = 20; g.strokeStyle = '#fff'; g.strokeText(text, w/2, h/2 + 6);
+    g.fillStyle = color; g.fillText(text, w/2, h/2 + 6);
+  }, 192);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false, depthTest:false}));
+  sp.scale.set(1.9, 0.71, 1); sp.renderOrder = 10; return sp;
+}
+
+/* ---------------- world ---------------- */
+const waterGeo = new THREE.PlaneGeometry(90, 90, 60, 60); waterGeo.rotateX(-Math.PI/2);
+const wPos = waterGeo.attributes.position, wBase = Float32Array.from(wPos.array);
+const water = new THREE.Mesh(waterGeo, toon(0x6FC0DF)); water.position.y = -0.05; scene.add(water);
+function updateWater(t){
+  for(let i = 0; i < wPos.count; i++){
+    const x = wBase[i*3], z = wBase[i*3+2];
+    wPos.array[i*3+1] = Math.sin(x*0.45 + t*1.1)*0.07 + Math.cos(z*0.5 + t*0.9)*0.07;
+  }
+  wPos.needsUpdate = true; waterGeo.computeVertexNormals();
+}
+
+const floeGeo = new THREE.CylinderGeometry(3.2, 3.4, 0.6, 44, 1);
+{ const p = floeGeo.attributes.position;
+  for(let i = 0; i < p.count; i++){
+    const x = p.getX(i), z = p.getZ(i), r = Math.hypot(x, z); if(r < 0.01) continue;
+    const a = Math.atan2(z, x), k = 1 + 0.07*Math.sin(a*3) + 0.05*Math.sin(a*7 + 1);
+    p.setX(i, x*k); p.setZ(i, z*k);
+  }
+  floeGeo.computeVertexNormals(); }
+const floe = addOutline(new THREE.Mesh(floeGeo, toon(0xD6EAF5)), 1.02); floe.position.y = -0.05; scene.add(floe);
+const foam = new THREE.Mesh(new THREE.RingGeometry(3.35, 3.9, 56), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.5}));
+foam.rotation.x = -Math.PI/2; foam.position.y = 0.1; scene.add(foam);
+
+// igloo clinic
+{ const g = new THREE.Group(); g.position.set(-1.7, 0.25, -2.0); g.rotation.y = 0.35;
+  const dome = addOutline(new THREE.Mesh(new THREE.SphereGeometry(1.1, 32, 16, 0, Math.PI*2, 0, Math.PI/2), toon(0xFFFFFF)), 1.03);
+  g.add(dome);
+  const tunnel = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.7, 20, 1, false, -Math.PI/2, Math.PI), toon(0xFFFFFF)), 1.05);
+  tunnel.rotation.x = Math.PI/2; tunnel.position.set(0, 0, 1.05); g.add(tunnel);
+  const door = new THREE.Mesh(new THREE.CircleGeometry(0.32, 20, 0, Math.PI), new THREE.MeshBasicMaterial({color:0x5C6E91}));
+  door.position.set(0, 0, 1.41); g.add(door);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.7), inkMat); pole.position.y = 1.4; g.add(pole);
+  const disc = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.07, 28), toon(0xFFFFFF)), 1.06);
+  disc.rotation.x = Math.PI/2; disc.position.set(0, 1.95, 0); g.add(disc);
+  const pinkMat = new THREE.MeshBasicMaterial({color:0xFF6F95});
+  for(const [w,h] of [[0.46,0.15],[0.15,0.46]]){ const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.05), pinkMat); b.position.set(0, 1.95, 0.05); g.add(b); }
+  scene.add(g); }
+// first-aid kit
+{ const kit = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.45, 0.45), toon(0xFFFFFF)), 1.05);
+  kit.position.set(2.1, 0.47, -0.7); kit.rotation.y = -0.5;
+  const pinkMat = new THREE.MeshBasicMaterial({color:0xFF6F95});
+  for(const [w,h] of [[0.26,0.08],[0.08,0.26]]){ const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), pinkMat); b.position.z = 0.23; kit.add(b); }
+  scene.add(kit); }
+// fish bucket
+{ const bucket = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.24, 0.42, 20), toon(0x9CC8F0)), 1.06);
+  bucket.position.set(1.55, 0.46, 1.2); scene.add(bucket); }
+// distant icebergs + drifting chunks
+const chunks = [];
+for(const [x,z,s] of [[-15,-24,2.6],[11,-28,3.2],[22,-18,2.2],[-26,-14,2]]){
+  const b = new THREE.Mesh(new THREE.ConeGeometry(s, s*1.3, 6), toon(0xF3FAFD)); b.position.set(x, s*0.4, z); scene.add(b);
+}
+for(const [x,z] of [[-5.5,-2],[5.8,-3.5],[4.6,2.6],[-6.5,3.4]]){
+  const c = addOutline(new THREE.Mesh(new THREE.DodecahedronGeometry(0.45), toon(0xF3FAFD)), 1.06);
+  c.scale.set(1, 0.45, 1); c.position.set(x, 0.05, z); scene.add(c); chunks.push(c);
+}
+// snow
+const SN = reduced ? 120 : 360;
+const snowPos = new Float32Array(SN*3);
+for(let i = 0; i < SN; i++){ snowPos[i*3] = (Math.random()-0.5)*26; snowPos[i*3+1] = Math.random()*12; snowPos[i*3+2] = (Math.random()-0.5)*18; }
+const snowGeo = new THREE.BufferGeometry(); snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+scene.add(new THREE.Points(snowGeo, new THREE.PointsMaterial({size:0.13, map:TEX.dot, transparent:true, depthWrite:false, color:0xffffff})));
+
+/* ---------------- particles & tweens ---------------- */
+const parts = [];
+function emit(tex, pos, {v = new V3(), g = 0, life = 1.2, size = 0.3, spin = 0, grow = 0} = {}){
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthWrite:false}));
+  sp.position.copy(pos); sp.scale.setScalar(size); scene.add(sp);
+  parts.push({sp, v, g, life, max:life, size, spin, grow, own:false});
+}
+function floatText(txt, pos, color){
+  const sp = textSprite(txt, color); sp.position.copy(pos); scene.add(sp);
+  parts.push({sp, v:new V3(0, 0.7, 0), g:0, life:1.5, max:1.5, size:0, spin:0, grow:0, own:true});
+}
+function burst(tex, pos, n, speed = 2.2, size = 0.32){
+  for(let i = 0; i < n; i++){
+    const a = Math.random()*Math.PI*2;
+    emit(tex, pos, {v:new V3(Math.cos(a)*speed*0.6*Math.random() + (Math.random()-0.5), 1.6 + Math.random()*speed, Math.sin(a)*0.6),
+      g:3, life:1.1 + Math.random()*0.5, size:size*(0.7 + Math.random()*0.6), spin:(Math.random()-0.5)*4});
+  }
+}
+function updateParts(dt){
+  for(let i = parts.length - 1; i >= 0; i--){
+    const p = parts[i]; p.life -= dt;
+    if(p.life <= 0){ scene.remove(p.sp); if(p.own) p.sp.material.map.dispose(); p.sp.material.dispose(); parts.splice(i, 1); continue; }
+    p.v.y -= p.g*dt; p.sp.position.addScaledVector(p.v, dt);
+    p.sp.material.opacity = Math.min(1, p.life/p.max*2.2);
+    p.sp.material.rotation += p.spin*dt;
+    if(p.size) p.sp.scale.setScalar(p.size*(1 + p.grow*(1 - p.life/p.max)));
+  }
+}
+let now = 0; const tweens = [];
+const ease = { io:k => k<0.5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2)/2, out:k => 1 - Math.pow(1 - k, 3), lin:k => k,
+  back:k => 1 + 2.7*Math.pow(k - 1, 3) + 1.7*Math.pow(k - 1, 2) };
+function tween(dur, fn, e = ease.io){ return new Promise(res => tweens.push({t0:now, dur, fn, e, res})); }
+const wait = s => tween(s, () => {});
+function updateTweens(){
+  for(let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i], k = Math.min(1, (now - tw.t0)/tw.dur);
+    tw.fn(tw.e(k));
+    if(k >= 1){ tweens.splice(i, 1); tw.res(); }
+  }
+}
+
+/* ---------------- seal ---------------- */
+const HEAD_AX = [0.84, 0.76, 0.76];
+function onHead(obj, dx, dy, dz, out = 0){
+  const d = new V3(dx, dy, dz).normalize();
+  const t = 1/Math.sqrt((d.x/HEAD_AX[0])**2 + (d.y/HEAD_AX[1])**2 + (d.z/HEAD_AX[2])**2);
+  obj.position.copy(d).multiplyScalar(t + out); obj.quaternion.setFromUnitVectors(Z, d); return obj;
+}
+function makePlaster(){
+  const g = new THREE.Group();
+  const strip = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.13, 0.025), toon(0xFFB8CB)), 1.08); g.add(strip);
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.03), toon(0xFFF0F4)); g.add(pad);
+  return g;
+}
+function makeSeal(p){
+  const bodyMat = toon(p.color), hits = [];
+  const root = new THREE.Group(), inner = new THREE.Group(); root.add(inner);
+  const body = addOutline(new THREE.Mesh(SPH, bodyMat), 1.045);
+  body.scale.set(1.15, 0.8, 1.3); body.position.set(0, 0.8, -0.2); inner.add(body); hits.push(body);
+  if(p.spot){
+    const sm = toon(p.spot);
+    for(const [x,y,z] of [[0.5,0.6,-0.4],[-0.6,0.5,-0.2],[0.2,0.8,-0.7],[-0.3,0.7,-0.9],[0.75,0.3,-0.8],[-0.8,0.25,-0.6],[0.9,0.4,0.1]]){
+      const d = new V3(x, y, z).normalize(), s = new THREE.Mesh(SMALL, sm);
+      const t = 1/Math.sqrt((d.x/1.15)**2 + (d.y/0.8)**2 + (d.z/1.3)**2);
+      s.position.copy(d).multiplyScalar(t - 0.012).add(new V3(0, 0.8, -0.2));
+      s.quaternion.setFromUnitVectors(Z, d); s.scale.set(0.14, 0.11, 0.03); inner.add(s);
+    }
+  }
+  for(const s of [-1, 1]){
+    const f = addOutline(new THREE.Mesh(SMALL, bodyMat), 1.12);
+    f.scale.set(0.3, 0.08, 0.45); f.position.set(0.22*s, 0.2, -1.52); f.rotation.y = 0.5*s; inner.add(f);
+  }
+  const flippers = [];
+  for(const s of [-1, 1]){
+    const piv = new THREE.Group(); piv.position.set(0.85*s, 0.45, 0.35);
+    const f = addOutline(new THREE.Mesh(SMALL, bodyMat), 1.1); f.scale.set(0.42, 0.11, 0.26); f.position.set(0.3*s, 0, 0);
+    piv.add(f); piv.userData.s = s; inner.add(piv); flippers.push(piv); hits.push(f);
+  }
+  const head = new THREE.Group(); head.position.set(0, 1.5, 0.55); inner.add(head);
+  const hm = addOutline(new THREE.Mesh(SPH, bodyMat), 1.05); hm.scale.set(...HEAD_AX); head.add(hm); hits.push(hm);
+
+  const eyes = [], happy = [], brows = [];
+  const blushMat = new THREE.MeshBasicMaterial({color:0xFFA3B8, transparent:true, opacity:0.85});
+  const arcEye = new THREE.TorusGeometry(0.075, 0.018, 8, 20, Math.PI);
+  for(const s of [-1, 1]){
+    const e = onHead(new THREE.Group(), 0.36*s, 0.16, 0.92, -0.015);
+    const ball = new THREE.Mesh(SMALL, inkMat); ball.scale.set(0.085, 0.1, 0.05); e.add(ball);
+    const hl = new THREE.Mesh(SMALL, whiteMat); hl.scale.setScalar(0.03); hl.position.set(0.028, 0.04, 0.04); e.add(hl);
+    head.add(e); eyes.push(e);
+    const h = onHead(new THREE.Mesh(arcEye, inkMat), 0.36*s, 0.14, 0.92, 0.005); h.visible = false; head.add(h); happy.push(h);
+    const b = onHead(new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.026, 0.02), inkMat), 0.36*s, 0.42, 0.83, 0.005);
+    b.rotateZ(-0.38*s); b.visible = false; head.add(b); brows.push(b);
+    head.add(onHead(new THREE.Mesh(new THREE.CircleGeometry(0.12, 24), blushMat), 0.6*s, -0.06, 0.8, 0.008));
+  }
+  const nose = onHead(new THREE.Mesh(SMALL, inkMat), 0, 0, 1, 0); nose.scale.set(0.07, 0.05, 0.04); head.add(nose);
+  const smile = new THREE.Group(), arcG = new THREE.TorusGeometry(0.05, 0.013, 8, 16, Math.PI);
+  for(const s of [-1, 1]){ const a = new THREE.Mesh(arcG, inkMat); a.rotation.z = Math.PI; a.position.x = 0.05*s; smile.add(a); }
+  onHead(smile, 0, -0.12, 1, 0); head.add(smile);
+  const sad = onHead(new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.013, 8, 16, Math.PI), inkMat), 0, -0.22, 1, 0);
+  sad.visible = false; head.add(sad);
+  const mouthLocal = onHead(new THREE.Object3D(), 0, -0.15, 1, 0.05).position.clone();
+  const noseLocal = nose.position.clone();
+
+  const sweat = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.drop, transparent:true, depthWrite:false}));
+  sweat.scale.set(0.2, 0.26, 1); sweat.position.set(-0.78, 0.35, 0.3); sweat.visible = false; head.add(sweat);
+  const bubble = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.bubble, transparent:true, depthWrite:false}));
+  bubble.scale.setScalar(0.85); bubble.position.set(1.25, 2.55, 0.4); bubble.visible = false; inner.add(bubble);
+  const scratch = new THREE.Group();
+  for(const r of [0.7, -0.7]){ const m = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.026, 0.02), new THREE.MeshBasicMaterial({color:0xE0475B})); m.rotation.z = r; scratch.add(m); }
+  onHead(scratch, 0.5, 0.52, 0.69, 0.006); scratch.visible = false; head.add(scratch);
+  const plaster = makePlaster(); onHead(plaster, 0.5, 0.52, 0.69, 0.012); plaster.rotateZ(0.5);
+  plaster.visible = false; head.add(plaster);
+  const scarf = new THREE.Group(), scMat = toon(0xFF7A9C);
+  const ring = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.15, 12, 40), scMat), 1.03);
+  ring.quaternion.setFromUnitVectors(Z, new V3(0, 1, 0.5).normalize()); scarf.add(ring);
+  const tail = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.46, 0.08), scMat), 1.08);
+  tail.position.set(0.34, -0.36, 0.62); tail.rotation.set(0.35, 0, 0.25); scarf.add(tail);
+  for(const y of [-0.08, -0.22]){ const st = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.04, 0.085), whiteMat); st.position.y = y; tail.add(st); }
+  scarf.position.set(0, 1.02, 0.35); scarf.scale.setScalar(0.001); scarf.visible = false; inner.add(scarf);
+
+  return {p, root, inner, head, body, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf,
+    bodyMat, base:new THREE.Color(p.color), coldCol:new THREE.Color(p.color).lerp(new THREE.Color(0x9FC8EE), 0.45),
+    mouthLocal, noseLocal, hits, nod:0, sneezeNod:0, shake:0, wobble:0, flap:0, blinkT:2, sneezeT:2.5, rumbleT:3.5,
+    swimming:false, cold:false};
+}
+function setMood(s, m){
+  const sad = m === 'sad', hap = m === 'happy';
+  s.brows.forEach(b => b.visible = sad); s.sad.visible = sad; s.smile.visible = !sad;
+  s.eyes.forEach(e => e.visible = !hap); s.happy.forEach(h => h.visible = hap);
+}
+function applyAilments(s, a){
+  s.sweat.visible = !!a.fever;
+  s.blushMat.color.set(a.fever ? 0xFF5C77 : 0xFFA3B8);
+  s.bubble.visible = !!a.hungry;
+  s.scratch.visible = !!a.scratch;
+  s.cold = !!a.cold;
+}
+function updateSeal(s, t, dt){
+  s.body.scale.set(1.15*(1 + s.wobble), 0.8*(1 + Math.sin(t*2.2)*0.025), 1.3);
+  s.head.rotation.set(s.nod + s.sneezeNod, s.shake + Math.sin(t*0.7)*0.08, Math.sin(t*1.1)*0.06);
+  for(const f of s.flippers){ const sd = f.userData.s; f.rotation.z = -0.35*sd + sd*(Math.sin(t*3 + sd)*0.06 + s.flap*Math.sin(t*14)*0.5); }
+  if(s.swimming) s.inner.position.y = Math.sin(t*4)*0.06;
+  s.bodyMat.color.lerp(s.cold ? s.coldCol : s.base, 0.06);
+  s.inner.position.x = s.cold && !s.swimming ? Math.sin(t*55)*0.018 : 0;
+  s.blinkT -= dt;
+  if(s.blinkT < 0){ const sc = s.blinkT > -0.12 ? 0.15 : 1; s.eyes.forEach(e => e.scale.y = sc); if(s.blinkT <= -0.12) s.blinkT = 2 + Math.random()*3; }
+  s.sweat.position.y = 0.35 - ((t*0.6) % 1)*0.12;
+  s.bubble.position.y = 2.55 + Math.sin(t*2)*0.06;
+}
+function worldOf(s, local){ s.root.updateMatrixWorld(true); return s.head.localToWorld(local.clone()); }
+
+/* ---------------- props ---------------- */
+function makeThermo(){
+  const g = new THREE.Group();
+  g.add(addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.62, 12), toon(0xFFFFFF)), 1.12));
+  const red = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.043, 0.24, 12), toon(0xFF5C77)); red.position.y = -0.14; g.add(red);
+  const bulb = addOutline(new THREE.Mesh(SMALL, toon(0xFF5C77)), 1.15); bulb.scale.setScalar(0.065); bulb.position.y = -0.31; g.add(bulb);
+  return g;
+}
+function makeFish(){
+  const g = new THREE.Group(), m = toon(0xFFA552);
+  const b = addOutline(new THREE.Mesh(SMALL, m), 1.08); b.scale.set(0.32, 0.18, 0.12); g.add(b);
+  const tl = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.22, 4), m), 1.1); tl.rotation.z = Math.PI/2; tl.position.x = -0.38; tl.scale.z = 0.4; g.add(tl);
+  const e = new THREE.Mesh(SMALL, inkMat); e.scale.setScalar(0.035); e.position.set(0.18, 0.04, 0.1); g.add(e);
+  return g;
+}
+function makePill(){
+  const g = new THREE.Group(), a = toon(0xFF7FA3), b = toon(0xFFFFFF);
+  const c1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 16), a); c1.position.y = 0.045; g.add(c1);
+  const c2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 16), b); c2.position.y = -0.045; g.add(c2);
+  const s1 = new THREE.Mesh(SMALL, a); s1.scale.setScalar(0.08); s1.position.y = 0.09; g.add(s1);
+  const s2 = new THREE.Mesh(SMALL, b); s2.scale.setScalar(0.08); s2.position.y = -0.09; g.add(s2);
+  g.children.forEach(m => addOutline(m, 1.12));
+  g.scale.setScalar(1.3); return g;
+}
+const camPt = (x, y, z) => { camera.updateMatrixWorld(); return new V3(x, y, z).applyMatrix4(camera.matrixWorld); };
+async function flyTo(obj, from, to, dur, arc = 0.8, spin = 0){
+  obj.position.copy(from); scene.add(obj);
+  await tween(dur, k => { obj.position.lerpVectors(from, to, k); obj.position.y += Math.sin(k*Math.PI)*arc; obj.rotation.y += spin*0.016; });
+}
+
+/* ---------------- game data ---------------- */
+const TOOLS = {
+  thermo:  {icon:'🌡️', name:'Градусник', task:'Измерить температуру'},
+  medicine:{icon:'💊', name:'Лекарство', task:'Дать лекарство'},
+  bandage: {icon:'🩹', name:'Пластырь', task:'Заклеить ранку'},
+  fish:    {icon:'🐟', name:'Рыбка', task:'Покормить'},
+  scarf:   {icon:'🧣', name:'Шарфик', task:'Согреть шарфиком'}
+};
+const ORDER = ['thermo','medicine','bandage','fish','scarf'];
+const PATIENTS = [
+  {name:'Моти', f:false, color:0xF7F5EF, ail:['cold','sneeze'], text:'Моти весь день катался с ледяной горки. Замёрз и теперь чихает.'},
+  {name:'Бублик', f:false, color:0xCBD2DC, spot:0x98A3B4, ail:['scratch','hungry'], text:'Бублик поцарапал лобик об острую льдинку и очень-очень проголодался.'},
+  {name:'Зефирка', f:true, color:0xF8DDE4, ail:['fever','sneeze'], text:'У Зефирки горячий лоб, и она всё время чихает. Похоже, простуда!'},
+  {name:'Тюпа', f:false, color:0xEFE4CF, spot:0xD2BF9C, ail:['scratch','cold'], text:'Тюпа нырял за ракушкой, стукнулся о льдину и замёрз.'},
+  {name:'Пельмешка', f:true, color:0xE6ECF5, ail:['hungry','cold'], text:'Пельмешка уплыла далеко от дома, замёрзла и ничего не ела с утра.'},
+  {name:'Снежок', f:false, color:0xFFFFFF, spot:0xD6DCE6, ail:['fever','hungry'], text:'Снежок какой-то вялый: лоб горячий, а в животике урчит.'},
+  {name:'Ириска', f:true, color:0xE3CBAE, spot:0xC4A27E, ail:['scratch','sneeze','hungry'], text:'Ириска поцарапала лобик, чихает и мечтает о рыбке.'},
+  {name:'Кнопка', f:true, color:0xC4CCDA, spot:0x8E99AD, ail:['fever','cold','scratch','hungry'], text:'Кнопка — самый трудный пациент: жар, замёрзла, поцарапалась и голодная. Доктор, вся надежда на тебя!'}
+];
+const PHRASE = {fever:'горячий лоб', sneeze:'чихает', scratch:'ранка на лобике', hungry:'урчит животик', cold:f => f ? 'замёрзла' : 'замёрз'};
+function patientFor(n){
+  if(n < PATIENTS.length) return PATIENTS[n];
+  const base = PATIENTS[Math.floor(Math.random()*PATIENTS.length)];
+  const pool = ['fever','sneeze','scratch','hungry','cold'].sort(() => Math.random() - 0.5);
+  const ail = pool.slice(0, 2 + (Math.random() < 0.35 ? 1 : 0));
+  const list = ail.map(a => typeof PHRASE[a] === 'function' ? PHRASE[a](base.f) : PHRASE[a]);
+  return {...base, ail, text:`${base.name} снова ${base.f ? 'приплыла' : 'приплыл'} в больницу: ${list.join(', ')}.`};
+}
+function needsFor(ail){
+  const set = new Set();
+  for(const a of ail){ ({fever:['thermo','medicine'], sneeze:['medicine'], scratch:['bandage'], hungry:['fish'], cold:['scarf']})[a].forEach(x => set.add(x)); }
+  return ORDER.filter(x => set.has(x));
+}
+
+/* ---------------- state ---------------- */
+let album = store.get('sh.album', []);
+let progress = store.get('sh.progress', 0);
+let S = null, busy = false, started = false;
+
+/* ---------------- UI ---------------- */
+let toastTimer = 0;
+function toast(msg, ms = 2600){
+  const el = $('#toast'); el.textContent = msg; el.hidden = false;
+  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, ms);
+}
+function buildTools(){
+  const nav = $('#tools'); nav.innerHTML = '';
+  for(const k of ORDER){
+    const b = document.createElement('button'); b.className = 'tool'; b.dataset.tool = k; b.id = 'tool-' + k;
+    b.innerHTML = `<span class="face" aria-hidden="true">${TOOLS[k].icon}</span><span class="name">${TOOLS[k].name}</span>`;
+    b.addEventListener('click', () => { sfx.tap(); useTool(k); });
+    nav.appendChild(b);
+  }
+}
+function renderCard(){
+  if(!S) return;
+  $('#pNo').textContent = album.length + 1;
+  $('#pName').textContent = S.p.name;
+  $('#pText').textContent = S.p.text;
+  const ul = $('#pNeeds'); ul.innerHTML = '';
+  for(const n of S.needs){
+    const li = document.createElement('li'); if(S.done.has(n)) li.className = 'done';
+    li.innerHTML = `<span class="ic" aria-hidden="true">${TOOLS[n].icon}</span><span class="lbl">${TOOLS[n].task}</span>`;
+    ul.appendChild(li);
+  }
+  const li = document.createElement('li');
+  const hugNow = S.stage === 'hug', hugDone = S.stage === 'cured';
+  if(hugNow){
+    const b = document.createElement('button'); b.className = 'now'; b.id = 'hugBtn';
+    b.innerHTML = '<span class="ic" aria-hidden="true">♡</span><span class="lbl">Обнять!</span>';
+    b.addEventListener('click', hug); li.style.cssText = 'border:0;padding:0;background:none'; li.appendChild(b);
+  } else {
+    li.className = hugDone ? 'done' : 'lock';
+    li.innerHTML = '<span class="ic" aria-hidden="true">♡</span><span class="lbl">Обнять</span>';
+  }
+  ul.appendChild(li);
+  document.querySelectorAll('.tool').forEach(b => b.classList.toggle('used', S.done.has(b.dataset.tool)));
+}
+function setBusy(v){ busy = v; $('#tools').setAttribute('aria-busy', v ? 'true' : 'false'); }
+function renderAlbumCount(){ $('#albumCount').textContent = album.length; }
+function openAlbum(){
+  const grid = $('#albumGrid'); grid.innerHTML = '';
+  $('#albumSub').textContent = album.length ? `Вылечено: ${album.length}` : '';
+  if(!album.length) grid.innerHTML = '<p class="empty">Пока пусто. Вылечи первого пациента!</p>';
+  for(const a of album.slice().reverse()){
+    const f = document.createElement('figure');
+    const img = document.createElement('img'); img.src = a.img; img.alt = a.name;
+    const cap = document.createElement('figcaption'); cap.textContent = a.name;
+    f.append(img, cap); grid.appendChild(f);
+  }
+  $('#album').hidden = false;
+}
+
+/* ---------------- game flow ---------------- */
+function headTop(s){ return worldOf(s, new V3(0, 1.0, 0.2)); }
+async function arrive(s){
+  const r = s.root; r.position.set(-7.5, -0.55, 0.6); r.rotation.y = Math.PI/2; s.swimming = true; scene.add(r);
+  await tween(1.8, k => { r.position.x = -7.5 + k*4.1; }, ease.out);
+  sfx.splash(); burst(TEX.puff, new V3(-3.4, 0.1, 0.6), 10, 1.6, 0.45);
+  s.swimming = false; s.inner.position.y = 0;
+  await tween(0.75, k => { r.position.x = -3.4 + 3.4*k; r.position.y = -0.55 + 0.8*k + Math.sin(k*Math.PI)*1.3; }, ease.lin);
+  r.position.set(0, 0.25, 0); await squash(s);
+  await tween(0.45, k => { r.rotation.y = Math.PI/2*(1 - k); });
+}
+async function leave(s){
+  const r = s.root; s.flap = 0.6;
+  await tween(0.4, k => { r.rotation.y = k*Math.PI/2; });
+  await tween(0.75, k => { r.position.x = 3.5*k; r.position.y = 0.25 - 0.8*k + Math.sin(k*Math.PI)*1.3; }, ease.lin);
+  sfx.splash(); burst(TEX.puff, new V3(3.5, 0.1, 0), 10, 1.6, 0.45);
+  s.swimming = true; s.flap = 0;
+  await tween(1.4, k => { r.position.x = 3.5 + k*6; }, ease.io);
+  scene.remove(r);
+}
+function squash(s, amt = 0.2, dur = 0.35){
+  return tween(dur, k => { const q = Math.sin(k*Math.PI)*amt; s.inner.scale.set(1 + q*0.6, 1 - q, 1 + q*0.6); }, ease.lin);
+}
+async function hop(s, h = 0.3, dur = 0.4){
+  await tween(dur, k => { s.inner.position.y = Math.sin(k*Math.PI)*h; }, ease.lin);
+  s.inner.position.y = 0;
+}
+async function spawnPatient(){
+  const p = patientFor(progress);
+  const seal = makeSeal(p);
+  S = {p, seal, needs:needsFor(p.ail), done:new Set(), ail:Object.fromEntries(p.ail.map(a => [a, true])), stage:'arriving'};
+  applyAilments(seal, S.ail); setMood(seal, 'sad');
+  $('#card').hidden = false; renderCard();
+  setBusy(true); await arrive(seal); setBusy(false);
+  S.stage = 'treat';
+}
+
+const TREAT = {
+  async thermo(s){
+    const th = makeThermo(); th.rotation.z = -1.0;
+    const to = worldOf(s, s.mouthLocal).add(new V3(0.26, 0.16, 0.05));
+    await flyTo(th, camPt(0.3, -1.8, -4), to, 0.7, 0.6);
+    for(let i = 0; i < 3; i++){ sfx.beep(i === 2); await wait(0.35); }
+    floatText('38,5°', headTop(s), '#D9364F');
+    await wait(0.6);
+    await tween(0.3, k => th.scale.setScalar(1 - k)); scene.remove(th);
+    toast('Жар 38,5°! Теперь дай лекарство.');
+  },
+  async medicine(s){
+    const pill = makePill();
+    await flyTo(pill, camPt(0.3, -1.8, -4), worldOf(s, s.mouthLocal), 0.75, 1, 8);
+    await tween(0.15, k => pill.scale.setScalar(1.3*(1 - k))); scene.remove(pill);
+    await tween(0.35, k => { s.nod = Math.sin(k*Math.PI)*0.25; }); s.nod = 0;
+    floatText('Ам!', headTop(s)); burst(TEX.star, headTop(s), 8, 1.8, 0.3); sfx.pop();
+    S.ail.fever = false; S.ail.sneeze = false; applyAilments(s, S.ail);
+  },
+  async bandage(s){
+    const fly = makePlaster(); fly.scale.setScalar(1.6);
+    s.plaster.updateMatrixWorld(true); const to = s.plaster.getWorldPosition(new V3());
+    await flyTo(fly, camPt(0.3, -1.8, -4), to, 0.7, 0.5, 6); scene.remove(fly);
+    s.plaster.visible = true; s.plaster.scale.setScalar(0.01); sfx.pop();
+    await tween(0.4, k => s.plaster.scale.setScalar(Math.max(0.01, k)), ease.back);
+    S.ail.scratch = false; applyAilments(s, S.ail); floatText('Не больно!', headTop(s));
+  },
+  async fish(s){
+    const f = makeFish();
+    await flyTo(f, camPt(0.4, -1.8, -4), worldOf(s, s.mouthLocal), 0.8, 1.2, 10);
+    await tween(0.12, k => f.scale.setScalar(1 - k)); scene.remove(f);
+    for(let i = 0; i < 2; i++){ sfx.chomp(); await tween(0.2, k => { s.head.scale.set(1, 1 - Math.sin(k*Math.PI)*0.1, 1); }, ease.lin); }
+    s.head.scale.set(1, 1, 1);
+    S.ail.hungry = false; applyAilments(s, S.ail); floatText('Ням!', headTop(s));
+  },
+  async scarf(s){
+    s.scarf.visible = true; sfx.whoosh();
+    await tween(0.6, k => s.scarf.scale.setScalar(Math.max(0.001, k)), ease.back);
+    S.ail.cold = false; applyAilments(s, S.ail); floatText('Тепло!', headTop(s));
+  }
+};
+async function wrong(s, msg){
+  sfx.bad(); toast(msg); setBusy(true);
+  floatText('?', headTop(s));
+  await tween(0.7, k => { s.shake = Math.sin(k*Math.PI*4)*0.4*(1 - k); }, ease.lin); s.shake = 0;
+  setBusy(false);
+}
+async function useTool(k){
+  if(!S || S.stage !== 'treat' || busy) {
+    if(S && S.stage === 'hug') toast('Лечение закончено. Теперь обними пациента: нажми на тюленя!');
+    return;
+  }
+  const s = S.seal;
+  if(S.done.has(k)) return toast('Это уже сделано!');
+  if(!S.needs.includes(k)){
+    return wrong(s, k === 'thermo' ? 'Температуры нет, лоб холодный. Посмотри карту пациента!' : 'Этому пациенту это не нужно. Посмотри карту!');
+  }
+  if(k === 'medicine' && S.needs.includes('thermo') && !S.done.has('thermo')) return wrong(s, 'Сначала измерь температуру 🌡️');
+  setBusy(true);
+  await TREAT[k](s);
+  S.done.add(k); sfx.good(); hop(s);
+  if(S.done.size === S.needs.length){
+    S.stage = 'hug'; setMood(s, 'ok');
+    await wait(0.5); sfx.arf();
+    toast(`${S.p.name} ${S.p.f ? 'здорова' : 'здоров'}! Осталось обнять — нажми на тюленя ♡`, 3600);
+  }
+  renderCard(); setBusy(false);
+}
+async function hug(){
+  if(!S || S.stage !== 'hug' || busy) return;
+  const s = S.seal; setBusy(true); S.stage = 'cured'; renderCard();
+  setMood(s, 'happy'); sfx.hug(); s.flap = 1;
+  burst(TEX.heart, headTop(s), 18, 2.4, 0.38);
+  await tween(0.9, k => { s.inner.position.y = Math.sin(k*Math.PI)*1.1; s.inner.rotation.y = k*Math.PI*2; }, ease.io);
+  s.inner.position.y = 0; s.inner.rotation.y = 0;
+  sfx.arf(); await squash(s, 0.25);
+  burst(TEX.heart, headTop(s), 10, 2, 0.32);
+  await wait(0.45);
+  const img = snapshot();
+  album.push({name:s.p.name, img, d:Date.now()}); if(album.length > 40) album = album.slice(-40);
+  store.set('sh.album', album); progress++; store.set('sh.progress', progress);
+  renderAlbumCount();
+  s.flap = 0.35;
+  $('#curedImg').src = img;
+  $('#curedTitle').textContent = `${s.p.name} ${s.p.f ? 'здорова' : 'здоров'}!`;
+  $('#curedThanks').textContent = `${s.p.name}: «Спасибо, доктор Сабрина!»`;
+  $('#cured').hidden = false; setBusy(false);
+}
+async function nextPatient(){
+  $('#cured').hidden = true;
+  if(!S || busy) return;
+  setBusy(true); const old = S.seal;
+  await leave(old);
+  await spawnPatient();
+}
+function snapshot(){
+  renderer.render(scene, camera);
+  const src = renderer.domElement, W = src.width, H = src.height;
+  const c = S.seal.root.position;
+  const p1 = new V3(c.x, 1.25, c.z).project(camera), p2 = new V3(c.x + 1.75, 1.25, c.z).project(camera);
+  const cx = (p1.x + 1)/2*W, cy = (1 - p1.y)/2*H, r = Math.abs(p2.x - p1.x)/2*W;
+  const out = document.createElement('canvas'); out.width = out.height = 200;
+  const g = out.getContext('2d'), grd = g.createLinearGradient(0, 0, 0, 200);
+  grd.addColorStop(0, '#C6E8F5'); grd.addColorStop(1, '#F2FAFD'); g.fillStyle = grd; g.fillRect(0, 0, 200, 200);
+  try{ g.drawImage(src, cx - r, cy - r*1.05, 2*r, 2*r, 0, 0, 200, 200); return out.toDataURL('image/jpeg', 0.82); }
+  catch(e){ return out.toDataURL('image/jpeg', 0.8); }
+}
+
+/* ---------------- input ---------------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+canvas.addEventListener('pointerdown', e => {
+  if(!S || busy) return;
+  const rect = canvas.getBoundingClientRect();
+  ndc.set((e.clientX - rect.left)/rect.width*2 - 1, -((e.clientY - rect.top)/rect.height)*2 + 1);
+  ray.setFromCamera(ndc, camera);
+  if(!ray.intersectObjects(S.seal.hits, false).length) return;
+  if(S.stage === 'hug') return hug();
+  if(S.stage === 'treat'){
+    const s = S.seal; sfx.arf();
+    floatText(['Ар!','Ур-р','Хи-хи','Ар-ар!'][Math.floor(Math.random()*4)], headTop(s));
+    squash(s, 0.15, 0.3);
+  }
+});
+$('#btnSound').addEventListener('click', () => { muted = !muted; store.set('sh.muted', muted); renderMute(); if(!muted) sfx.tap(); });
+$('#btnAlbum').addEventListener('click', () => { sfx.tap(); openAlbum(); });
+$('#btnCuredAlbum').addEventListener('click', () => { sfx.tap(); $('#cured').hidden = true; openAlbum(); });
+$('#btnAlbumClose').addEventListener('click', () => {
+  sfx.tap(); $('#album').hidden = true;
+  if(S && S.stage === 'cured') $('#cured').hidden = false;
+});
+$('#btnNext').addEventListener('click', () => { sfx.tap(); nextPatient(); });
+$('#btnStart').addEventListener('click', async () => {
+  ac(); sfx.good(); $('#intro').hidden = true;
+  if(started) return; started = true;
+  $('#tools').hidden = false;
+  try{ await document.fonts.load('40px Pangolin'); }catch(e){}
+  spawnPatient();
+});
+
+/* ---------------- camera & loop ---------------- */
+const camBase = new V3(), camTarget = new V3();
+function resize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix();
+  const portrait = w < h, tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), th = tv*camera.aspect;
+  const d = Math.max((portrait ? 4.3 : 7.5)/2/th, (portrait ? 7 : 5.6)/2/tv);
+  camBase.set(0, 1.2 + d*0.3, d); camTarget.set(0, portrait ? 1.7 : 1.3, 0);
+}
+window.addEventListener('resize', resize); resize();
+
+let last = performance.now(), t = 0;
+const DT_CAP = /test/.test(location.search) ? 5 : 0.05;
+function loop(ts){
+  const dt = Math.min(DT_CAP, (ts - last)/1000); last = ts; t += dt; now = t;
+  updateTweens();
+  updateWater(t);
+  const sway = reduced ? 0 : 1;
+  camera.position.set(camBase.x + Math.sin(t*0.25)*0.3*sway, camBase.y + Math.sin(t*0.4)*0.06*sway, camBase.z);
+  camera.lookAt(camTarget);
+  for(let i = 0; i < SN; i++){
+    snowPos[i*3+1] -= dt*(0.35 + (i % 5)*0.08); snowPos[i*3] += Math.sin(t + i)*dt*0.12;
+    if(snowPos[i*3+1] < -0.2) snowPos[i*3+1] = 12;
+  }
+  snowGeo.attributes.position.needsUpdate = true;
+  chunks.forEach((c, i) => { c.position.y = 0.05 + Math.sin(t*1.2 + i)*0.05; c.rotation.y += dt*0.05; });
+
+  if(S){
+    const s = S.seal; updateSeal(s, t, dt);
+    if(S.stage === 'treat' && !busy){
+      if(S.ail.sneeze){
+        s.sneezeT -= dt;
+        if(s.sneezeT < 0){
+          s.sneezeT = 4.5 + Math.random()*2;
+          tween(0.35, k => s.sneezeNod = -0.22*k).then(() => {
+            sfx.sneeze(); const nz = worldOf(s, s.noseLocal);
+            for(let i = 0; i < 6; i++) emit(TEX.puff, nz, {v:new V3((Math.random()-0.5)*1.2, Math.random()*0.6, 1 + Math.random()), life:0.8, size:0.35, grow:1.5});
+            floatText('Апчхи!', headTop(s));
+            return tween(0.15, k => s.sneezeNod = -0.22 + 0.55*k);
+          }).then(() => tween(0.4, k => s.sneezeNod = 0.33*(1 - k)));
+        }
+      }
+      if(S.ail.hungry){
+        s.rumbleT -= dt;
+        if(s.rumbleT < 0){ s.rumbleT = 5 + Math.random()*2; floatText('урр...', worldOf(s, new V3(0.9, -0.9, 0.3)), '#6B6A7E');
+          tween(0.6, k => s.wobble = Math.sin(k*Math.PI*5)*0.04*(1 - k), ease.lin); }
+      }
+    }
+  }
+  updateParts(dt);
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+
+buildTools(); renderMute(); renderAlbumCount();
+if(album.length){ const st = $('#introStat'); st.textContent = `Ты уже вылечила пациентов: ${album.length}`; st.hidden = false; $('#btnStart').textContent = 'Продолжить приём'; }
+requestAnimationFrame(loop);
+})();
+</script>
