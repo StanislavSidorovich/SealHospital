@@ -127,3 +127,81 @@ async function mgMedicine(s){
   s.nod = 0;
   await tween(0.2, k => spoon.scale.setScalar(1 - k)); scene.remove(spoon);
 }
+
+/* ---------- Пластырь: протереть ранку пальцем, потом перетащить пластырь ---------- */
+const DIRT_TEX = canvasTex(64, (g, s) => {
+  g.fillStyle = 'rgba(128,124,150,.8)';   // серо-сиреневая «ледяная каша», не коричневая
+  for(const [x, y, r] of [[32,32,20],[20,26,12],[44,24,11],[40,42,12],[22,42,10]]){ g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+});
+async function mgBandage(s){
+  focusCam(worldOf(s, new V3(0.25, 0.2, 0)), 2.2, 0.15);
+  // грязь вокруг ранки: спрайты на голове, стираются трением
+  const dirt = [[0.42,0.6,0.68],[0.62,0.44,0.66],[0.56,0.64,0.52],[0.36,0.44,0.8],[0.68,0.58,0.46]].map(([x, y, z]) => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:DIRT_TEX, transparent:true, depthWrite:false}));
+    onHead(sp, x, y, z, 0.04); sp.scale.setScalar(0.24 + Math.random()*0.06); s.head.add(sp); return sp;
+  });
+  const worldPos = o => o.getWorldPosition(new V3());
+  await wait(0.5);
+
+  mgOpen('Протри ранку пальцем');
+  const cotton = mgNode('div', 'cotton'), finger = mgNode('div', 'finger', '👆');
+  let down = false, px = 0, py = 0, rubT = 0, giggled = false, left = dirt.length, finish;
+  const cleaned = new Promise(r => finish = r);
+  const place = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; };
+  const rub = (x, y, amount) => {
+    for(const d of dirt){
+      if(!d.visible) continue;
+      const p = toScreen(worldPos(d));
+      if(Math.hypot(p.x - x, p.y - y) > 48) continue;
+      d.material.opacity -= amount;
+      if(d.material.opacity <= 0.08){
+        d.visible = false; left--; sfx.pop();
+        emit(TEX.star, worldPos(d), {v:new V3(0, 0.8, 0.3), life:0.7, size:0.22, spin:3});
+        if(!left) finish();
+      }
+    }
+  };
+  mgOn(mgRoot, 'pointerdown', e => { down = true; px = e.clientX; py = e.clientY; cotton.classList.add('on'); place(cotton, px, py); finger.hidden = true; });
+  mgOn(mgRoot, 'pointermove', e => {
+    if(!down) return;
+    const d = Math.hypot(e.clientX - px, e.clientY - py); px = e.clientX; py = e.clientY; place(cotton, px, py);
+    if(d > 0){ rub(px, py, d/260); if(now - rubT > 0.09){ rubT = now; sfx.rub(); } }
+    if(!giggled && d > 0 && dirt.some(x => !x.visible)){ giggled = true; floatText('Хи-хи!', headTop(s)); }
+  });
+  for(const ev of ['pointerup', 'pointercancel']) mgOn(mgRoot, ev, () => { down = false; cotton.classList.remove('on'); });
+  mgTick(() => { const c = toScreen(worldPos(s.plaster)); place(finger, c.x, c.y); });
+  await cleaned;
+  dirt.forEach(d => { s.head.remove(d); d.material.dispose(); });
+  mgClose(); sfx.good(); floatText('Чисто!', headTop(s));
+  await wait(0.7);
+
+  mgOpen('Перетащи пластырь на ранку');
+  const target = mgNode('div', 'target'), pl = mgNode('div', 'plaster-drag');
+  pl.setAttribute('aria-label', 'Пластырь');
+  let drag = null, stuck;
+  const placed = new Promise(r => stuck = r);
+  mgTick(() => { const c = toScreen(worldPos(s.plaster)); place(target, c.x, c.y); });
+  mgOn(pl, 'pointerdown', e => {
+    e.stopPropagation(); const r = pl.getBoundingClientRect();
+    drag = {dx:e.clientX - r.left - r.width/2, dy:e.clientY - r.top - r.height/2};
+    try{ pl.setPointerCapture(e.pointerId); }catch(err){}
+    pl.classList.remove('back'); pl.classList.add('drag'); sfx.tap();
+  });
+  mgOn(pl, 'pointermove', e => {
+    if(!drag) return;
+    pl.style.bottom = 'auto'; pl.style.marginLeft = '0';
+    place(pl, e.clientX - drag.dx - pl.offsetWidth/2, e.clientY - drag.dy - pl.offsetHeight/2);
+  });
+  const drop = () => {
+    if(!drag) return; drag = null; pl.classList.remove('drag');
+    const r = pl.getBoundingClientRect(), c = toScreen(worldPos(s.plaster));
+    if(Math.hypot(r.left + r.width/2 - c.x, r.top + r.height/2 - c.y) < 75) return stuck();
+    sfx.bad(); mgHint('Почти! Неси прямо на ранку');
+    pl.classList.add('back'); pl.style.left = ''; pl.style.top = ''; pl.style.bottom = ''; pl.style.marginLeft = '';
+  };
+  mgOn(pl, 'pointerup', drop); mgOn(pl, 'pointercancel', drop);
+  await placed;
+  mgClose();
+  s.plaster.visible = true; s.plaster.scale.setScalar(0.01); sfx.pop();
+  await tween(0.4, k => s.plaster.scale.setScalar(Math.max(0.01, k)), ease.back);
+}

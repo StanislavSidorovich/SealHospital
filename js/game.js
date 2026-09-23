@@ -101,11 +101,7 @@ const TREAT = {
     S.ail.fever = false; S.ail.sneeze = false; applyAilments(s, S.ail);
   },
   async bandage(s){
-    const fly = makePlaster(); fly.scale.setScalar(1.6);
-    s.plaster.updateMatrixWorld(true); const to = s.plaster.getWorldPosition(new V3());
-    await flyTo(fly, camPt(0.3, -1.8, -4), to, 0.7, 0.5, 6); scene.remove(fly);
-    s.plaster.visible = true; s.plaster.scale.setScalar(0.01); sfx.pop();
-    await tween(0.4, k => s.plaster.scale.setScalar(Math.max(0.01, k)), ease.back);
+    await mgBandage(s);
     S.ail.scratch = false; applyAilments(s, S.ail); floatText('Не больно!', headTop(s));
   },
   async fish(s){

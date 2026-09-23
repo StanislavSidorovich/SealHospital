@@ -167,3 +167,18 @@ body.mg-on:not(.mg-card) #card{display:none!important}
 .bottle:active .body{translate:0 3px;box-shadow:0 1px 0 var(--ink)}
 .bottle.pour{animation:pour .5s ease-in-out}
 @keyframes pour{50%{translate:0 -14px;rotate:-28deg}}
+
+/* пластырь: протереть и приклеить */
+.cotton{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:#fff;border:2.5px solid var(--ink);
+  box-shadow:inset -6px -6px 0 #EDF2F7;pointer-events:none;display:none}
+.cotton.on{display:block}
+.finger{position:absolute;font-size:40px;margin:-6px 0 0 -14px;pointer-events:none;animation:rubhint 1.2s ease-in-out infinite}
+@keyframes rubhint{0%,100%{translate:-14px 0}50%{translate:14px 0}}
+.target{position:absolute;width:84px;height:84px;margin:-42px 0 0 -42px;border-radius:50%;border:3px dashed var(--pink-d);
+  background:rgba(255,155,184,.18);pointer-events:none;animation:pulse 1s ease-in-out infinite}
+.plaster-drag{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);width:128px;height:46px;margin-left:-64px;
+  border-radius:16px;background:#FFB8CB;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);rotate:-10deg;touch-action:none;
+  display:grid;place-items:center;cursor:grab}
+.plaster-drag::before{content:"";width:40px;height:30px;border-radius:8px;background:#FFF0F4;border:2px solid #E7A0B4}
+.plaster-drag.drag{box-shadow:0 10px 0 rgba(59,58,74,.25);scale:1.08;cursor:grabbing}
+.plaster-drag.back{transition:left .35s ease-out,top .35s ease-out}
