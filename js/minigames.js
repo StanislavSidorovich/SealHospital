@@ -303,3 +303,58 @@ async function mgScarf(s){
   mgClose();
   S.scarf = {color, pattern};
 }
+
+/* ---------- Лупа: водить по тюленю и найти, что болит ---------- */
+// где искать каждый симптом (точки на тюлене в координатах мира)
+const HOTSPOT = {
+  fever:  s => worldOf(s, new V3(0, 0.62, 0.45)),
+  sneeze: s => worldOf(s, s.noseLocal),
+  scratch:s => s.scratch.getWorldPosition(new V3()),
+  hungry: s => s.inner.localToWorld(new V3(0.72, 0.5, 0.85)),
+  cold:   s => s.flippers[0].children[0].getWorldPosition(new V3())
+};
+async function mgLupa(s, ailments, onFound){
+  focusCam(worldOf(s, new V3(0, -0.55, 0)), 3.1, -0.55);
+  mgOpen('Води лупой по тюленю — найди, что болит', {card:true, hintBottom:true});
+  const lens = mgNode('div', 'lens idle', '<div class="ring"></div>');
+  const target = mgNode('div', 'target'); target.hidden = true;
+  const place = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; };
+  let lx = innerWidth/2, ly = innerHeight*0.62, touched = false, finish;
+  place(lens, lx, ly);
+  const left = new Set(ailments), prog = {}, done = new Promise(r => finish = r);
+  let lastFind = now, lastGiggle = now;
+  const move = e => {
+    touched = true; lens.classList.remove('idle');
+    lx = e.clientX; ly = e.clientY - 70;   // лупа над пальцем, чтобы палец её не закрывал
+    place(lens, lx, ly);
+  };
+  mgOn(mgRoot, 'pointerdown', move);
+  mgOn(mgRoot, 'pointermove', e => { if(e.buttons || e.pointerType === 'touch' || touched) move(e); });
+  mgTick(dt => {
+    let hot = null;
+    for(const a of left){
+      const p = toScreen(HOTSPOT[a](s));
+      if(Math.hypot(p.x - lx, p.y - ly) < 52){ hot = a; break; }
+    }
+    for(const a of left) if(a !== hot) prog[a] = Math.max(0, (prog[a] || 0) - dt);
+    if(hot && touched){
+      prog[hot] = (prog[hot] || 0) + dt/0.55;
+      if(prog[hot] >= 1){
+        left.delete(hot); lastFind = now; target.hidden = true;
+        sfx.ding(); squash(s, 0.12, 0.3);
+        floatText(SYMPTOMS[hot].name(s.p.f) + '!', HOTSPOT[hot](s).add(new V3(0, 0.5, 0)), '#D9527E');
+        onFound(hot);
+        if(!left.size) return finish();
+      }
+    } else if(touched && now - lastGiggle > 3){
+      const h = toScreen(worldOf(s, new V3()));
+      if(Math.hypot(h.x - lx, h.y - ly) < 90){ lastGiggle = now; floatText('Хи-хи', headTop(s)); }
+    }
+    lens.querySelector('.ring').style.setProperty('--p', hot ? Math.min(1, prog[hot]) : 0);
+    // долго ничего не находится — подсвечиваем, где искать
+    if(left.size && now - lastFind > 6){ const p = toScreen(HOTSPOT[[...left][0]](s)); target.hidden = false; place(target, p.x, p.y); }
+  });
+  await done;
+  await wait(0.6);
+  mgClose();
+}

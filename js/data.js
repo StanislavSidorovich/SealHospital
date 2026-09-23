@@ -55,6 +55,14 @@ const PATIENTS = [
   {name:'Ириска', f:true, color:0xE3CBAE, spot:0xC4A27E, ail:['scratch','sneeze','hungry'], text:'Ириска поцарапала лобик, чихает и мечтает о рыбке.'},
   {name:'Кнопка', f:true, color:0xC4CCDA, spot:0x8E99AD, ail:['fever','cold','scratch','hungry'], text:'Кнопка — самый трудный пациент: жар, замёрзла, поцарапалась и голодная. Доктор, вся надежда на тебя!'}
 ];
+// симптомы, которые доктор находит лупой (Фаза 1)
+const SYMPTOMS = {
+  fever:  {ic:'🤒', name:() => 'Горячий лоб'},
+  sneeze: {ic:'🤧', name:() => 'Чихает'},
+  scratch:{ic:'🤕', name:() => 'Ранка'},
+  hungry: {ic:'😋', name:f => f ? 'Голодная' : 'Голодный'},
+  cold:   {ic:'🥶', name:f => f ? 'Замёрзла' : 'Замёрз'}
+};
 const PHRASE = {fever:'горячий лоб', sneeze:'чихает', scratch:'ранка на лобике', hungry:'урчит животик', cold:f => f ? 'замёрзла' : 'замёрз'};
 function patientFor(n){
   if(n < PATIENTS.length) return PATIENTS[n];

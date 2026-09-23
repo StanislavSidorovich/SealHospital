@@ -23,6 +23,16 @@ function renderCard(){
   $('#pName').textContent = S.p.name;
   $('#pText').textContent = S.p.text;
   const ul = $('#pNeeds'); ul.innerHTML = '';
+  if(S.stage === 'arriving' || S.stage === 'diagnose'){   // осмотр: симптомы открываются по мере находок лупой
+    for(const a of S.p.ail){
+      const li = document.createElement('li'), found = S.found.has(a);
+      li.className = found ? 'found' : 'lock';
+      li.innerHTML = found ? `<span class="ic" aria-hidden="true">${SYMPTOMS[a].ic}</span><span class="lbl">${SYMPTOMS[a].name(S.p.f)}</span>`
+        : '<span class="ic" aria-hidden="true">🔍</span><span class="lbl">???</span>';
+      ul.appendChild(li);
+    }
+    return;
+  }
   for(const n of S.needs){
     const li = document.createElement('li'); if(S.done.has(n)) li.className = 'done';
     li.innerHTML = `<span class="ic" aria-hidden="true">${TOOLS[n].icon}</span><span class="lbl">${TOOLS[n].task}</span>`;
@@ -96,11 +106,16 @@ async function hop(s, h = 0.3, dur = 0.4){
 async function spawnPatient(){
   const p = patientFor(save.progress);
   const seal = makeSeal(p);
-  S = {p, seal, needs:needsFor(p.ail), done:new Set(), ail:Object.fromEntries(p.ail.map(a => [a, true])), stage:'arriving'};
+  S = {p, seal, needs:needsFor(p.ail), done:new Set(), found:new Set(), ail:Object.fromEntries(p.ail.map(a => [a, true])), stage:'arriving'};
   applyAilments(seal, S.ail); setMood(seal, 'sad');
   $('#card').hidden = false; renderCard();
   setBusy(true); await arrive(seal); setBusy(false);
-  S.stage = 'treat';
+  S.stage = 'diagnose'; renderCard();
+  setBusy(true);
+  await mgLupa(seal, p.ail, a => { S.found.add(a); renderCard(); });
+  unfocusCam(); setBusy(false);
+  S.stage = 'treat'; renderCard();
+  toast('Всё нашла! Теперь лечи — выбирай внизу');
 }
 
 const TREAT = {
