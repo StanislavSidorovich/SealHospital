@@ -108,6 +108,7 @@ async function spawnPatient(){
   const seal = makeSeal(p);
   S = {p, seal, needs:needsFor(p.ail), done:new Set(), found:new Set(), ail:Object.fromEntries(p.ail.map(a => [a, true])), stage:'arriving'};
   applyAilments(seal, S.ail); setMood(seal, 'sad');
+  seal.hat.visible = p.ail.includes('sneeze');
   $('#card').hidden = false; renderCard();
   setBusy(true); await arrive(seal); setBusy(false);
   S.stage = 'diagnose'; renderCard();
@@ -288,19 +289,8 @@ function frame(ts){
 
   if(S){
     const s = S.seal; updateSeal(s, t, dt);
+    sneezeTick(s, dt, S.stage === 'treat' && S.ail.sneeze && !busy);
     if(S.stage === 'treat' && !busy){
-      if(S.ail.sneeze){
-        s.sneezeT -= dt;
-        if(s.sneezeT < 0){
-          s.sneezeT = 4.5 + Math.random()*2;
-          tween(0.35, k => s.sneezeNod = -0.22*k).then(() => {
-            sfx.sneeze(); const nz = worldOf(s, s.noseLocal);
-            for(let i = 0; i < 6; i++) emit(TEX.puff, nz, {v:new V3((Math.random()-0.5)*1.2, Math.random()*0.6, 1 + Math.random()), life:0.8, size:0.35, grow:1.5});
-            floatText('Апчхи!', headTop(s));
-            return tween(0.15, k => s.sneezeNod = -0.22 + 0.55*k);
-          }).then(() => tween(0.4, k => s.sneezeNod = 0.33*(1 - k)));
-        }
-      }
       if(S.ail.hungry){
         s.rumbleT -= dt;
         if(s.rumbleT < 0){ s.rumbleT = 5 + Math.random()*2; floatText('урр...', worldOf(s, new V3(0.9, -0.9, 0.3)), '#6B6A7E');

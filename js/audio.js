@@ -37,6 +37,7 @@ const sfx = {
   rub(){ noise(0.07, {vol:0.06, freq:3200}); },
   pour(){ noise(0.35, {vol:0.12, freq:650, type:'lowpass'}); tone(520, 0.28, {vol:0.05, to:300, delay:0.05}); },
   chomp(){ noise(0.07, {vol:0.3, freq:700}); },
+  sneezeSoft(){ tone(700, 0.16, {type:'triangle', vol:0.05, to:1000}); noise(0.18, {vol:0.1, freq:600, type:'lowpass', delay:0.18}); },
   sneeze(){ tone(700, 0.18, {type:'triangle', vol:0.06, to:1100}); noise(0.3, {vol:0.18, freq:2600, delay:0.2}); },
   splash(){ noise(0.6, {vol:0.25, freq:700, type:'lowpass'}); },
   whoosh(){ noise(0.4, {vol:0.14, freq:1500}); },

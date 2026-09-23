@@ -91,7 +91,7 @@ button:focus-visible{outline:3px solid var(--pink-d);outline-offset:2px}
   border:2px solid var(--ink);border-radius:14px;padding:14px 18px 10px;margin:0 0 18px;transform:rotate(-1.2deg)}
 .letter .to{font-size:31px;color:var(--pink-d);line-height:33px;margin:0}
 .letter .sig{font-size:24px;text-align:right;line-height:33px;margin:0}
-.stamp{position:absolute;top:-14px;right:12px;width:40px;height:40px;border-radius:8px;background:var(--pink);
+.stamp{position:absolute;top:-20px;right:-10px;width:40px;height:40px;border-radius:8px;background:var(--pink);
   border:2px dashed var(--ink);display:grid;place-items:center;transform:rotate(8deg)}
 .stamp svg{width:22px;height:22px}
 
@@ -210,3 +210,9 @@ body.mg-on:not(.mg-card) #card{display:none!important}
   mask:radial-gradient(circle,transparent 55px,#000 56px)}
 .lens.idle{animation:lensbob 1.4s ease-in-out infinite}
 @keyframes lensbob{50%{translate:0 -12px}}
+
+/* платочек: поймать чих */
+.tissue{position:absolute;width:76px;height:76px;margin:-38px 0 0 -38px;border-radius:20px;background:#fff;border:3px solid var(--ink);
+  box-shadow:0 4px 0 var(--ink);padding:0;display:grid;place-content:center;font-size:30px;line-height:1;rotate:-6deg;
+  animation:pulse .6s ease-in-out infinite;touch-action:manipulation;z-index:2}
+.tissue small{display:block;font-size:12px;font-weight:800;margin-top:2px}

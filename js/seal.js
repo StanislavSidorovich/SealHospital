@@ -76,8 +76,17 @@ function makeSeal(p){
   tail.position.set(0.34, -0.36, 0.62); tail.rotation.set(0.35, 0, 0.25); scarf.add(tail);
   for(const y of [-0.08, -0.22]){ const st = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.04, 0.085), whiteMat); st.position.y = y; tail.add(st); }
   scarf.position.set(0, 1.02, 0.35); scarf.scale.setScalar(0.001); scarf.visible = false; inner.add(scarf);
+  // вязаная шапочка у чихающих: чих её сдувает (мини-игра «Платочек»)
+  const hat = new THREE.Group(), hatCol = [0x9BD3F0, 0xFFD66B, 0xB69CF2, 0x86DDB5][Math.floor(Math.random()*4)];
+  const dome = addOutline(new THREE.Mesh(new THREE.SphereGeometry(0.44, 24, 12, 0, Math.PI*2, 0, Math.PI/2), toon(hatCol)), 1.05);
+  dome.scale.y = 0.85; hat.add(dome);
+  const cuff = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.08, 10, 28), toon(0xFFFDF8)), 1.06);
+  cuff.rotation.x = Math.PI/2; hat.add(cuff);
+  const pom = addOutline(new THREE.Mesh(SMALL, toon(0xFFFDF8)), 1.08); pom.scale.setScalar(0.12); pom.position.y = 0.42; hat.add(pom);
+  hat.position.set(0, 0.6, -0.02); hat.rotation.set(-0.15, 0, 0.18); hat.userData.base = hat.position.clone();
+  hat.visible = false; head.add(hat);
 
-  return {p, root, inner, head, body, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf, scarfMats:[ringMat, tailMat],
+  return {p, root, inner, head, body, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf, scarfMats:[ringMat, tailMat], hat, windup:null,
     bodyMat, base:new THREE.Color(p.color), coldCol:new THREE.Color(p.color).lerp(new THREE.Color(0x9FC8EE), 0.45),
     mouthLocal, noseLocal, hits, nod:0, sneezeNod:0, shake:0, wobble:0, flap:0, blinkT:2, sneezeT:2.5, rumbleT:3.5,
     swimming:false, cold:false};

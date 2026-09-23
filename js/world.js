@@ -51,7 +51,10 @@ const TEX = {
 };
 function textSprite(text, color = '#3B3A4A'){
   const tex = canvasTex(512, (g, w, h) => {
-    g.font = '112px Pangolin, "Comic Sans MS", Nunito, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const font = px => `${px}px Pangolin, "Comic Sans MS", Nunito, sans-serif`;
+    g.font = font(112); const fit = g.measureText(text).width;
+    if(fit > w - 40) g.font = font(Math.floor(112*(w - 40)/fit));   // длинная надпись — шрифт мельче, а не обрезка
+    g.textAlign = 'center'; g.textBaseline = 'middle';
     g.lineJoin = 'round'; g.lineWidth = 20; g.strokeStyle = '#fff'; g.strokeText(text, w/2, h/2 + 6);
     g.fillStyle = color; g.fillText(text, w/2, h/2 + 6);
   }, 192);

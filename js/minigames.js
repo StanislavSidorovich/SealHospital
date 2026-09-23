@@ -358,3 +358,50 @@ async function mgLupa(s, ailments, onFound){
   await wait(0.6);
   mgClose();
 }
+
+/* ---------- Платочек: поймать «апчхи», пока шапку не сдуло ----------
+   Не отдельный экран, а событие во время лечения: у чихающего пациента раз в 5–7 с
+   начинается «А… а…» и рядом с носом появляется платок. Успела нажать — «Будь здоров!»,
+   не успела — чих сдувает шапочку, и она смешно падает обратно. */
+const tissueBtn = document.createElement('button');
+tissueBtn.className = 'tissue'; tissueBtn.hidden = true; tissueBtn.setAttribute('aria-label', 'Платочек');
+tissueBtn.innerHTML = '🤧<small>Платок!</small>';
+$('#app').appendChild(tissueBtn);
+let tissueHintShown = false;
+tissueBtn.addEventListener('click', () => { if(S && S.seal.windup) achoo(S.seal, true); });
+function sneezeTick(s, dt, active){
+  if(!active){ if(s.windup){ s.windup = null; tissueBtn.hidden = true; s.sneezeNod = 0; } return; }
+  if(!s.windup){
+    s.sneezeT -= dt;
+    if(s.sneezeT < 0){ s.windup = {t:0}; floatText('А… а…', headTop(s)); tissueBtn.hidden = false; }
+    return;
+  }
+  const w = s.windup; w.t += dt;
+  s.sneezeNod = -0.25*Math.min(1, w.t/1.2);
+  const p = toScreen(worldOf(s, s.noseLocal));
+  tissueBtn.style.left = Math.min(innerWidth - 46, p.x + 105) + 'px'; tissueBtn.style.top = p.y - 30 + 'px';   // сбоку от мордочки
+  if(w.t > 2.2) achoo(s, false);   // ~2 с на то, чтобы нажать
+}
+async function achoo(s, caught){
+  s.windup = null; tissueBtn.hidden = true; s.sneezeT = 5 + Math.random()*2;
+  const nz = worldOf(s, s.noseLocal);
+  if(caught){
+    sfx.sneezeSoft(); burst(TEX.star, nz, 6, 1.4, 0.24);
+    floatText('Будь здоров!', headTop(s), '#2F9E72');
+    await tween(0.15, k => s.sneezeNod = -0.25 + 0.35*k);
+    await tween(0.35, k => s.sneezeNod = 0.1*(1 - k));
+    return;
+  }
+  sfx.sneeze();
+  for(let i = 0; i < 6; i++) emit(TEX.puff, nz, {v:new V3((Math.random()-0.5)*1.2, Math.random()*0.6, 1 + Math.random()), life:0.8, size:0.35, grow:1.5});
+  floatText('Апчхи!', headTop(s));
+  if(!tissueHintShown){ tissueHintShown = true; toast('Лови чих платочком — жми на платок 🤧'); }
+  const hat = s.hat, base = hat.userData.base;
+  const nod = tween(0.15, k => s.sneezeNod = -0.25 + 0.6*k).then(() => tween(0.4, k => s.sneezeNod = 0.35*(1 - k)));
+  if(hat.visible){   // шапка взлетает, крутится и шлёпается обратно
+    await tween(0.55, k => { hat.position.set(base.x, base.y + Math.sin(k*Math.PI/2)*1.3, base.z - k*0.2); hat.rotation.z = 0.18 + k*Math.PI*2; }, ease.out);
+    await tween(0.45, k => { hat.position.set(base.x, base.y + 1.3*(1 - k*k), base.z - 0.2*(1 - k)); }, ease.lin);
+    hat.position.copy(base); hat.rotation.z = 0.18; sfx.pop(); squash(s, 0.12, 0.25);
+  }
+  await nod;
+}
