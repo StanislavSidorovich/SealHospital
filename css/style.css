@@ -186,3 +186,14 @@ body.mg-on:not(.mg-card) #card{display:none!important}
 /* рыбалка */
 .pull{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 30px);translate:-50% 0;font-size:26px;padding:14px 30px;
   animation:pulse .5s ease-in-out infinite}
+
+/* шарфик: выбор цвета и узора */
+.picker .row-lbl{font-weight:800;font-size:14px;color:var(--soft);margin:2px 0 6px;text-align:left}
+.swatches{display:flex;justify-content:space-between;gap:6px;margin-bottom:10px}
+.swatch{width:48px;height:48px;border-radius:50%;border:2.5px solid var(--ink);background:var(--c);padding:0;box-shadow:0 3px 0 var(--ink)}
+.patterns{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.pat{height:48px;border-radius:14px;border:2.5px solid var(--ink);box-shadow:0 3px 0 var(--ink);padding:0;background:var(--c);
+  color:var(--p);font-size:17px;font-weight:800;letter-spacing:4px}
+.pat.stripes{background:repeating-linear-gradient(90deg,var(--c) 0 9px,var(--p) 9px 15px)}
+.pat.dots{background:radial-gradient(circle,var(--p) 0 4px,transparent 4.5px) 0 0/16px 16px,var(--c)}
+.swatch.sel,.pat.sel{outline:3.5px solid var(--pink-d);outline-offset:3px}

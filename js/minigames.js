@@ -272,3 +272,34 @@ async function mgFishing(s){
   scene.remove(rod); s.shake = 0;
   if(bonus) await wait(0.3);
 }
+
+/* ---------- Шарфик: выбрать цвет и узор (видно в альбоме) ---------- */
+async function mgScarf(s){
+  let color = SCARF_COLORS[Math.floor(Math.random()*SCARF_COLORS.length)], pattern = 'stripes';
+  setScarf(s, color, pattern);
+  focusCam(worldOf(s, new V3(0, -0.75, 0.3)), 2.3, 0.85);
+  s.scarf.visible = true; sfx.whoosh();
+  await tween(0.6, k => s.scarf.scale.setScalar(Math.max(0.001, k)), ease.back);
+
+  mgOpen('Выбери шарфик');
+  const panel = mgNode('div', 'mg-panel picker', `
+    <p class="row-lbl">Цвет</p>
+    <div class="swatches">${SCARF_COLORS.map(c => `<button class="swatch" data-c="${c}" style="--c:${c}" aria-label="Цвет"></button>`).join('')}</div>
+    <p class="row-lbl">Узор</p>
+    <div class="patterns">${SCARF_PATTERNS.map(p => `<button class="pat ${p}" data-p="${p}" aria-label="Узор">${p === 'hearts' ? '♥♥' : ''}</button>`).join('')}</div>
+    <button class="btn" id="scarfDone">Готово ✓</button>`);
+  const render = () => {
+    const ink = color === '#F5F1E8' ? '#FF7A9C' : '#FFFFFF';
+    panel.querySelectorAll('.swatch').forEach(b => b.classList.toggle('sel', b.dataset.c === color));
+    panel.querySelectorAll('.pat').forEach(b => { b.classList.toggle('sel', b.dataset.p === pattern); b.style.setProperty('--c', color); b.style.setProperty('--p', ink); });
+    setScarf(s, color, pattern);
+  };
+  render();
+  const wiggleScarf = () => { sfx.pop(); tween(0.3, k => s.scarf.scale.setScalar(1 + Math.sin(k*Math.PI)*0.12), ease.lin); };
+  panel.querySelectorAll('.swatch').forEach(b => mgOn(b, 'click', () => { color = b.dataset.c; render(); wiggleScarf(); }));
+  panel.querySelectorAll('.pat').forEach(b => mgOn(b, 'click', () => { pattern = b.dataset.p; render(); wiggleScarf(); }));
+  await new Promise(r => mgOn(panel.querySelector('#scarfDone'), 'click', r));
+  panel.classList.add('away'); await wait(0.3);
+  mgClose();
+  S.scarf = {color, pattern};
+}

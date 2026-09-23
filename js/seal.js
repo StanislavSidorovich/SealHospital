@@ -69,18 +69,42 @@ function makeSeal(p){
   onHead(scratch, 0.5, 0.52, 0.69, 0.006); scratch.visible = false; head.add(scratch);
   const plaster = makePlaster(); onHead(plaster, 0.5, 0.52, 0.69, 0.012); plaster.rotateZ(0.5);
   plaster.visible = false; head.add(plaster);
-  const scarf = new THREE.Group(), scMat = toon(0xFF7A9C);
-  const ring = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.15, 12, 40), scMat), 1.03);
+  const scarf = new THREE.Group(), ringMat = toon(0xFF7A9C), tailMat = toon(0xFF7A9C);   // setScarf() меняет цвет и узор
+  const ring = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.74, 0.19, 14, 44), ringMat), 1.03);
   ring.quaternion.setFromUnitVectors(Z, new V3(0, 1, 0.5).normalize()); scarf.add(ring);
-  const tail = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.46, 0.08), scMat), 1.08);
+  const tail = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.46, 0.08), tailMat), 1.08);
   tail.position.set(0.34, -0.36, 0.62); tail.rotation.set(0.35, 0, 0.25); scarf.add(tail);
   for(const y of [-0.08, -0.22]){ const st = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.04, 0.085), whiteMat); st.position.y = y; tail.add(st); }
   scarf.position.set(0, 1.02, 0.35); scarf.scale.setScalar(0.001); scarf.visible = false; inner.add(scarf);
 
-  return {p, root, inner, head, body, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf,
+  return {p, root, inner, head, body, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf, scarfMats:[ringMat, tailMat],
     bodyMat, base:new THREE.Color(p.color), coldCol:new THREE.Color(p.color).lerp(new THREE.Color(0x9FC8EE), 0.45),
     mouthLocal, noseLocal, hits, nod:0, sneezeNod:0, shake:0, wobble:0, flap:0, blinkT:2, sneezeT:2.5, rumbleT:3.5,
     swimming:false, cold:false};
+}
+/* шарфик: цвет + узор, текстуры кешируются */
+const SCARF_COLORS = ['#FF7A9C', '#FFB547', '#7FD1A8', '#7FB8F0', '#B69CF2', '#F5F1E8'];
+const SCARF_PATTERNS = ['plain', 'stripes', 'dots', 'hearts'];
+const scarfTexCache = {};
+// rx, ry подобраны так, чтобы узор не растягивался: кольцо длинное и тонкое, хвостик узкий и высокий
+function scarfTex(color, pattern, rx, ry){
+  const key = [color, pattern, rx, ry].join();
+  if(scarfTexCache[key]) return scarfTexCache[key];
+  const ink = color === '#F5F1E8' ? '#FF7A9C' : '#FFFFFF';   // на светлом шарфе узор розовый
+  const tex = canvasTex(128, (g, w, h) => {
+    g.fillStyle = color; g.fillRect(0, 0, w, h); g.fillStyle = ink;
+    if(pattern === 'stripes') for(let x = 8; x < w; x += 32) g.fillRect(x, 0, 14, h);
+    // ряд узора идёт по шву текстуры (y = 0 ≡ 64): там лицевая сторона трубки шарфа
+    if(pattern === 'dots') for(let x = 0; x < w; x += 32) for(const [y, sh] of [[0,0],[32,16],[64,0]]){ g.beginPath(); g.arc(x + 8 + sh, y, 7, 0, 7); g.fill(); }
+    if(pattern === 'hearts') for(let x = 0; x < w; x += 32) for(const [y, sh] of [[-11,0],[21,16],[53,0]]){ heartPath(g, 22, x + 5 + sh, y); g.fill(); }
+  }, 64);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(rx, ry);
+  return scarfTexCache[key] = tex;
+}
+function setScarf(s, color, pattern){
+  const [ringMat, tailMat] = s.scarfMats;
+  ringMat.map = scarfTex(color, pattern, 2, 1); tailMat.map = scarfTex(color, pattern, 0.5, 2);
+  for(const m of s.scarfMats){ m.color.set(0xffffff); m.needsUpdate = true; }
 }
 function setMood(s, m){
   const sad = m === 'sad', hap = m === 'happy';

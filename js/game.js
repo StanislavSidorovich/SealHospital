@@ -121,8 +121,7 @@ const TREAT = {
     S.ail.hungry = false; applyAilments(s, S.ail); floatText('Ням!', headTop(s));
   },
   async scarf(s){
-    s.scarf.visible = true; sfx.whoosh();
-    await tween(0.6, k => s.scarf.scale.setScalar(Math.max(0.001, k)), ease.back);
+    await mgScarf(s);
     S.ail.cold = false; applyAilments(s, S.ail); floatText('Тепло!', headTop(s));
   }
 };
@@ -165,7 +164,7 @@ async function hug(){
   burst(TEX.heart, headTop(s), 10, 2, 0.32);
   await wait(0.45);
   const img = snapshot();
-  save.album.push({name:s.p.name, img, d:Date.now()}); if(save.album.length > 40) save.album = save.album.slice(-40);
+  save.album.push({name:s.p.name, img, d:Date.now(), scarf:S.scarf}); if(save.album.length > 40) save.album = save.album.slice(-40);
   save.progress++; persist();
   renderAlbumCount();
   s.flap = 0.35;
