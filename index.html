@@ -30,7 +30,7 @@
 
   <div class="top">
     <section class="card" id="card" hidden aria-live="polite">
-      <div class="card-label"><span class="cross"></span>Карта пациента № <span id="pNo">1</span></div>
+      <div class="card-label"><span class="cross"></span>Пациент <span id="pNo">1</span> из 3</div>
       <h2 class="display" id="pName">Моти</h2>
       <p id="pText"></p>
       <ul class="needs" id="pNeeds"></ul>
@@ -50,17 +50,22 @@
         </svg>
         <span class="badge" id="albumCount">0</span>
       </button>
+      <button class="round shells" id="btnShop" aria-label="Ракушки и лавка">
+        <span aria-hidden="true">🐚</span>
+        <span class="badge" id="shellCount">0</span>
+      </button>
     </div>
   </div>
 
   <nav class="tools" id="tools" hidden aria-label="Лечение"></nav>
+  <nav class="tools wardrobe" id="wardrobe" hidden aria-label="Нарядить"></nav>
   <div class="toast" id="toast" hidden></div>
 
   <div class="overlay" id="intro">
     <div class="panel">
       <div class="sign"><span class="cross"></span></div>
       <h1 class="display">Тюленья больница</h1>
-      <p>Доктор Сабрина, к тебе приплывают пациенты! Читай карту, выбирай лечение, а в конце обязательно обними тюленя.</p>
+      <p>Доктор Сабрина, к тебе приплывают пациенты! За смену — три тюленя: осмотри, вылечи, обними и уложи спать. За каждого — ракушки 🐚 для лавки.</p>
       <p id="introStat" class="thanks" hidden></p>
       <button class="btn" id="btnStart">Открыть больницу</button>
       <div class="from">от Dad ♡</div>
@@ -72,6 +77,7 @@
       <img class="thumb" id="curedImg" alt="Вылеченный тюлень">
       <h2 class="display" id="curedTitle">Моти здоров!</h2>
       <p class="thanks" id="curedThanks"></p>
+      <p class="earned display" id="curedShells"></p>
       <div class="letter">
         <div class="stamp"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.3-7-9.2A3.8 3.8 0 0 1 12 9a3.8 3.8 0 0 1 7 1.8C19 15.7 12 20 12 20z" fill="#FFFDF8" stroke="#3B3A4A" stroke-width="1.8"/></svg></div>
         <p class="to display">Для любимой дочи</p>
@@ -84,12 +90,40 @@
     </div>
   </div>
 
+  <div class="overlay" id="results" hidden>
+    <div class="panel">
+      <div class="sign"><span class="cross"></span></div>
+      <h2 class="display" id="resTitle">Смена окончена!</h2>
+      <div class="res-photos" id="resPhotos"></div>
+      <ul class="res-stars" id="resStars"></ul>
+      <p class="earned display">Ракушки за смену: <b id="resShells">+0 🐚</b></p>
+      <div class="row">
+        <button class="btn" id="btnShift">Новая смена</button>
+        <button class="btn ghost" id="btnResShop">Лавка 🐚</button>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" id="album" hidden>
     <div class="panel">
       <h2 class="display">Мои пациенты</h2>
       <p class="thanks" id="albumSub"></p>
       <div class="album-grid" id="albumGrid"></div>
       <button class="btn" id="btnAlbumClose">Вернуться в больницу</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="shop" hidden>
+    <div class="panel shop">
+      <button class="close" id="btnShopClose" aria-label="Закрыть лавку">✕</button>
+      <h2 class="display">Лавка</h2>
+      <p class="wallet">У тебя <b id="shopShells">0</b> 🐚</p>
+      <div class="tabs" id="shopTabs">
+        <button data-tab="wear" class="on">Пациентам</button>
+        <button data-tab="decor">Больнице</button>
+      </div>
+      <div class="shop-grid" id="shopGrid"></div>
+      <button class="btn" id="btnBuy">Выбери, что нравится</button>
     </div>
   </div>
 </div>
@@ -101,6 +135,8 @@
 <script src="js/world.js"></script>
 <script src="js/seal.js"></script>
 <script src="js/minigames.js"></script>
+<script src="js/shop.js"></script>
+<script src="js/shift.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

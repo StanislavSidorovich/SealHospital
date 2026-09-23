@@ -8,7 +8,7 @@ let mgCleanup = [];
 
 // card:true — карта пациента остаётся на экране (подсказку тогда лучше опустить вниз: hintBottom)
 function mgOpen(hint, {card = false, hintBottom = false} = {}){
-  mgStage.innerHTML = ''; mgRoot.hidden = false;
+  mgStage.innerHTML = ''; mgRoot.hidden = false; $('#toast').hidden = true;   // тост не должен закрывать панель мини-игры
   document.body.classList.add('mg-on'); document.body.classList.toggle('mg-card', card);
   mgHintEl.classList.toggle('bottom', hintBottom);
   mgHint(hint);
@@ -276,6 +276,7 @@ async function mgFishing(s){
 /* ---------- Шарфик: выбрать цвет и узор (видно в альбоме) ---------- */
 async function mgScarf(s){
   let color = SCARF_COLORS[Math.floor(Math.random()*SCARF_COLORS.length)], pattern = 'stripes';
+  const pats = SCARF_PATTERNS.concat(SHOP.filter(x => x.kind === 'scarf' && owns(x.id)).map(x => x.id));   // + узоры из лавки
   setScarf(s, color, pattern);
   focusCam(worldOf(s, new V3(0, -0.75, 0.3)), 2.3, 0.85);
   s.scarf.visible = true; sfx.whoosh();
@@ -286,7 +287,7 @@ async function mgScarf(s){
     <p class="row-lbl">Цвет</p>
     <div class="swatches">${SCARF_COLORS.map(c => `<button class="swatch" data-c="${c}" style="--c:${c}" aria-label="Цвет"></button>`).join('')}</div>
     <p class="row-lbl">Узор</p>
-    <div class="patterns">${SCARF_PATTERNS.map(p => `<button class="pat ${p}" data-p="${p}" aria-label="Узор">${p === 'hearts' ? '♥♥' : ''}</button>`).join('')}</div>
+    <div class="patterns${pats.length > 4 ? ' many' : ''}">${pats.map(p => `<button class="pat ${p}" data-p="${p}" aria-label="Узор">${PAT_LABEL[p] || ''}</button>`).join('')}</div>
     <button class="btn" id="scarfDone">Готово ✓</button>`);
   const render = () => {
     const ink = color === '#F5F1E8' ? '#FF7A9C' : '#FFFFFF';
@@ -313,7 +314,10 @@ const HOTSPOT = {
   hungry: s => s.inner.localToWorld(new V3(0.72, 0.5, 0.85)),
   cold:   s => s.flippers[0].children[0].getWorldPosition(new V3())
 };
-async function mgLupa(s, ailments, onFound){
+// секретик: в одном из этих мест (координаты тела) под лупой прячется ракушка, место иногда блестит.
+// Места выбраны так, чтобы их было видно при осмотре и они не совпадали с симптомами.
+const SECRET_SPOTS = [new V3(1.45, 0.5, 0.4), new V3(0, 0.25, 1.2), new V3(-1.3, 0.2, 1.2)];
+async function mgLupa(s, ailments, onFound, onSecret){
   focusCam(worldOf(s, new V3(0, -0.55, 0)), 3.1, -0.55);
   mgOpen('Води лупой по тюленю — найди, что болит', {card:true, hintBottom:true});
   const lens = mgNode('div', 'lens idle', '<div class="ring"></div>');
@@ -323,6 +327,9 @@ async function mgLupa(s, ailments, onFound){
   place(lens, lx, ly);
   const left = new Set(ailments), prog = {}, done = new Promise(r => finish = r);
   let lastFind = now, lastGiggle = now;
+  const secretAt = SECRET_SPOTS[Math.floor(Math.random()*SECRET_SPOTS.length)];
+  let secret = onSecret ? 0 : -1, sparkT = 1;   // -1 — уже найден (или не нужен)
+  const secretPos = () => s.inner.localToWorld(secretAt.clone());
   const move = e => {
     touched = true; lens.classList.remove('idle');
     lx = e.clientX; ly = e.clientY - 70;   // лупа над пальцем, чтобы палец её не закрывал
@@ -350,7 +357,20 @@ async function mgLupa(s, ailments, onFound){
       const h = toScreen(worldOf(s, new V3()));
       if(Math.hypot(h.x - lx, h.y - ly) < 90){ lastGiggle = now; floatText('Хи-хи', headTop(s)); }
     }
-    lens.querySelector('.ring').style.setProperty('--p', hot ? Math.min(1, prog[hot]) : 0);
+    if(secret >= 0){
+      sparkT -= dt;
+      if(sparkT < 0){ sparkT = 1.6 + Math.random(); emit(TEX.star, secretPos(), {v:new V3(0, 0.35, 0.2), life:0.55, size:0.15, spin:4}); }
+      const p = toScreen(secretPos());
+      if(!hot && touched && Math.hypot(p.x - lx, p.y - ly) < 50){
+        secret += dt/0.4;
+        if(secret >= 1){
+          secret = -1; sfx.ding(); burst(TEX.star, secretPos(), 10, 1.6, 0.24);
+          floatText('Секретик!', secretPos().add(new V3(0, 0.5, 0)), '#C9962E');
+          onSecret(p);
+        }
+      } else secret = Math.max(0, secret - dt);
+    }
+    lens.querySelector('.ring').style.setProperty('--p', hot ? Math.min(1, prog[hot]) : secret > 0 ? Math.min(1, secret) : 0);
     // долго ничего не находится — подсвечиваем, где искать
     if(left.size && now - lastFind > 6){ const p = toScreen(HOTSPOT[[...left][0]](s)); target.hidden = false; place(target, p.x, p.y); }
   });
@@ -388,6 +408,7 @@ async function achoo(s, caught){
   if(caught){
     sfx.sneezeSoft(); burst(TEX.star, nz, 6, 1.4, 0.24);
     floatText('Будь здоров!', headTop(s), '#2F9E72');
+    addShells(1, toScreen(nz));
     await tween(0.15, k => s.sneezeNod = -0.25 + 0.35*k);
     await tween(0.35, k => s.sneezeNod = 0.1*(1 - k));
     return;

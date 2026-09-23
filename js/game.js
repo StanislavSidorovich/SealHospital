@@ -19,7 +19,7 @@ function buildTools(){
 }
 function renderCard(){
   if(!S) return;
-  $('#pNo').textContent = save.album.length + 1;
+  $('#pNo').textContent = shift ? shift.n + 1 : 1;
   $('#pName').textContent = S.p.name;
   $('#pText').textContent = S.p.text;
   const ul = $('#pNeeds'); ul.innerHTML = '';
@@ -108,12 +108,12 @@ async function spawnPatient(){
   const seal = makeSeal(p);
   S = {p, seal, needs:needsFor(p.ail), done:new Set(), found:new Set(), ail:Object.fromEntries(p.ail.map(a => [a, true])), stage:'arriving'};
   applyAilments(seal, S.ail); setMood(seal, 'sad');
-  seal.hat.visible = p.ail.includes('sneeze');
-  $('#card').hidden = false; renderCard();
+  seal.hat.visible = seal.hat.userData.on = p.ail.includes('sneeze');
+  $('#card').hidden = false; $('#wardrobe').hidden = true; $('#tools').hidden = false; renderCard();
   setBusy(true); await arrive(seal); setBusy(false);
   S.stage = 'diagnose'; renderCard();
   setBusy(true);
-  await mgLupa(seal, p.ail, a => { S.found.add(a); renderCard(); });
+  await mgLupa(seal, p.ail, a => { S.found.add(a); renderCard(); }, at => { shift.secrets++; addShells(3, at); });
   unfocusCam(); setBusy(false);
   S.stage = 'treat'; renderCard();
   toast('Всё нашла! Теперь лечи — выбирай внизу');
@@ -142,6 +142,7 @@ const TREAT = {
   }
 };
 async function wrong(s, msg){
+  if(shift) shift.mistakes++;
   sfx.bad(); toast(msg); setBusy(true);
   floatText('?', headTop(s));
   await tween(0.7, k => { s.shake = Math.sin(k*Math.PI*4)*0.4*(1 - k); }, ease.lin); s.shake = 0;
@@ -165,13 +166,16 @@ async function useTool(k){
   if(S.done.size === S.needs.length){
     S.stage = 'hug'; setMood(s, 'ok');
     await wait(0.5); sfx.arf();
-    toast(`${S.p.name} ${S.p.f ? 'здорова' : 'здоров'}! Осталось обнять — нажми на тюленя ♡`, 3600);
+    const well = `${S.p.name} ${S.p.f ? 'здорова' : 'здоров'}!`;
+    if(showWardrobe(s)){ $('#tools').hidden = true; toast(`${well} Можно нарядить 🎀 и обнять — нажми на тюленя ♡`, 4200); }
+    else toast(`${well} Осталось обнять — нажми на тюленя ♡`, 3600);
   }
   renderCard(); setBusy(false);
 }
 async function hug(){
   if(!S || S.stage !== 'hug' || busy) return;
   const s = S.seal; setBusy(true); S.stage = 'cured'; renderCard();
+  $('#wardrobe').hidden = true; $('#tools').hidden = true;
   setMood(s, 'happy'); sfx.hug(); s.flap = 1;
   burst(TEX.heart, headTop(s), 18, 2.4, 0.38);
   await tween(0.9, k => { s.inner.position.y = Math.sin(k*Math.PI)*1.1; s.inner.rotation.y = k*Math.PI*2; }, ease.io);
@@ -180,10 +184,17 @@ async function hug(){
   burst(TEX.heart, headTop(s), 10, 2, 0.32);
   await wait(0.45);
   const img = snapshot();
-  save.album.push({name:s.p.name, img, d:Date.now(), scarf:S.scarf}); if(save.album.length > 40) save.album = save.album.slice(-40);
+  save.album.push({name:s.p.name, img, d:Date.now(), scarf:S.scarf, wear:wearIds(s)}); if(save.album.length > 40) save.album = save.album.slice(-40);
   save.progress++; persist();
   renderAlbumCount();
+  shift.photos.push(img); shift.n++;
+  const earned = 3 + S.needs.length;   // 5–8 ракушек: чем больше лечили, тем больше
+  addShells(earned, toScreen(headTop(s)));
   s.flap = 0.35;
+  await wait(1.1);
+  await tuckIn(s);
+  $('#curedShells').textContent = `+${earned} 🐚`;
+  $('#btnNext').textContent = shift.n >= SHIFT_SIZE ? 'Итоги смены ⭐' : 'Следующий пациент';
   $('#curedImg').src = img;
   $('#curedTitle').textContent = `${s.p.name} ${s.p.f ? 'здорова' : 'здоров'}!`;
   $('#curedThanks').textContent = `${s.p.name}: «Спасибо, доктор Сабрина!»`;
@@ -193,7 +204,11 @@ async function nextPatient(){
   $('#cured').hidden = true;
   if(!S || busy) return;
   setBusy(true); const old = S.seal;
+  $('#card').hidden = true; unfocusCam();
+  await wakeUp(old);
   await leave(old);
+  if(shift.n === SHIFT_SIZE - 1 && !shift.event){ shift.event = true; await runEvent(); }
+  if(shift.n >= SHIFT_SIZE){ setBusy(false); return showResults(); }
   await spawnPatient();
 }
 function snapshot(){
@@ -226,18 +241,19 @@ canvas.addEventListener('pointerdown', e => {
 });
 $('#btnSound').addEventListener('click', () => { save.muted = !save.muted; persist(); renderMute(); if(!save.muted) sfx.tap(); });
 $('#btnAlbum').addEventListener('click', () => { sfx.tap(); openAlbum(); });
-$('#btnCuredAlbum').addEventListener('click', () => { sfx.tap(); $('#cured').hidden = true; openAlbum(); });
+let albumFromCured = false;
+$('#btnCuredAlbum').addEventListener('click', () => { sfx.tap(); $('#cured').hidden = true; albumFromCured = true; openAlbum(); });
 $('#btnAlbumClose').addEventListener('click', () => {
   sfx.tap(); $('#album').hidden = true;
-  if(S && S.stage === 'cured') $('#cured').hidden = false;
+  if(albumFromCured) $('#cured').hidden = false;
+  albumFromCured = false;
 });
 $('#btnNext').addEventListener('click', () => { sfx.tap(); nextPatient(); });
 $('#btnStart').addEventListener('click', async () => {
   ac(); sfx.good(); $('#intro').hidden = true;
   if(started) return; started = true;
-  $('#tools').hidden = false;
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
-  spawnPatient();
+  startShift();
 });
 
 /* ---------------- camera & loop ---------------- */
@@ -289,7 +305,7 @@ function frame(ts){
 
   if(S){
     const s = S.seal; updateSeal(s, t, dt);
-    sneezeTick(s, dt, S.stage === 'treat' && S.ail.sneeze && !busy);
+    sneezeTick(s, dt, S.stage === 'treat' && S.ail.sneeze && !busy && !shopOpen);
     if(S.stage === 'treat' && !busy){
       if(S.ail.hungry){
         s.rumbleT -= dt;
@@ -298,12 +314,13 @@ function frame(ts){
       }
     }
   }
+  shiftTick(t, dt);
   updateParts(dt);
   renderer.render(scene, camera);
 }
 
 buildTools(); renderMute(); renderAlbumCount(); renderBucket();
-if(save.album.length){ const st = $('#introStat'); st.textContent = `Ты уже вылечила пациентов: ${save.album.length}`; st.hidden = false; $('#btnStart').textContent = 'Продолжить приём'; }
+if(save.progress){ const st = $('#introStat'); st.textContent = `Ты уже вылечила пациентов: ${save.progress} · ракушек: ${save.shells} 🐚`; st.hidden = false; $('#btnStart').textContent = 'Начать смену'; }
 requestAnimationFrame(loop);
 // ?test=1: скрытая вкладка почти не даёт кадров, поэтому подталкиваем кадры таймером
 if(TEST) setInterval(() => { if(performance.now() - last > 120) frame(performance.now()); }, 60);

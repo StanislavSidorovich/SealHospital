@@ -42,7 +42,12 @@ const sfx = {
   splash(){ noise(0.6, {vol:0.25, freq:700, type:'lowpass'}); },
   whoosh(){ noise(0.4, {vol:0.14, freq:1500}); },
   pop(){ tone(420, 0.1, {vol:0.12, to:900}); },
-  hug(){ [659,784,988,1319,1568].forEach((f,i) => tone(f, 0.3, {vol:0.09, delay:i*0.08})); }
+  hug(){ [659,784,988,1319,1568].forEach((f,i) => tone(f, 0.3, {vol:0.09, delay:i*0.08})); },
+  coin(){ tone(1319, 0.07, {type:'triangle', vol:0.07}); tone(1976, 0.14, {type:'triangle', vol:0.06, delay:0.06}); },
+  star(){ [1047,1319,1568].forEach((f,i) => tone(f, 0.18, {type:'triangle', vol:0.08, delay:i*0.07})); },
+  buy(){ [784,988,1175,1568,1976].forEach((f,i) => tone(f, 0.2, {type:'triangle', vol:0.08, delay:i*0.06})); },
+  yawn(){ tone(520, 0.7, {vol:0.06, to:260}); },
+  lullaby(){ [784,659,698,587,523].forEach((f,i) => tone(f, 0.45, {vol:0.05, delay:i*0.32})); }
 };
 function renderMute(){
   $('#waves').toggleAttribute('hidden', save.muted);

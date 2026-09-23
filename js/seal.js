@@ -86,14 +86,24 @@ function makeSeal(p){
   hat.position.set(0, 0.6, -0.02); hat.rotation.set(-0.15, 0, 0.18); hat.userData.base = hat.position.clone();
   hat.visible = false; head.add(hat);
 
-  return {p, root, inner, head, body, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf, scarfMats:[ringMat, tailMat], hat, windup:null,
+  return {p, root, inner, head, body, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf, scarfMats:[ringMat, tailMat], hat, windup:null, wear:{}, sleeping:false,
     bodyMat, base:new THREE.Color(p.color), coldCol:new THREE.Color(p.color).lerp(new THREE.Color(0x9FC8EE), 0.45),
     mouthLocal, noseLocal, hits, nod:0, sneezeNod:0, shake:0, wobble:0, flap:0, blinkT:2, sneezeT:2.5, rumbleT:3.5,
     swimming:false, cold:false};
 }
 /* шарфик: цвет + узор, текстуры кешируются */
 const SCARF_COLORS = ['#FF7A9C', '#FFB547', '#7FD1A8', '#7FB8F0', '#B69CF2', '#F5F1E8'];
-const SCARF_PATTERNS = ['plain', 'stripes', 'dots', 'hearts'];
+const SCARF_PATTERNS = ['plain', 'stripes', 'dots', 'hearts'];   // + 'stars', 'snow' из лавки (Фаза 2)
+const PAT_LABEL = {hearts:'♥♥', stars:'★★', snow:'❄❄'};
+function starPath(g, x, y, r){
+  g.beginPath();
+  for(let i = 0; i < 10; i++){ const rr = i % 2 ? r*0.45 : r, a = -Math.PI/2 + i*Math.PI/5; g.lineTo(x + Math.cos(a)*rr, y + Math.sin(a)*rr); }
+  g.closePath();
+}
+function snowPath(g, x, y, r){
+  g.beginPath();
+  for(let i = 0; i < 3; i++){ const a = i*Math.PI/3; g.moveTo(x - Math.cos(a)*r, y - Math.sin(a)*r); g.lineTo(x + Math.cos(a)*r, y + Math.sin(a)*r); }
+}
 const scarfTexCache = {};
 // rx, ry подобраны так, чтобы узор не растягивался: кольцо длинное и тонкое, хвостик узкий и высокий
 function scarfTex(color, pattern, rx, ry){
@@ -106,6 +116,9 @@ function scarfTex(color, pattern, rx, ry){
     // ряд узора идёт по шву текстуры (y = 0 ≡ 64): там лицевая сторона трубки шарфа
     if(pattern === 'dots') for(let x = 0; x < w; x += 32) for(const [y, sh] of [[0,0],[32,16],[64,0]]){ g.beginPath(); g.arc(x + 8 + sh, y, 7, 0, 7); g.fill(); }
     if(pattern === 'hearts') for(let x = 0; x < w; x += 32) for(const [y, sh] of [[-11,0],[21,16],[53,0]]){ heartPath(g, 22, x + 5 + sh, y); g.fill(); }
+    if(pattern === 'stars') for(let x = 0; x < w; x += 32) for(const [y, sh] of [[0,0],[32,16],[64,0]]){ starPath(g, x + 8 + sh, y, 10); g.fill(); }
+    if(pattern === 'snow'){ g.strokeStyle = ink; g.lineWidth = 3; g.lineCap = 'round';
+      for(let x = 0; x < w; x += 32) for(const [y, sh] of [[0,0],[32,16],[64,0]]){ snowPath(g, x + 8 + sh, y, 9); g.stroke(); } }
   }, 64);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(rx, ry);
   return scarfTexCache[key] = tex;
@@ -115,10 +128,15 @@ function setScarf(s, color, pattern){
   ringMat.map = scarfTex(color, pattern, 2, 1); tailMat.map = scarfTex(color, pattern, 0.5, 2);
   for(const m of s.scarfMats){ m.color.set(0xffffff); m.needsUpdate = true; }
 }
+// 'sleep' — те же дуги, что у 'happy', только перевёрнутые: глазки «‿ ‿»
 function setMood(s, m){
-  const sad = m === 'sad', hap = m === 'happy';
+  const sad = m === 'sad', hap = m === 'happy', slp = m === 'sleep';
   s.brows.forEach(b => b.visible = sad); s.sad.visible = sad; s.smile.visible = !sad;
-  s.eyes.forEach(e => e.visible = !hap); s.happy.forEach(h => h.visible = hap);
+  s.eyes.forEach(e => e.visible = !hap && !slp);
+  s.happy.forEach(h => {
+    h.visible = hap || slp;
+    if(!!h.userData.flip !== slp){ h.rotateZ(Math.PI); h.userData.flip = slp; }
+  });
 }
 function applyAilments(s, a){
   s.sweat.visible = !!a.fever;
