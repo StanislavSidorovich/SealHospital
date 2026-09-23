@@ -26,7 +26,7 @@ python -m http.server 8765
 
 ## Устройство
 
-`index.html` (разметка) + `css/style.css` + `js/` (`data.js` данные и сохранение, `audio.js`, `world.js` сцена, `seal.js` тюлень и предметы, `game.js` ход игры) + `vendor/three.min.js`. Без сборщика и модулей: всё открывается двойным щелчком.
+`index.html` (разметка) + `css/style.css` + `js/` (`data.js` данные и сохранение, `audio.js`, `world.js` сцена, `seal.js` тюлень и предметы, `minigames.js` мини-игры лечения, `game.js` ход игры) + `vendor/three.min.js`. Без сборщика и модулей: всё открывается двойным щелчком.
 
 ## Планы
 

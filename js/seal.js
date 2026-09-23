@@ -112,7 +112,9 @@ function worldOf(s, local){ s.root.updateMatrixWorld(true); return s.head.localT
 function makeThermo(){
   const g = new THREE.Group();
   g.add(addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.62, 12), toon(0xFFFFFF)), 1.12));
-  const red = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.043, 0.24, 12), toon(0xFF5C77)); red.position.y = -0.14; g.add(red);
+  // столбик растёт от колбы вверх: мини-игра меняет red.scale.y
+  const redGeo = new THREE.CylinderGeometry(0.043, 0.043, 0.24, 12); redGeo.translate(0, 0.12, 0);
+  const red = new THREE.Mesh(redGeo, toon(0xFF5C77)); red.position.y = -0.26; g.add(red); g.userData.red = red;
   const bulb = addOutline(new THREE.Mesh(SMALL, toon(0xFF5C77)), 1.15); bulb.scale.setScalar(0.065); bulb.position.y = -0.31; g.add(bulb);
   return g;
 }

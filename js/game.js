@@ -94,16 +94,7 @@ async function spawnPatient(){
 }
 
 const TREAT = {
-  async thermo(s){
-    const th = makeThermo(); th.rotation.z = -1.0;
-    const to = worldOf(s, s.mouthLocal).add(new V3(0.26, 0.16, 0.05));
-    await flyTo(th, camPt(0.3, -1.8, -4), to, 0.7, 0.6);
-    for(let i = 0; i < 3; i++){ sfx.beep(i === 2); await wait(0.35); }
-    floatText('38,5°', headTop(s), '#D9364F');
-    await wait(0.6);
-    await tween(0.3, k => th.scale.setScalar(1 - k)); scene.remove(th);
-    toast('Жар 38,5°! Теперь дай лекарство.');
-  },
+  thermo: s => mgThermo(s),
   async medicine(s){
     const pill = makePill();
     await flyTo(pill, camPt(0.3, -1.8, -4), worldOf(s, s.mouthLocal), 0.75, 1, 8);
@@ -153,6 +144,7 @@ async function useTool(k){
   if(k === 'medicine' && S.needs.includes('thermo') && !S.done.has('thermo')) return wrong(s, 'Сначала измерь температуру 🌡️');
   setBusy(true);
   await TREAT[k](s);
+  unfocusCam();
   S.done.add(k); sfx.good(); hop(s);
   if(S.done.size === S.needs.length){
     S.stage = 'hug'; setMood(s, 'ok');
@@ -234,8 +226,15 @@ $('#btnStart').addEventListener('click', async () => {
 
 /* ---------------- camera & loop ---------------- */
 const camBase = new V3(), camTarget = new V3();
+// Приближение для мини-игр: камера плавно наезжает на center так, чтобы влез предмет размером size.
+// lift > 0 поднимает предмет выше середины экрана (когда внизу панель мини-игры).
+const camFocus = {k:0, want:0, center:new V3(), size:3, lift:0};
+function focusCam(center, size = 3, lift = 0){ camFocus.center.copy(center); camFocus.size = size; camFocus.lift = lift; camFocus.want = 1; }
+function unfocusCam(){ camFocus.want = 0; }
+const _camPos = new V3(), _camLook = new V3(), _focusLook = new V3();
 function resize(){
   const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix();
   const portrait = w < h, tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), th = tv*camera.aspect;
   const d = Math.max((portrait ? 4.3 : 7.5)/2/th, (portrait ? 7 : 5.6)/2/tv);
@@ -244,14 +243,27 @@ function resize(){
 window.addEventListener('resize', resize); resize();
 
 let last = performance.now(), t = 0;
-const DT_CAP = /test/.test(location.search) ? 5 : 0.05;
-function loop(ts){
-  const dt = Math.min(DT_CAP, (ts - last)/1000); last = ts; t += dt; now = t;
+const TEST = /test/.test(location.search);
+const DT_CAP = TEST ? 5 : 0.05;
+function loop(ts){ frame(ts); requestAnimationFrame(loop); }
+function frame(ts){
+  const dt = Math.min(DT_CAP, Math.max(0, ts - last)/1000); last = ts; t += dt; now = t;
   updateTweens();
   updateWater(t);
+  mgTicks.forEach(f => f(dt));
   const sway = reduced ? 0 : 1;
-  camera.position.set(camBase.x + Math.sin(t*0.25)*0.3*sway, camBase.y + Math.sin(t*0.4)*0.06*sway, camBase.z);
-  camera.lookAt(camTarget);
+  _camPos.set(camBase.x + Math.sin(t*0.25)*0.3*sway, camBase.y + Math.sin(t*0.4)*0.06*sway, camBase.z);
+  _camLook.copy(camTarget);
+  camFocus.k += (camFocus.want - camFocus.k)*Math.min(1, dt*3.5);
+  if(camFocus.k > 0.001){
+    const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), fd = Math.max(camFocus.size/2/(tv*camera.aspect), camFocus.size/2/tv);
+    _focusLook.copy(camFocus.center); _focusLook.y -= camFocus.lift;
+    const k = ease.io(camFocus.k);
+    _camLook.lerp(_focusLook, k);
+    _camPos.lerp(_focusLook.clone().add(new V3(0, fd*0.35, fd)), k);
+  }
+  camera.position.copy(_camPos);
+  camera.lookAt(_camLook);
   for(let i = 0; i < SN; i++){
     snowPos[i*3+1] -= dt*(0.35 + (i % 5)*0.08); snowPos[i*3] += Math.sin(t + i)*dt*0.12;
     if(snowPos[i*3+1] < -0.2) snowPos[i*3+1] = 12;
@@ -283,9 +295,10 @@ function loop(ts){
   }
   updateParts(dt);
   renderer.render(scene, camera);
-  requestAnimationFrame(loop);
 }
 
 buildTools(); renderMute(); renderAlbumCount();
 if(save.album.length){ const st = $('#introStat'); st.textContent = `Ты уже вылечила пациентов: ${save.album.length}`; st.hidden = false; $('#btnStart').textContent = 'Продолжить приём'; }
 requestAnimationFrame(loop);
+// ?test=1: скрытая вкладка почти не даёт кадров, поэтому подталкиваем кадры таймером
+if(TEST) setInterval(() => { if(performance.now() - last > 120) frame(performance.now()); }, 60);

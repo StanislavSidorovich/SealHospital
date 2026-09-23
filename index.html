@@ -22,6 +22,12 @@
 <div id="app">
   <canvas id="c" aria-label="Льдина с тюленем"></canvas>
 
+  <!-- Слой мини-игр: сюда каждая мини-игра кладёт свой интерфейс (js/minigames.js) -->
+  <div class="mg" id="mg" hidden>
+    <div class="mg-stage" id="mgStage"></div>
+    <p class="mg-hint display" id="mgHint" aria-live="polite"></p>
+  </div>
+
   <div class="top">
     <section class="card" id="card" hidden aria-live="polite">
       <div class="card-label"><span class="cross"></span>Карта пациента № <span id="pNo">1</span></div>
@@ -94,6 +100,7 @@
 <script src="js/audio.js"></script>
 <script src="js/world.js"></script>
 <script src="js/seal.js"></script>
+<script src="js/minigames.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>
