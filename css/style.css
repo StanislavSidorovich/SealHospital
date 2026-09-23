@@ -182,3 +182,7 @@ body.mg-on:not(.mg-card) #card{display:none!important}
 .plaster-drag::before{content:"";width:40px;height:30px;border-radius:8px;background:#FFF0F4;border:2px solid #E7A0B4}
 .plaster-drag.drag{box-shadow:0 10px 0 rgba(59,58,74,.25);scale:1.08;cursor:grabbing}
 .plaster-drag.back{transition:left .35s ease-out,top .35s ease-out}
+
+/* рыбалка */
+.pull{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 30px);translate:-50% 0;font-size:26px;padding:14px 30px;
+  animation:pulse .5s ease-in-out infinite}

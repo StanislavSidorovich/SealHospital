@@ -42,6 +42,16 @@ function renderCard(){
   document.querySelectorAll('.tool').forEach(b => b.classList.toggle('used', S.done.has(b.dataset.tool)));
 }
 function setBusy(v){ busy = v; $('#tools').setAttribute('aria-busy', v ? 'true' : 'false'); }
+// до трёх рыбок лежат сверху в ведре
+const bucketFish = [];
+function renderBucket(){
+  const n = Math.min(3, save.fish);
+  while(bucketFish.length < n){
+    const i = bucketFish.length, f = makeFish(); f.scale.setScalar(0.45);
+    f.rotation.set(0, (i - 1)*0.45, 0.35 - i*0.35); f.position.set((i - 1)*0.08, 0.25 + i*0.06, 0.04);   // боком к камере: видно глаз и хвост
+    bucket.add(f); bucketFish.push(f);
+  }
+}
 function renderAlbumCount(){ $('#albumCount').textContent = save.album.length; }
 function openAlbum(){
   const grid = $('#albumGrid'); grid.innerHTML = '';
@@ -105,9 +115,7 @@ const TREAT = {
     S.ail.scratch = false; applyAilments(s, S.ail); floatText('Не больно!', headTop(s));
   },
   async fish(s){
-    const f = makeFish();
-    await flyTo(f, camPt(0.4, -1.8, -4), worldOf(s, s.mouthLocal), 0.8, 1.2, 10);
-    await tween(0.12, k => f.scale.setScalar(1 - k)); scene.remove(f);
+    await mgFishing(s);
     for(let i = 0; i < 2; i++){ sfx.chomp(); await tween(0.2, k => { s.head.scale.set(1, 1 - Math.sin(k*Math.PI)*0.1, 1); }, ease.lin); }
     s.head.scale.set(1, 1, 1);
     S.ail.hungry = false; applyAilments(s, S.ail); floatText('Ням!', headTop(s));
@@ -290,7 +298,7 @@ function frame(ts){
   renderer.render(scene, camera);
 }
 
-buildTools(); renderMute(); renderAlbumCount();
+buildTools(); renderMute(); renderAlbumCount(); renderBucket();
 if(save.album.length){ const st = $('#introStat'); st.textContent = `Ты уже вылечила пациентов: ${save.album.length}`; st.hidden = false; $('#btnStart').textContent = 'Продолжить приём'; }
 requestAnimationFrame(loop);
 // ?test=1: скрытая вкладка почти не даёт кадров, поэтому подталкиваем кадры таймером

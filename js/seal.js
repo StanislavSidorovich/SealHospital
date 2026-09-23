@@ -125,6 +125,14 @@ function makeFish(){
   const e = new THREE.Mesh(SMALL, inkMat); e.scale.setScalar(0.035); e.position.set(0.18, 0.04, 0.1); g.add(e);
   return g;
 }
+function makeBobber(){
+  const g = new THREE.Group();
+  const top = addOutline(new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI*2, 0, Math.PI/2), toon(0xFF5C77)), 1.12);
+  const bot = addOutline(new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI*2, Math.PI/2, Math.PI/2), toon(0xFFFFFF)), 1.12);
+  top.scale.setScalar(0.1); bot.scale.setScalar(0.1); g.add(top, bot);
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.12), inkMat); stick.position.y = 0.14; g.add(stick);
+  return g;
+}
 function makeSpoon(color){
   const g = new THREE.Group();
   const handle = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.06), toon(0xE8EEF4)), 1.1);

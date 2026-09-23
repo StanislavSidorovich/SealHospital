@@ -103,9 +103,16 @@ foam.rotation.x = -Math.PI/2; foam.position.y = 0.1; scene.add(foam);
   const pinkMat = new THREE.MeshBasicMaterial({color:0xFF6F95});
   for(const [w,h] of [[0.26,0.08],[0.08,0.26]]){ const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), pinkMat); b.position.z = 0.23; kit.add(b); }
   scene.add(kit); }
-// fish bucket
-{ const bucket = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.24, 0.42, 20), toon(0x9CC8F0)), 1.06);
-  bucket.position.set(1.55, 0.46, 1.2); scene.add(bucket); }
+// fish bucket: renderBucket() в game.js кладёт туда пойманных рыбок
+const bucket = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.24, 0.42, 20), toon(0x9CC8F0)), 1.06);
+bucket.position.set(1.55, 0.46, 1.2); scene.add(bucket);
+// ice hole for fishing
+const HOLE = new V3(-1.55, 0.255, 1.35);
+{ const g = new THREE.Group(); g.position.copy(HOLE);
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(0.4, 32), toon(0x3E8DB8)); pool.rotation.x = -Math.PI/2; g.add(pool);
+  const rim = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.07, 10, 36), toon(0xF3FAFD)), 1.08);
+  rim.rotation.x = -Math.PI/2; rim.scale.z = 0.6; g.add(rim);
+  scene.add(g); }
 // distant icebergs + drifting chunks
 const chunks = [];
 for(const [x,z,s] of [[-15,-24,2.6],[11,-28,3.2],[22,-18,2.2],[-26,-14,2]]){

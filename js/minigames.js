@@ -205,3 +205,70 @@ async function mgBandage(s){
   s.plaster.visible = true; s.plaster.scale.setScalar(0.01); sfx.pop();
   await tween(0.4, k => s.plaster.scale.setScalar(Math.max(0.01, k)), ease.back);
 }
+
+/* ---------- Рыбалка: жди, пока поплавок нырнёт, и жми ---------- */
+async function mgFishing(s){
+  focusCam(new V3(-0.75, 0.85, 0.95), 2.9, -0.25);
+  s.shake = -0.35;   // тюлень смотрит на лунку
+  const rod = new THREE.Group();
+  const stick = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 1.5, 8), toon(0xE0A36B)), 1.15);
+  stick.position.y = 0.75; rod.add(stick);
+  rod.position.set(-2.35, 0.25, 2.0); rod.rotation.set(-0.35, 0, -0.55); scene.add(rod);
+  const tip = () => stick.localToWorld(new V3(0, 0.75, 0));
+  const bob = makeBobber(); bob.position.copy(HOLE); bob.position.y = 1.4; scene.add(bob);
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([new V3(), new V3()]);
+  const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({color:INK})); scene.add(line);
+  const drawLine = () => { rod.updateMatrixWorld(true); lineGeo.setFromPoints([tip(), bob.position.clone().add(new V3(0, 0.2, 0))]); };
+  const baseY = HOLE.y + 0.02;
+  await tween(0.5, k => { bob.position.y = 1.4 + (baseY - 1.4)*k; drawLine(); }, ease.out);
+  sfx.plop(); emit(TEX.puff, HOLE.clone().add(new V3(0, 0.1, 0)), {v:new V3(0, 0.6, 0), life:0.6, size:0.5, grow:1});
+
+  mgOpen('Жди… Когда поплавок нырнёт — жми!');
+  const pull = mgNode('button', 'btn pull', 'Тяни! 🎣'); pull.hidden = true;
+  // state: wait → bite → (поймал | уплыла → wait)
+  let state = 'wait', until = now + 1.6 + Math.random()*1.8, nibbleAt = now + 0.8 + Math.random(), misses = 0, finish;
+  const caught = new Promise(r => finish = r);
+  const toWait = () => { state = 'wait'; until = now + 1.2 + Math.random()*1.6; nibbleAt = now + 0.6 + Math.random()*0.6; pull.hidden = true; };
+  const tap = e => {
+    e.preventDefault();
+    if(state === 'bite'){ state = 'done'; pull.hidden = true; finish(); }
+    else if(state === 'wait') mgHint('Ещё рано! Жди, когда нырнёт');
+  };
+  mgOn(mgRoot, 'pointerdown', tap);
+  mgTick(() => {
+    let y = baseY + Math.sin(now*3)*0.015;
+    if(state === 'wait'){
+      if(now > nibbleAt && now < nibbleAt + 0.18) y -= 0.035;              // клюёт понарошку
+      else if(now >= nibbleAt + 0.18) nibbleAt = now + 0.7 + Math.random()*0.8;
+      if(now > until){
+        state = 'bite'; until = now + 1.8; sfx.plop(); pull.hidden = false;
+        floatText('!', HOLE.clone().add(new V3(0, 0.9, 0)), '#D9364F');
+        burst(TEX.puff, HOLE.clone().add(new V3(0, 0.1, 0)), 5, 0.8, 0.35);
+      }
+    } else if(state === 'bite'){
+      y -= 0.13;
+      if(now > until){
+        misses++; toWait();
+        mgHint(misses > 1 ? 'Жми сразу, как только нырнёт!' : 'Уплыла! Сейчас клюнет ещё');
+      }
+    }
+    bob.position.y = y; drawLine();
+  });
+  await caught;
+  mgClose();
+  sfx.splash(); burst(TEX.puff, HOLE.clone().add(new V3(0, 0.1, 0)), 10, 1.6, 0.45);
+  const fish = makeFish(); fish.rotation.y = 0.6;
+  scene.remove(bob, line); lineGeo.dispose();
+  const bonus = Math.random() < 0.4;
+  if(bonus){   // вторая рыбка прыгает в ведро и копится там
+    const extra = makeFish(); extra.scale.setScalar(0.7);
+    flyTo(extra, HOLE.clone(), bucket.position.clone().add(new V3(0, 0.25, 0)), 1.0, 1.8, 12).then(() => {
+      scene.remove(extra); save.fish++; persist(); renderBucket(); sfx.pop();
+      toast(`И ещё одна — в ведро! Там ${save.fish} ${plural(save.fish, 'рыбка', 'рыбки', 'рыбок')}`);
+    });
+  }
+  await flyTo(fish, HOLE.clone(), worldOf(s, s.mouthLocal), 0.9, 1.4, 10);
+  await tween(0.12, k => fish.scale.setScalar(1 - k)); scene.remove(fish);
+  scene.remove(rod); s.shake = 0;
+  if(bonus) await wait(0.3);
+}

@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, fish}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -21,7 +21,8 @@ function sanitize(d){
   return {...d, version:SAVE_VERSION,
     album:Array.isArray(d.album) ? d.album : [],
     progress:Number.isFinite(d.progress) ? d.progress : 0,
-    muted:!!d.muted};
+    muted:!!d.muted,
+    fish:Number.isFinite(d.fish) ? d.fish : 0};   // рыбки в ведре (Фаза 1, рыбалка)
 }
 function loadSave(){
   let d = store.get(SAVE_KEY, null), v = 0;
@@ -62,6 +63,11 @@ function patientFor(n){
   const ail = pool.slice(0, 2 + (Math.random() < 0.35 ? 1 : 0));
   const list = ail.map(a => typeof PHRASE[a] === 'function' ? PHRASE[a](base.f) : PHRASE[a]);
   return {...base, ail, text:`${base.name} снова ${base.f ? 'приплыла' : 'приплыл'} в больницу: ${list.join(', ')}.`};
+}
+// 1 рыбка, 2 рыбки, 5 рыбок
+function plural(n, one, few, many){
+  const a = n % 10, b = n % 100;
+  return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
 }
 function needsFor(ail){
   const set = new Set();
