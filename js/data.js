@@ -29,11 +29,13 @@ function sanitize(d){
     shifts:Number.isFinite(d.shifts) ? d.shifts : 0,   // сколько смен отработано
     pet:sanitizePet(d.pet)};   // свой тюленёнок (Фаза 3) или null, пока не познакомились
 }
-// pet = {name, f, coat, born, xp, stage, t, seen, needs:{food, bath, sleep, fun}, wear:{head, face}, pat:{d, n}}
+// pet = {name, f, coat, born, xp, stage, t, seen, needs:{food, bath, sleep, fun}, wear:{head, face}, pat:{d, n}, walk:{d, n}, finds:[], tricks:{}}
 // needs — от 0 (очень хочет) до 1 (всё хорошо), тают со временем; t — когда их пересчитали последний раз
 // seen — когда малыша последний раз навещали в уголке: долго не заходили — он встречает радостно («Я скучал!»)
 // stage — стадия роста, которую уже отпраздновали (0 малыш … 4 сияющий); если опыт xp дорос до следующей — будет праздник
 // pat — сколько раз сегодня (d = дата) гладили за сердечки: ласка даёт опыт не больше PAT_MAX раз в день
+// finds — находки с прогулок (id из TREASURES), walk — сколько раз гуляли сегодня (новая находка — раз в день),
+// tricks — звёзды за трюки {paw:0…3, …} (js/walk.js)
 function sanitizePet(p){
   if(!p || typeof p !== 'object' || typeof p.name !== 'string' || !p.name.trim()) return null;
   const n = p.needs && typeof p.needs === 'object' ? p.needs : {}, level = v => Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5;
@@ -44,6 +46,9 @@ function sanitizePet(p){
     stage:Number.isInteger(p.stage) ? Math.min(4, Math.max(0, p.stage)) : 0,
     t, seen:Number.isFinite(p.seen) ? p.seen : t,
     pat:p.pat && typeof p.pat.d === 'string' && Number.isFinite(p.pat.n) ? {d:p.pat.d, n:p.pat.n} : {d:'', n:0},
+    walk:p.walk && typeof p.walk.d === 'string' && Number.isFinite(p.walk.n) ? {d:p.walk.d, n:p.walk.n} : {d:'', n:0},
+    finds:[...new Set(strList(p.finds))],
+    tricks:Object.fromEntries(Object.entries(p.tricks && typeof p.tricks === 'object' ? p.tricks : {}).filter(([, v]) => Number.isInteger(v)).map(([k, v]) => [k, Math.min(3, Math.max(0, v))])),
     needs:{food:level(n.food), bath:level(n.bath), sleep:level(n.sleep), fun:level(n.fun)},
     wear:Object.fromEntries(['head', 'face'].filter(k => typeof w[k] === 'string').map(k => [k, w[k]]))};
 }

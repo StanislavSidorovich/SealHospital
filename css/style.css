@@ -364,3 +364,38 @@ body:not(.pet-mode) .night{opacity:0}
 .code-ask{margin-top:10px;padding:12px;border-radius:16px;background:#FFF1C9;border:2.5px solid var(--ink)}
 .code-ask p{margin-bottom:10px!important}
 .store-note{margin:10px 0 0!important;font-size:13px!important;color:var(--soft)}
+
+/* ---------------- прогулка и трюки (js/walk.js) ---------------- */
+.picks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+.picks button{position:relative;min-height:112px;border-radius:18px;border:2.5px solid var(--ink);background:#fff;box-shadow:0 4px 0 var(--ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:8px 4px;color:var(--ink)}
+.picks button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.picks .ic{font-size:36px;line-height:1.1}
+.picks b{font-family:"Pangolin","Comic Sans MS",cursive;font-size:21px;font-weight:400}
+.picks small{font-size:11.5px;font-weight:800;color:var(--soft);line-height:1.2}
+.picks .new{background:#FFF7DD}
+.picks .new small{color:#B07E12}
+.picks .new::after{content:"✨";position:absolute;top:-10px;right:-6px;font-size:20px;animation:pulse 1.1s ease-in-out infinite}
+.fun-pick .btn.small,.trick-pick .btn.small{margin-top:8px}
+.tricks{display:flex;flex-direction:column;gap:8px}
+.trick{display:flex;align-items:center;gap:10px;min-height:58px;padding:6px 12px;border-radius:16px;border:2.5px solid var(--ink);
+  background:#fff;box-shadow:0 3px 0 var(--ink);text-align:left;color:var(--ink)}
+.trick .ic{font-size:28px;width:36px;text-align:center}
+.trick .t{flex:1;display:flex;flex-direction:column}
+.trick b{font-size:17px}
+.trick small{font-size:12px;font-weight:700;color:var(--soft)}
+.trick .st{font-size:19px;color:#E0A21B;letter-spacing:1px}
+.trick.done{background:var(--mint)}
+.trick.locked{background:#F2F0F6;opacity:.75}
+.walk-end .ttl{font-size:28px;margin:2px 0 6px}
+.walk-end .got{font-size:16px;font-weight:800;margin:0 0 6px}
+.finds{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin:8px 0 8px}
+.finds i{font-style:normal;aspect-ratio:1;display:grid;place-items:center;font-size:22px;border-radius:10px;border:2px solid var(--ink);background:#FFF7DD}
+.finds i.no{background:#F2F0F6;border-style:dashed;color:#B9B6C6;font-size:16px;font-weight:800}
+.finds i.new{background:var(--pink);animation:pulse 1.1s ease-in-out infinite}
+.walk-end .tip{font-size:13.5px;font-weight:700;color:var(--soft);margin:0 0 10px}
+.swipe-up{position:absolute;font-size:42px;margin:-24px 0 0 -18px;pointer-events:none;animation:swipeup 1.1s ease-in infinite}
+@keyframes swipeup{0%{translate:0 30px;opacity:0}20%{opacity:1}100%{translate:0 -70px;opacity:0}}
+.circle-hint{position:absolute;width:210px;height:210px;margin:-105px 0 0 -105px;border-radius:50%;pointer-events:none;
+  border:3px dashed var(--pink-d);background:conic-gradient(from -90deg,rgba(127,209,168,.45) calc(var(--p,0)*1turn),rgba(255,155,184,.12) 0)}
+@media (prefers-reduced-motion:reduce){ .swipe-up,.circle-hint,.picks .new::after,.finds i.new{animation:none} }

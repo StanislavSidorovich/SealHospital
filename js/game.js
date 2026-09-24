@@ -334,10 +334,11 @@ $('#btnIntroPet').addEventListener('click', async () => {
 const camBase = new V3(), camTarget = new V3();
 // Приближение для мини-игр: камера плавно наезжает на center так, чтобы влез предмет размером size.
 // lift > 0 поднимает предмет выше середины экрана (когда внизу панель мини-игры).
-const camFocus = {k:0, want:0, center:new V3(), size:3, lift:0};
+const camFocus = {k:0, want:0, center:new V3(), size:3, lift:0, up:0.35};
 // Сдвиг всей камеры: 0 — больница, PET_POS — уголок малыша (js/pet.js)
 const camOff = new V3(), camOffWant = new V3();
-function focusCam(center, size = 3, lift = 0){ camFocus.center.copy(center); camFocus.size = size; camFocus.lift = lift; camFocus.want = 1; }
+// up — насколько камера смотрит сверху (0.35 — чуть сверху; на прогулке выше, чтобы малыш не заслонял льдинки)
+function focusCam(center, size = 3, lift = 0, up = 0.35){ camFocus.center.copy(center); camFocus.size = size; camFocus.lift = lift; camFocus.up = up; camFocus.want = 1; }
 function unfocusCam(){ camFocus.want = 0; }
 const _camPos = new V3(), _camLook = new V3(), _focusLook = new V3();
 function resize(){
@@ -369,10 +370,11 @@ function frame(ts){
     _focusLook.copy(camFocus.center); _focusLook.y -= camFocus.lift;
     const k = ease.io(camFocus.k);
     _camLook.lerp(_focusLook, k);
-    _camPos.lerp(_focusLook.clone().add(new V3(0, fd*0.35, fd)), k);
+    _camPos.lerp(_focusLook.clone().add(new V3(0, fd*camFocus.up, fd)), k);
   }
   camera.position.copy(_camPos);
   camera.lookAt(_camLook);
+  snow.position.set(_camLook.x, 0, _camLook.z);   // снег всегда вокруг того, куда смотрим (уголок, прогулка)
   for(let i = 0; i < SN; i++){
     snowPos[i*3+1] -= dt*(0.35 + (i % 5)*0.08); snowPos[i*3] += Math.sin(t + i)*dt*0.12;
     if(snowPos[i*3+1] < -0.2) snowPos[i*3+1] = 12;
@@ -392,7 +394,7 @@ function frame(ts){
     }
   }
   shiftTick(t, dt);
-  petTick(t, dt);
+  petTick(t, dt); walkTick(t);
   updateParts(dt);
   renderer.render(scene, camera);
 }

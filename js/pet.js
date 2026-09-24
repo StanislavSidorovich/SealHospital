@@ -50,7 +50,8 @@ const coatOf = id => PET_COATS.find(c => c.id === id) || PET_COATS[0];
 const hexCss = c => '#' + c.toString(16).padStart(6, '0');
 const adoptPending = () => !save.pet && save.shifts >= 1;
 // GitHub Pages кеширует файлы ~10 минут: если data.js ещё старый, sanitizePet не знает новых полей — подставим
-function petFix(){ const p = save.pet; if(!p) return; if(!Number.isInteger(p.stage)) p.stage = 0; if(!p.pat) p.pat = {d:'', n:0}; if(!Number.isFinite(p.seen)) p.seen = Number.isFinite(p.t) ? p.t : Date.now(); }
+function petFix(){ const p = save.pet; if(!p) return; if(!Number.isInteger(p.stage)) p.stage = 0; if(!p.pat) p.pat = {d:'', n:0}; if(!Number.isFinite(p.seen)) p.seen = Number.isFinite(p.t) ? p.t : Date.now();
+  if(!p.walk) p.walk = {d:'', n:0}; if(!Array.isArray(p.finds)) p.finds = []; if(!p.tricks) p.tricks = {}; }
 const stageOf = xp => STAGES.reduce((i, st, k) => xp >= st.at*HEART_XP ? k : i, 0);
 const stageName = (i, f = save.pet && save.pet.f) => f ? STAGES[i].f : STAGES[i].m;
 const petMissed = () => !!save.pet && (Date.now() - save.pet.seen)/3.6e6 >= MISS_H;
@@ -408,14 +409,14 @@ async function petDo(k){
   const wasGood = allGood();
   setBusy(true); s.bubble.visible = false;
   if(s.sleeping) await petWake();
-  await PET_GAMES[k](s);
+  if(await PET_GAMES[k](s) === false){ unfocusCam(); setBusy(false); return petRefresh(); }   // «Потом» в выборе игры
   unfocusCam();
   p.needs[k] = 1;
-  if(k === 'fun'){ p.needs.food = Math.max(0, p.needs.food - 0.12); p.needs.bath = Math.max(0, p.needs.bath - 0.25); }
+  if(k === 'fun') for(const [n, v] of Object.entries(FUN_COST[funKind])) p.needs[n] = Math.max(0, p.needs[n] - v);   // игра, прогулка или трюки (walk.js)
   if(!s.sleeping){ s.happyUntil = now + 3; setMood(s, 'happy'); }   // уснувшему не открываем глазки
   petGive(4 + Math.round(6*(1 - before)));
   persist(); renderPetCard(); renderPetBar();
-  if(k === 'fun') toast(`${gg('Наигрался', 'Наигралась')}! И немножко ${gg('испачкался', 'испачкалась')} 🛁`);
+  if(k === 'fun') toast(FUN_SAY[funKind](), 3000);
   if(!wasGood && allGood()){   // все потребности закрыты — маленький праздник
     await wait(0.8);
     burst(TEX.heart, headTop(s), 20, 2.4, 0.34);
@@ -742,7 +743,7 @@ async function petPlay(s){
   await flyTo(ball, ball.position.clone(), rest, 0.7, 0.8);
   ball.rotation.set(0, 0, 0.4);
 }
-const PET_GAMES = {food:petFeed, bath:petBath, sleep:petSleep, fun:petPlay};
+const PET_GAMES = {food:petFeed, bath:petBath, sleep:petSleep, fun:s => petFun(s)};   // «Поиграть» — выбор: мяч, прогулка, трюки (walk.js)
 
 /* ---------- Нарядить: вещи из лавки ---------- */
 async function petDress(){
@@ -886,7 +887,7 @@ function petTick(t, dt){
     shineT -= dt;
     if(shineT < 0){
       shineT = 0.3 + Math.random()*0.3; const sc = petSeal.root.scale.x, a = Math.random()*Math.PI*2;
-      emit(TEX.star, PET_SPOT.clone().add(new V3(Math.cos(a)*1.4*sc, (0.4 + Math.random()*1.8)*sc, Math.sin(a)*0.9*sc)), {v:new V3(0, 0.35, 0), life:0.9, size:0.13, spin:3});
+      emit(TEX.star, petSeal.root.position.clone().add(new V3(Math.cos(a)*1.4*sc, (0.4 + Math.random()*1.8)*sc, Math.sin(a)*0.9*sc)), {v:new V3(0, 0.35, 0), life:0.9, size:0.13, spin:3});
       if(Math.random() < 0.12 && !busy) sfx.sparkle();
     }
   }
