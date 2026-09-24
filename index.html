@@ -21,6 +21,7 @@
 <body>
 <div id="app">
   <canvas id="c" aria-label="Льдина с тюленем"></canvas>
+  <div class="night" id="night"></div>
 
   <!-- Слой мини-игр: сюда каждая мини-игра кладёт свой интерфейс (js/minigames.js) -->
   <div class="mg" id="mg" hidden>
@@ -34,6 +35,12 @@
       <h2 class="display" id="pName">Моти</h2>
       <p id="pText"></p>
       <ul class="needs" id="pNeeds"></ul>
+    </section>
+    <section class="card pet-card" id="petCard" hidden aria-live="polite">
+      <div class="card-label"><span class="heart-ic">♡</span>Мой малыш</div>
+      <h2 class="display" id="petName"></h2>
+      <p id="petStatus"></p>
+      <div class="love"><span class="lbl">💗 Дружба</span><span class="bar"><i id="petLove"></i></span><b id="petHearts">0</b></div>
     </section>
     <div class="corner" id="corner">
       <button class="round" id="btnSound" aria-label="Звук">
@@ -54,11 +61,16 @@
         <span aria-hidden="true">🐚</span>
         <span class="badge" id="shellCount">0</span>
       </button>
+      <button class="round pet" id="btnPet" aria-label="Мой малыш" hidden>
+        <span aria-hidden="true" id="petIc">🦭</span>
+        <span class="badge alert" id="petAlert" hidden>!</span>
+      </button>
     </div>
   </div>
 
   <nav class="tools" id="tools" hidden aria-label="Лечение"></nav>
   <nav class="tools wardrobe" id="wardrobe" hidden aria-label="Нарядить"></nav>
+  <nav class="tools pet-bar" id="petBar" aria-label="Уход за малышом"></nav>
   <div class="toast" id="toast" hidden></div>
 
   <div class="overlay" id="intro">
@@ -67,7 +79,10 @@
       <h1 class="display">Тюленья больница</h1>
       <p>Доктор Сабрина, к тебе приплывают пациенты! За смену — три тюленя: осмотри, вылечи, обними и уложи спать. За каждого — ракушки 🐚 для лавки.</p>
       <p id="introStat" class="thanks" hidden></p>
-      <button class="btn" id="btnStart">Открыть больницу</button>
+      <div class="row">
+        <button class="btn" id="btnStart">Открыть больницу</button>
+        <button class="btn ghost" id="btnIntroPet" hidden>К малышу 🦭</button>
+      </div>
       <div class="from">от Dad ♡</div>
     </div>
   </div>
@@ -100,6 +115,7 @@
       <div class="row">
         <button class="btn" id="btnShift">Новая смена</button>
         <button class="btn ghost" id="btnResShop">Лавка 🐚</button>
+        <button class="btn ghost" id="btnResPet" hidden>К малышу 🦭</button>
       </div>
     </div>
   </div>
@@ -137,6 +153,7 @@
 <script src="js/minigames.js"></script>
 <script src="js/shop.js"></script>
 <script src="js/shift.js"></script>
+<script src="js/pet.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

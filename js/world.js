@@ -42,13 +42,17 @@ const TEX = {
     g.beginPath(); g.moveTo(s/2, 4); g.bezierCurveTo(s*0.1, s*0.55, s*0.2, s-4, s/2, s-4); g.bezierCurveTo(s*0.8, s-4, s*0.9, s*0.55, s/2, 4);
     g.fillStyle = '#8FD3F5'; g.fill(); g.lineWidth = 4; g.strokeStyle = '#3B3A4A'; g.stroke();
   }),
-  bubble: canvasTex(256, (g, s) => {
+  bubble: bubbleTex('🐟')
+};
+// пузырь-мысль над тюленем: «хочу рыбку» (у пациента) и потребности своего малыша (js/pet.js)
+function bubbleTex(emoji){
+  return canvasTex(256, (g, s) => {
     g.lineWidth = 8; g.strokeStyle = '#3B3A4A'; g.fillStyle = '#fff';
     for(const [x,y,r] of [[48,214,14],[78,182,22],[150,104,82]]){ g.beginPath(); g.arc(x,y,r,0,7); g.fill(); g.stroke(); }
     g.font = '86px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('🐟', 152, 110);
-  })
-};
+    g.fillText(emoji, 152, 110);
+  });
+}
 function textSprite(text, color = '#3B3A4A'){
   const tex = canvasTex(512, (g, w, h) => {
     const font = px => `${px}px Pangolin, "Comic Sans MS", Nunito, sans-serif`;
@@ -130,7 +134,8 @@ const SN = reduced ? 120 : 360;
 const snowPos = new Float32Array(SN*3);
 for(let i = 0; i < SN; i++){ snowPos[i*3] = (Math.random()-0.5)*26; snowPos[i*3+1] = Math.random()*12; snowPos[i*3+2] = (Math.random()-0.5)*18; }
 const snowGeo = new THREE.BufferGeometry(); snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
-scene.add(new THREE.Points(snowGeo, new THREE.PointsMaterial({size:0.13, map:TEX.dot, transparent:true, depthWrite:false, color:0xffffff})));
+const snow = new THREE.Points(snowGeo, new THREE.PointsMaterial({size:0.13, map:TEX.dot, transparent:true, depthWrite:false, color:0xffffff}));
+scene.add(snow);   // снег едет вместе с камерой (уголок малыша — на соседней льдине)
 
 /* ---------------- particles & tweens ---------------- */
 const parts = [];

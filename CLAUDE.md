@@ -10,10 +10,10 @@
 ## Технологии
 
 - Three.js **r128**, лежит в `vendor/three.min.js` (UMD, глобальный `THREE`). CDN не используем, игра должна открываться без интернета.
-- **Без сборщика и без ES-модулей**: только обычные `<script>` в нужном порядке (`vendor/three.min.js` → `js/data.js` → `audio.js` → `world.js` → `seal.js` → `minigames.js` → `shop.js` → `shift.js` → `game.js`). Файлы делят глобальную область: top-level `const/let/function` видны во всех следующих скриптах, порядок подключения важен. Стили в `css/style.css`. Игра обязана работать с `file://` (двойной щелчок), на GitHub Pages и как Claude Artifact.
+- **Без сборщика и без ES-модулей**: только обычные `<script>` в нужном порядке (`vendor/three.min.js` → `js/data.js` → `audio.js` → `world.js` → `seal.js` → `minigames.js` → `shop.js` → `shift.js` → `pet.js` → `game.js`). Файлы делят глобальную область: top-level `const/let/function` видны во всех следующих скриптах, порядок подключения важен. Стили в `css/style.css`. Игра обязана работать с `file://` (двойной щелчок), на GitHub Pages и как Claude Artifact.
 - Шрифты Google Fonts: Pangolin (заголовки, рукописный каваи), Nunito (текст). Без сети подставляются системные, это нормально.
 - Звуки синтезируются Web Audio, аудиофайлов нет. AudioContext создаётся только после нажатия.
-- Сохранение в `localStorage`: один ключ `sh.save` = `{version, album, progress, muted, fish, shells, owned, decor, shifts}`, объект `save` и `persist()` в `js/data.js`. Новое поле: значение по умолчанию в `sanitize()`; меняется смысл старых данных — поднять `SAVE_VERSION` и добавить функцию в `MIGRATIONS`. Старые ключи `sh.album/progress/muted` только читаются при миграции. Каждое чтение и запись оборачивать в try/catch (`store` уже так делает).
+- Сохранение в `localStorage`: один ключ `sh.save` = `{version, album, progress, muted, fish, shells, owned, decor, shifts, pet}` (`pet` — свой тюленёнок или `null`, проверяется в `sanitizePet()`), объект `save` и `persist()` в `js/data.js`. Новое поле: значение по умолчанию в `sanitize()`; меняется смысл старых данных — поднять `SAVE_VERSION` и добавить функцию в `MIGRATIONS`. Старые ключи `sh.album/progress/muted` только читаются при миграции. Каждое чтение и запись оборачивать в try/catch (`store` уже так делает).
 - PWA: `manifest.json`, `icons/` (192, 512, apple-touch). Service worker пока нет.
 
 ## Визуальный стиль
@@ -37,6 +37,7 @@
 - Размер экрана для проверки: мобильный 375×812.
 - Кнопки удобно нажимать из JS: `document.getElementById('tool-scarf').click()`, `#btnStart`, `#hugBtn`, `#btnNext`, `#btnShift`, `#btnShop`.
 - Одеяло в кроватке: `pointerdown` внизу `#mg`, затем `pointermove` вверх. Ракушки в событии: касание рядом с `toScreen(shell.position)`. Для лавки удобно положить ракушки: `save.shells = 200; persist()`.
+- Малыш (Фаза 3): знакомство начинается, если `save.pet === null` и `save.shifts >= 1`. Уголок — кнопка `#btnPet` или `#btnIntroPet`, уход — `#pet-food`, `#pet-bath`, `#pet-sleep`, `#pet-fun`, `#pet-dress`. Проверить таяние потребностей: `save.pet.t = Date.now() - 10*3.6e6; persist()` и перезагрузить. Мяч: касание по `#mg`, когда виден `#mgStage .target`; пузыри — касание у `toScreen()` спрайта с `SOAP_TEX`; сон — медленные `pointermove` (до ~1500 px/с) рядом с малышом.
 - Когда панель браузера скрыта, скриншоты обрезаются. Проверяй через JS или открой панель.
 
 ## Публикация

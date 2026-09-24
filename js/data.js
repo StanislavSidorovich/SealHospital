@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, fish, shells, owned, decor, shifts}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, fish, shells, owned, decor, shifts, pet}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -26,7 +26,20 @@ function sanitize(d){
     shells:Number.isFinite(d.shells) ? Math.max(0, d.shells) : 0,   // ракушки — валюта (Фаза 2)
     owned:strList(d.owned),    // купленное в лавке (id из SHOP)
     decor:strList(d.decor),    // какие украшения сейчас стоят на льдине
-    shifts:Number.isFinite(d.shifts) ? d.shifts : 0};   // сколько смен отработано
+    shifts:Number.isFinite(d.shifts) ? d.shifts : 0,   // сколько смен отработано
+    pet:sanitizePet(d.pet)};   // свой тюленёнок (Фаза 3) или null, пока не познакомились
+}
+// pet = {name, f, coat, born, xp, t, needs:{food, bath, sleep, fun}, wear:{head, face}}
+// needs — от 0 (очень хочет) до 1 (всё хорошо), тают со временем; t — когда их пересчитали последний раз
+function sanitizePet(p){
+  if(!p || typeof p !== 'object' || typeof p.name !== 'string' || !p.name.trim()) return null;
+  const n = p.needs && typeof p.needs === 'object' ? p.needs : {}, level = v => Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5;
+  const w = p.wear && typeof p.wear === 'object' ? p.wear : {};
+  return {name:p.name.trim().slice(0, 14), f:!!p.f, coat:typeof p.coat === 'string' ? p.coat : 'snow',
+    born:Number.isFinite(p.born) ? p.born : Date.now(), xp:Number.isFinite(p.xp) ? Math.max(0, p.xp) : 0,
+    t:Number.isFinite(p.t) ? p.t : Date.now(),
+    needs:{food:level(n.food), bath:level(n.bath), sleep:level(n.sleep), fun:level(n.fun)},
+    wear:Object.fromEntries(['head', 'face'].filter(k => typeof w[k] === 'string').map(k => [k, w[k]]))};
 }
 function strList(a){ return Array.isArray(a) ? a.filter(x => typeof x === 'string') : []; }
 function loadSave(){

@@ -82,7 +82,7 @@ async function wakeUp(s){
 /* ---------- событие смены ---------- */
 async function runEvent(){
   $('#card').hidden = true;
-  if(save.shifts % 2 === 0) await evShells(); else await evPup();
+  if(save.shifts % 2 === 0) await evPup(); else await evShells();   // малыш — уже в первой смене: после неё он останется жить (Фаза 3)
 }
 // ракушка-гребешок: приплюснутый шарик с рёбрышками и «ушками» у основания
 const SHELL_TEX = canvasTex(64, (g, s) => {
@@ -143,13 +143,14 @@ async function evShells(){
 }
 const PUP_COLORS = [0xF8DDE4, 0xE6ECF5, 0xEFE4CF, 0xFFFFFF, 0xDCEBDF];
 async function evPup(){
-  const pup = makeSeal({name:'Малыш', f:false, color:PUP_COLORS[Math.floor(Math.random()*PUP_COLORS.length)]});
+  const my = save.pet;   // свой малыш приплывает проведать доктора на работе
+  const pup = my ? makePetSeal() : makeSeal({name:'Малыш', f:false, color:PUP_COLORS[Math.floor(Math.random()*PUP_COLORS.length)]});
   pup.root.scale.setScalar(0.62); setMood(pup, 'ok'); extraSeals.add(pup);
   await arrive(pup);
-  sfx.arf(); floatText('Привет!', headTop(pup));
+  sfx.arf(); floatText(my ? 'Привет, доктор!' : 'Привет!', headTop(pup));
   focusCam(worldOf(pup, new V3(0, -0.5, 0)), 2.4, 0.1);
   await wait(0.4);
-  mgOpen('Малыш приплыл в гости. Обними его!');
+  mgOpen(my ? `${my.name} ${gg('приплыл', 'приплыла')} тебя проведать. Обними!` : 'Малыш приплыл в гости. Обними его!');
   await new Promise(r => mgOn(mgRoot, 'pointerdown', e => {
     const c = toScreen(worldOf(pup, new V3(0, -0.4, 0)));
     if(Math.hypot(c.x - e.clientX, c.y - e.clientY) < 130) r();
@@ -164,7 +165,8 @@ async function evPup(){
   floatText('Это тебе!', headTop(pup), '#D9527E');
   addShells(5, toScreen(headTop(pup)));
   await wait(1.2);
-  toast('Малыш: «Можно я ещё приплыву?» 🦭', 3200);
+  if(my){ my.xp += 3; persist(); }
+  toast(my ? `${my.name}: «Я подожду тебя в уголке!» 🦭` : 'Малыш: «Можно я ещё приплыву?» 🦭', 3200);
   unfocusCam();
   await wait(0.6);
   await leave(pup); extraSeals.delete(pup);
@@ -194,6 +196,8 @@ function showResults(){
   const step = () => { shown = Math.min(shift.shells, shown + Math.max(1, Math.ceil(shift.shells/20))); total.textContent = `+${shown} 🐚`; if(shown < shift.shells) setTimeout(step, 45); };
   setTimeout(step, 1900);
   $('#card').hidden = true; $('#tools').hidden = true; $('#wardrobe').hidden = true;
+  $('#btnShift').textContent = adoptPending() ? 'Кто там плывёт? 🦭' : 'Новая смена';
+  $('#btnResPet').hidden = !save.pet;
   $('#results').hidden = false;
 }
 function startShift(){
@@ -201,7 +205,12 @@ function startShift(){
   newShift(); $('#tools').hidden = false;
   spawnPatient();
 }
-$('#btnShift').addEventListener('click', () => { sfx.tap(); startShift(); });
+$('#btnShift').addEventListener('click', () => {
+  sfx.tap();
+  if(adoptPending()){ $('#results').hidden = true; return adopt(); }
+  startShift();
+});
+$('#btnResPet').addEventListener('click', () => { $('#results').hidden = true; goPet(true); });
 $('#btnResShop').addEventListener('click', openShop);
 
 // покадрово: гости событий и «Z-z-z» над спящим пациентом

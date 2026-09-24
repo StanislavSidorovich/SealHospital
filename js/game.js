@@ -227,6 +227,7 @@ function snapshot(){
 /* ---------------- input ---------------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 canvas.addEventListener('pointerdown', e => {
+  if(petMode) return petTap(e);
   if(!S || busy) return;
   const rect = canvas.getBoundingClientRect();
   ndc.set((e.clientX - rect.left)/rect.width*2 - 1, -((e.clientY - rect.top)/rect.height)*2 + 1);
@@ -253,7 +254,13 @@ $('#btnStart').addEventListener('click', async () => {
   ac(); sfx.good(); $('#intro').hidden = true;
   if(started) return; started = true;
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
-  startShift();
+  if(adoptPending()) adopt(); else startShift();   // сыгравших смену у льдины ждёт малыш (Фаза 3)
+});
+$('#btnIntroPet').addEventListener('click', async () => {
+  ac(); sfx.good(); $('#intro').hidden = true;
+  if(started) return; started = true;
+  try{ await document.fonts.load('40px Pangolin'); }catch(e){}
+  goPet(true);
 });
 
 /* ---------------- camera & loop ---------------- */
@@ -261,6 +268,8 @@ const camBase = new V3(), camTarget = new V3();
 // Приближение для мини-игр: камера плавно наезжает на center так, чтобы влез предмет размером size.
 // lift > 0 поднимает предмет выше середины экрана (когда внизу панель мини-игры).
 const camFocus = {k:0, want:0, center:new V3(), size:3, lift:0};
+// Сдвиг всей камеры: 0 — больница, PET_POS — уголок малыша (js/pet.js)
+const camOff = new V3(), camOffWant = new V3();
 function focusCam(center, size = 3, lift = 0){ camFocus.center.copy(center); camFocus.size = size; camFocus.lift = lift; camFocus.want = 1; }
 function unfocusCam(){ camFocus.want = 0; }
 const _camPos = new V3(), _camLook = new V3(), _focusLook = new V3();
@@ -284,8 +293,9 @@ function frame(ts){
   updateWater(t);
   mgTicks.forEach(f => f(dt));
   const sway = reduced ? 0 : 1;
-  _camPos.set(camBase.x + Math.sin(t*0.25)*0.3*sway, camBase.y + Math.sin(t*0.4)*0.06*sway, camBase.z);
-  _camLook.copy(camTarget);
+  camOff.lerp(camOffWant, Math.min(1, dt*2)); snow.position.x = camOff.x;
+  _camPos.set(camBase.x + Math.sin(t*0.25)*0.3*sway, camBase.y + Math.sin(t*0.4)*0.06*sway, camBase.z).add(camOff);
+  _camLook.copy(camTarget).add(camOff);
   camFocus.k += (camFocus.want - camFocus.k)*Math.min(1, dt*3.5);
   if(camFocus.k > 0.001){
     const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), fd = Math.max(camFocus.size/2/(tv*camera.aspect), camFocus.size/2/tv);
@@ -305,8 +315,8 @@ function frame(ts){
 
   if(S){
     const s = S.seal; updateSeal(s, t, dt);
-    sneezeTick(s, dt, S.stage === 'treat' && S.ail.sneeze && !busy && !shopOpen);
-    if(S.stage === 'treat' && !busy){
+    sneezeTick(s, dt, S.stage === 'treat' && S.ail.sneeze && !busy && !shopOpen && !petMode);
+    if(S.stage === 'treat' && !busy && !petMode){
       if(S.ail.hungry){
         s.rumbleT -= dt;
         if(s.rumbleT < 0){ s.rumbleT = 5 + Math.random()*2; floatText('урр...', worldOf(s, new V3(0.9, -0.9, 0.3)), '#6B6A7E');
@@ -315,12 +325,16 @@ function frame(ts){
     }
   }
   shiftTick(t, dt);
+  petTick(t, dt);
   updateParts(dt);
   renderer.render(scene, camera);
 }
 
 buildTools(); renderMute(); renderAlbumCount(); renderBucket();
 if(save.progress){ const st = $('#introStat'); st.textContent = `Ты уже вылечила пациентов: ${save.progress} · ракушек: ${save.shells} 🐚`; st.hidden = false; $('#btnStart').textContent = 'Начать смену'; }
+if(save.pet){ $('#introStat').textContent += ` · ${save.pet.name} ждёт тебя 🦭`; $('#btnIntroPet').hidden = false; }
+else if(adoptPending()){ $('#introStat').textContent += ' · Кто-то ждёт тебя у льдины…'; $('#btnStart').textContent = 'Открыть больницу'; }
+renderPetBtn();
 requestAnimationFrame(loop);
 // ?test=1: скрытая вкладка почти не даёт кадров, поэтому подталкиваем кадры таймером
 if(TEST) setInterval(() => { if(performance.now() - last > 120) frame(performance.now()); }, 60);
