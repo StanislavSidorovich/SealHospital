@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, fish, shells, owned, decor, shifts, pet, mail}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, fish, shells, owned, decor, shifts, pet, mail, home}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -28,7 +28,14 @@ function sanitize(d){
     decor:strList(d.decor),    // какие украшения сейчас стоят на льдине
     shifts:Number.isFinite(d.shifts) ? d.shifts : 0,   // сколько смен отработано
     pet:sanitizePet(d.pet),    // свой тюленёнок (Фаза 3) или null, пока не познакомились
-    mail:sanitizeMail(d.mail)};   // папина почта (Фаза 7)
+    mail:sanitizeMail(d.mail),   // папина почта (Фаза 7)
+    home:sanitizeHome(d.home)};  // домик малыша (Фаза 4)
+}
+// home = {s:{слот: id вещи}, v} — мебель в иглу малыша (js/home.js) и заходили ли туда. Нет поля — стартовая мебель.
+// Купленная мебель, как и всё из лавки, лежит в owned; пустой слот — просто нет ключа.
+function sanitizeHome(h){
+  if(!h || typeof h !== 'object' || !h.s || typeof h.s !== 'object') return {s:{bed:'bed_basic', window:'win_basic', shelf:'shelf'}, v:false};
+  return {s:Object.fromEntries(Object.entries(h.s).filter(([, v]) => typeof v === 'string')), v:!!h.v};
 }
 // mail = {got:[{id, t}], d} — полученные письма (id из letterId(), t — когда открыли) и день последнего «письма дня» (ymd)
 function sanitizeMail(m){

@@ -47,6 +47,7 @@ const NEED_TEX = {food:bubbleTex('🐟'), bath:bubbleTex('🛁'), sleep:bubbleTe
 const HEART_XP = 30;   // столько опыта — одно сердечко дружбы
 const MISS_H = 8;     // столько часов малыша не навещали — он встречает радостно: «Я скучал!» (без упрёков)
 let petMode = false, petSeal = null, petHelloShown = false;
+let homeMode = false;   // малыш у себя в иглу (js/home.js); petMode при этом тоже включён
 const gg = (m, f) => save.pet && save.pet.f ? f : m;   // род: «сыт / сыта»
 const coatOf = id => PET_COATS.find(c => c.id === id) || PET_COATS[0];
 const hexCss = c => '#' + c.toString(16).padStart(6, '0');
@@ -85,7 +86,7 @@ const petCorner = new THREE.Group(); petCorner.position.copy(PET_POS); scene.add
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.55), inkMat); pole.position.y = 1.0; h.add(pole);
   const heart = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.55), new THREE.MeshBasicMaterial({map:TEX.heart, transparent:true, side:THREE.DoubleSide}));
   heart.position.y = 1.4; h.add(heart);
-  petCorner.add(h);
+  petCorner.add(h); petCorner.userData.house = h; petCorner.userData.heart = heart;   // касание по домику — внутрь (js/home.js)
   // миска с рыбками
   const bowl = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.24, 0.18, 24), toon(0xFF9BB8)), 1.08);
   bowl.position.set(1.2, 0.34, 1.15); petCorner.add(bowl);
@@ -209,7 +210,7 @@ function wishPick(){
   const pool = c.filter(k => k !== lastWish);
   return pool.length ? pool[Math.floor(Math.random()*pool.length)] : 'ball';
 }
-const wishCan = () => petMode && !petLow() && !growPending() && !(petSeal.letter && petSeal.letter.visible) && now >= wishT;
+const wishCan = () => petMode && !homeMode && !petLow() && !growPending() && !(petSeal.letter && petSeal.letter.visible) && now >= wishT;
 function wishDone(k){
   if(!petWish || (k && k !== petWish)) return;
   lastWish = petWish; petWish = null; wishShown = false; wishT = now + WISH_WAIT;
@@ -226,10 +227,10 @@ function petRefresh(){
     const low = petLow();
     setMood(petSeal, now < petSeal.happyUntil ? 'happy' : low && save.pet.needs[low] < 0.25 ? 'sad' : 'ok');
     if(!petWish && wishCan()) petWish = wishPick();
-    const wish = petWish && wishCan() ? petWish : null, map = low ? NEED_TEX[low] : wish && WISHES[wish].tex;
+    const wish = petWish && wishCan() ? petWish : null, map = homeMode ? null : low ? NEED_TEX[low] : wish && WISHES[wish].tex;   // в домике пузырей нет: уход — снаружи
     petSeal.bubble.visible = !!map;
     if(map && petSeal.bubble.material.map !== map){ petSeal.bubble.material.map = map; petSeal.bubble.material.needsUpdate = true; }
-    if(wish && !low && !wishShown){ wishShown = true; sfx.arf(); toast(L(`${save.pet.name}: «${WISHES[wish].say()}» Нажми на облачко ${WISHES[wish].ic}`, `${save.pet.name}: “${WISHES[wish].say()}” Tap the cloud ${WISHES[wish].ic}`), 3400); }
+    if(wish && !low && !wishShown && !homeMode){ wishShown = true; sfx.arf(); toast(L(`${save.pet.name}: «${WISHES[wish].say()}» Нажми на облачко ${WISHES[wish].ic}`, `${save.pet.name}: “${WISHES[wish].say()}” Tap the cloud ${WISHES[wish].ic}`), 3400); }
   }
   renderPetCard(); renderPetBar(); renderPetBtn();
 }
@@ -278,6 +279,7 @@ function renderPetBtn(){
   const grow = growPending();
   $('#petAlert').textContent = grow ? '✨' : '!';
   $('#petAlert').hidden = petMode || !(grow || NEED_KEYS.some(k => save.pet.needs[k] < 0.35));
+  renderHomeBtn();
 }
 // опыт дружбы: «+5 💗» над малышом, каждые HEART_XP — новое сердечко
 function petGive(n){
@@ -302,6 +304,7 @@ function setPetMode(on){
 function goPet(on){
   if(on === petMode || !save.pet) return;
   if(busy || !mgRoot.hidden) return toast(L('Сначала закончи то, что начала 🙂', 'Finish what you started first 🙂'));
+  if(homeMode) homeExit();   // из домика — сразу в больницу
   sfx.whoosh(); setPetMode(on);
   if(on){
     const missed = petMissed(); save.pet.seen = Date.now();
@@ -490,7 +493,7 @@ async function petNope(msg){
 function petTap(e){
   if(!petSeal || busy || !mgRoot.hidden) return;
   if(!petSeal.sleeping && bubbleHit(e)){ const low = petLow(); if(low){ sfx.tap(); return petDo(low); } return wishGo(); }
-  if(!petPart(e)) return;
+  if(!petPart(e)){ if(homeHouseHit(e)) homeEnter(); return; }   // мимо малыша, но по иглу — заходим в домик
   if(petLetterTap()) return;   // в зубах письмо от папы (js/mail.js)
   if(petSeal.sleeping){ setBusy(true); petWake().then(() => { setBusy(false); petRefresh(); }); return; }
   stroke = {id:e.pointerId, x:e.clientX, y:e.clientY, d:0, fx:0, done:false};
@@ -822,7 +825,7 @@ async function petDress(){
 /* ---------- рост: праздник на новой стадии ---------- */
 // Ждёт, пока малыш свободен и на экране нет окон: опыт мог прийти и в больнице (пациенты, событие смены).
 function petMaybeGrow(){
-  if(!petMode || busy || !mgRoot.hidden || !growPending() || document.querySelector('.overlay:not([hidden])')) return;
+  if(!petMode || homeMode || busy || !mgRoot.hidden || !growPending() || document.querySelector('.overlay:not([hidden])')) return;
   petGrow();
 }
 async function petGrow(){
@@ -921,6 +924,7 @@ function petStrokeEnd(e){
   floatText(L(['Ар!', 'Хи-хи', '♡', 'Ар-ар!'], ['Arf!', 'Hehe', '♡', 'Arf arf!'])[Math.floor(Math.random()*4)], headTop(petSeal));
   emit(TEX.heart, headTop(petSeal), {v:new V3(0, 1, 0.3), life:0.9, size:0.3});
   const low = petLow(), wish = petSeal.bubble.visible && petWish;
+  if(homeMode) return toast(L('Погладь пальцем ♡ А ещё нажимай на вещи — поиграем!', 'Pet with your finger ♡ And tap things — let us play!'));
   toast(low ? L(`${save.pet.name}: «${NEEDS[low].say}» Нажми ${NEEDS[low].ic} внизу`, `${save.pet.name}: “${NEEDS[low].say}” Tap ${NEEDS[low].ic} below`)
     : wish && wish !== 'pat' ? L(`${save.pet.name}: «${WISHES[wish].say()}» Нажми на облачко ${WISHES[wish].ic}`, `${save.pet.name}: “${WISHES[wish].say()}” Tap the cloud ${WISHES[wish].ic}`)
     : L('Погладь пальцем — по голове или по пузику ♡', 'Pet with your finger — on the head or the tummy ♡'));

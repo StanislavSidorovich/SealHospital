@@ -35,6 +35,7 @@
 <div id="app">
   <canvas id="c" aria-label="Льдина с тюленем" data-en-aria="An ice floe with a seal"></canvas>
   <div class="night" id="night"></div>
+  <div class="home-dim" id="homeDim"></div>
 
   <!-- Слой мини-игр: сюда каждая мини-игра кладёт свой интерфейс (js/minigames.js) -->
   <div class="mg" id="mg" hidden>
@@ -55,6 +56,13 @@
       <p id="petStatus"></p>
       <div class="love"><span class="lbl" data-en="💗 Friendship">💗 Дружба</span><span class="bar"><i id="petLove"></i></span><b id="petHearts">0</b></div>
       <p class="grow-hint" id="petGrowHint"></p>
+    </section>
+    <!-- Домик малыша изнутри (js/home.js) -->
+    <section class="card home-card" id="homeCard" aria-live="polite">
+      <div class="card-label"><span aria-hidden="true">🏠</span><span data-en="My igloo">Мой иглу</span></div>
+      <h2 class="display" id="homeName"></h2>
+      <p id="homeHint"></p>
+      <p class="count" id="homeCount"></p>
     </section>
     <div class="corner" id="corner">
       <button class="round" id="btnSound" aria-label="Звук" data-en-aria="Sound">
@@ -83,6 +91,10 @@
         <span aria-hidden="true" id="petIc">🦭</span>
         <span class="badge alert" id="petAlert" hidden>!</span>
       </button>
+      <button class="round home" id="btnHome" aria-label="Мой домик" data-en-aria="My home" hidden>
+        <span aria-hidden="true" id="homeIc">🏠</span>
+        <span class="badge alert" id="homeAlert" hidden>✨</span>
+      </button>
       <button class="round gear" id="btnSettings" aria-label="Настройки" data-en-aria="Settings"><span aria-hidden="true">⚙️</span></button>
     </div>
   </div>
@@ -90,6 +102,8 @@
   <nav class="tools" id="tools" hidden aria-label="Лечение" data-en-aria="Treatment"></nav>
   <nav class="tools wardrobe" id="wardrobe" hidden aria-label="Нарядить" data-en-aria="Dress up"></nav>
   <nav class="tools pet-bar" id="petBar" aria-label="Уход за малышом" data-en-aria="Pup care"></nav>
+  <nav class="tools home-bar" id="homeBar" aria-label="Домик" data-en-aria="Home"></nav>
+  <div class="fade" id="fade"></div>
   <div class="toast" id="toast" hidden></div>
 
   <div class="overlay" id="intro">
@@ -242,6 +256,7 @@
         <button data-tab="decor" data-en="For the hospital">Больнице</button>
       </div>
       <div class="shop-grid" id="shopGrid"></div>
+      <p class="shop-note" id="shopNote"></p>
       <button class="btn" id="btnBuy" data-en="Pick what you like">Выбери, что нравится</button>
     </div>
   </div>
@@ -260,6 +275,7 @@
 <script src="js/shift.js"></script>
 <script src="js/pet.js"></script>
 <script src="js/walk.js"></script>
+<script src="js/home.js"></script>
 <script src="js/mail.js"></script>
 <script src="js/game.js"></script>
 </body>

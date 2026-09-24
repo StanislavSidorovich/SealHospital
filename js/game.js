@@ -244,7 +244,7 @@ function snapshot(s = S.seal, pad = 1.75){
 /* ---------------- input ---------------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 canvas.addEventListener('pointerdown', e => {
-  if(petMode) return petTap(e);
+  if(petMode) return homeMode ? homeTap(e) : petTap(e);
   if(!S || busy) return;
   const rect = canvas.getBoundingClientRect();
   ndc.set((e.clientX - rect.left)/rect.width*2 - 1, -((e.clientY - rect.top)/rect.height)*2 + 1);
@@ -335,7 +335,7 @@ $('#btnIntroPet').addEventListener('click', async () => {
 const camBase = new V3(), camTarget = new V3();
 // Приближение для мини-игр: камера плавно наезжает на center так, чтобы влез предмет размером size.
 // lift > 0 поднимает предмет выше середины экрана (когда внизу панель мини-игры).
-const camFocus = {k:0, want:0, center:new V3(), size:3, lift:0, up:0.35};
+const camFocus = {k:0, want:0, center:new V3(), size:3, lift:0, up:0.35, yaw:0};   // yaw — поворот вокруг центра (в домике можно повращать)
 // Сдвиг всей камеры: 0 — больница, PET_POS — уголок малыша (js/pet.js)
 const camOff = new V3(), camOffWant = new V3();
 // up — насколько камера смотрит сверху (0.35 — чуть сверху; на прогулке выше, чтобы малыш не заслонял льдинки)
@@ -371,7 +371,7 @@ function frame(ts){
     _focusLook.copy(camFocus.center); _focusLook.y -= camFocus.lift;
     const k = ease.io(camFocus.k);
     _camLook.lerp(_focusLook, k);
-    _camPos.lerp(_focusLook.clone().add(new V3(0, fd*camFocus.up, fd)), k);
+    _camPos.lerp(_focusLook.clone().add(new V3(Math.sin(camFocus.yaw)*fd, fd*camFocus.up, Math.cos(camFocus.yaw)*fd)), k);
   }
   camera.position.copy(_camPos);
   camera.lookAt(_camLook);
@@ -395,7 +395,7 @@ function frame(ts){
     }
   }
   shiftTick(t, dt);
-  petTick(t, dt); walkTick(t); mailTick(t, dt);
+  petTick(t, dt); walkTick(t); homeTick(t, dt); mailTick(t, dt);
   updateParts(dt);
   renderer.render(scene, camera);
 }

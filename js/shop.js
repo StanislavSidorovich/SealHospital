@@ -263,14 +263,18 @@ function thumb(id){
   const obj = it.kind === 'wear' ? WEAR[id]() : DECOR[id](true);
   obj.position.set(0, 0, 0); obj.rotation.set(it.kind === 'wear' ? 0.25 : 0, it.id === 'snowman' ? 0 : 0.35, 0);
   if(id === 'glasses') obj.rotation.set(0.1, 0, 0);
+  return thumbCache[id] = objThumb(obj, new V3(0, id === 'rug' ? 0.9 : 0.35, 1));
+}
+// 3D-вещь → картинка 192×192 с прозрачным фоном; dir — откуда смотрит камера, light — яркость (мебель домика светится тише, js/home.js)
+function objThumb(obj, dir, light = {hemi:0.75, sun:0.7}){
   const sc = new THREE.Scene();
-  sc.add(new THREE.HemisphereLight(0xffffff, 0xA9D4E6, 0.75));
-  const l = new THREE.DirectionalLight(0xffffff, 0.7); l.position.set(4, 8, 6); sc.add(l);
+  sc.add(new THREE.HemisphereLight(0xffffff, 0xA9D4E6, light.hemi));
+  const l = new THREE.DirectionalLight(0xffffff, light.sun); l.position.set(4, 8, 6); sc.add(l);
   sc.add(obj);
   const sphere = new THREE.Box3().setFromObject(obj).getBoundingSphere(new THREE.Sphere());
   const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
   const dist = sphere.radius/Math.sin(THREE.MathUtils.degToRad(15))*0.85;   // сфера с запасом — чуть ближе, чтобы вещь была крупнее
-  cam.position.copy(sphere.center).add(new V3(0, id === 'rug' ? 0.9 : 0.35, 1).normalize().multiplyScalar(dist)); cam.lookAt(sphere.center);
+  cam.position.copy(sphere.center).add(dir.clone().normalize().multiplyScalar(dist)); cam.lookAt(sphere.center);
   const SZ = 192, rt = new THREE.WebGLRenderTarget(SZ, SZ), px = new Uint8Array(SZ*SZ*4);
   const prevColor = renderer.getClearColor(new THREE.Color()), prevAlpha = renderer.getClearAlpha();
   renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear();
@@ -280,7 +284,7 @@ function thumb(id){
   const g = c.getContext('2d'), img = g.createImageData(SZ, SZ);
   for(let y = 0; y < SZ; y++) img.data.set(px.subarray((SZ - 1 - y)*SZ*4, (SZ - y)*SZ*4), y*SZ*4);   // WebGL читает снизу вверх
   g.putImageData(img, 0, 0);
-  return thumbCache[id] = c.toDataURL();
+  return c.toDataURL();
 }
 
 /* ---------- лавка ---------- */
@@ -306,6 +310,7 @@ function renderShop(){
     b.addEventListener('click', () => { sfx.tap(); shopSel = it.id; renderShop(); });
     grid.appendChild(b);
   }
+  $('#shopNote').textContent = save.pet ? L(`Мебель для домика ${gg('малыша', 'малышки')} — внутри иглу 🏠`, `Furniture for your pup's home is inside the igloo 🏠`) : '';
   const btn = $('#btnBuy'), it = shopSel && shopItem(shopSel);
   btn.classList.remove('off');
   if(!it){ btn.textContent = L('Выбери, что нравится', 'Pick what you like'); btn.classList.add('off'); }
