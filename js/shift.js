@@ -145,10 +145,11 @@ const PUP_COLORS = [0xF8DDE4, 0xE6ECF5, 0xEFE4CF, 0xFFFFFF, 0xDCEBDF];
 async function evPup(){
   const my = save.pet;   // свой малыш приплывает проведать доктора на работе
   const pup = my ? makePetSeal() : makeSeal({name:'Малыш', f:false, color:PUP_COLORS[Math.floor(Math.random()*PUP_COLORS.length)]});
-  pup.root.scale.setScalar(0.62); setMood(pup, 'ok'); extraSeals.add(pup);
+  if(!my) pup.root.scale.setScalar(0.62);   // свой малыш уже нужного роста (makePetSeal)
+  setMood(pup, 'ok'); extraSeals.add(pup);
   await arrive(pup);
   sfx.arf(); floatText(my ? 'Привет, доктор!' : 'Привет!', headTop(pup));
-  focusCam(worldOf(pup, new V3(0, -0.5, 0)), 2.4, 0.1);
+  focusCam(worldOf(pup, new V3(0, -0.5, 0)), 2.4*(my ? petK() : 1), 0.1);
   await wait(0.4);
   mgOpen(my ? `${my.name} ${gg('приплыл', 'приплыла')} тебя проведать. Обними!` : 'Малыш приплыл в гости. Обними его!');
   await new Promise(r => mgOn(mgRoot, 'pointerdown', e => {

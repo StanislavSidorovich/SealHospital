@@ -37,10 +37,11 @@
       <ul class="needs" id="pNeeds"></ul>
     </section>
     <section class="card pet-card" id="petCard" hidden aria-live="polite">
-      <div class="card-label"><span class="heart-ic">♡</span>Мой малыш</div>
+      <div class="card-label"><span class="heart-ic">♡</span><span id="petStage">Малыш</span></div>
       <h2 class="display" id="petName"></h2>
       <p id="petStatus"></p>
       <div class="love"><span class="lbl">💗 Дружба</span><span class="bar"><i id="petLove"></i></span><b id="petHearts">0</b></div>
+      <p class="grow-hint" id="petGrowHint"></p>
     </section>
     <div class="corner" id="corner">
       <button class="round" id="btnSound" aria-label="Звук">
@@ -122,10 +123,22 @@
 
   <div class="overlay" id="album" hidden>
     <div class="panel">
-      <h2 class="display">Мои пациенты</h2>
+      <h2 class="display">Альбом</h2>
       <p class="thanks" id="albumSub"></p>
       <div class="album-grid" id="albumGrid"></div>
       <button class="btn" id="btnAlbumClose">Вернуться в больницу</button>
+    </div>
+  </div>
+
+  <!-- Праздник роста своего малыша (js/pet.js, petGrow) -->
+  <div class="overlay" id="grow" hidden>
+    <div class="panel grow">
+      <img class="thumb" id="growImg" alt="Мой малыш">
+      <h2 class="display" id="growTitle">Подрос!</h2>
+      <p id="growText"></p>
+      <ol class="stages" id="growStages"></ol>
+      <p class="earned display" id="growGift"></p>
+      <button class="btn" id="btnGrowOk">Ура! ♡</button>
     </div>
   </div>
 

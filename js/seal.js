@@ -89,7 +89,7 @@ function makeSeal(p){
   return {p, root, inner, head, body, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf, scarfMats:[ringMat, tailMat], hat, windup:null, wear:{}, sleeping:false,
     bodyMat, base:new THREE.Color(p.color), coldCol:new THREE.Color(p.color).lerp(new THREE.Color(0x9FC8EE), 0.45),
     mouthLocal, noseLocal, hits, nod:0, sneezeNod:0, shake:0, wobble:0, flap:0, blinkT:2, sneezeT:2.5, rumbleT:3.5,
-    swimming:false, cold:false};
+    swimming:false, cold:false, bodyK:new V3(1, 1, 1)};
 }
 /* шарфик: цвет + узор, текстуры кешируются */
 const SCARF_COLORS = ['#FF7A9C', '#FFB547', '#7FD1A8', '#7FB8F0', '#B69CF2', '#F5F1E8'];
@@ -146,7 +146,7 @@ function applyAilments(s, a){
   s.cold = !!a.cold;
 }
 function updateSeal(s, t, dt){
-  s.body.scale.set(1.15*(1 + s.wobble), 0.8*(1 + Math.sin(t*2.2)*0.025), 1.3);
+  s.body.scale.set(1.15*(1 + s.wobble)*s.bodyK.x, 0.8*(1 + Math.sin(t*2.2)*0.025)*s.bodyK.y, 1.3*s.bodyK.z);   // bodyK — пропорции (стадии роста своего малыша)
   s.head.rotation.set(s.nod + s.sneezeNod, s.shake + Math.sin(t*0.7)*0.08, Math.sin(t*1.1)*0.06);
   for(const f of s.flippers){ const sd = f.userData.s; f.rotation.z = -0.35*sd + sd*(Math.sin(t*3 + sd)*0.06 + s.flap*Math.sin(t*14)*0.5); }
   if(s.swimming) s.inner.position.y = Math.sin(t*4)*0.06;

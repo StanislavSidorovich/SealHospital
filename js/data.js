@@ -29,15 +29,19 @@ function sanitize(d){
     shifts:Number.isFinite(d.shifts) ? d.shifts : 0,   // сколько смен отработано
     pet:sanitizePet(d.pet)};   // свой тюленёнок (Фаза 3) или null, пока не познакомились
 }
-// pet = {name, f, coat, born, xp, t, needs:{food, bath, sleep, fun}, wear:{head, face}}
+// pet = {name, f, coat, born, xp, stage, t, needs:{food, bath, sleep, fun}, wear:{head, face}, pat:{d, n}}
 // needs — от 0 (очень хочет) до 1 (всё хорошо), тают со временем; t — когда их пересчитали последний раз
+// stage — стадия роста, которую уже отпраздновали (0 малыш … 4 сияющий); если опыт xp дорос до следующей — будет праздник
+// pat — сколько раз сегодня (d = дата) гладили за сердечки: ласка даёт опыт не больше PAT_MAX раз в день
 function sanitizePet(p){
   if(!p || typeof p !== 'object' || typeof p.name !== 'string' || !p.name.trim()) return null;
   const n = p.needs && typeof p.needs === 'object' ? p.needs : {}, level = v => Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5;
   const w = p.wear && typeof p.wear === 'object' ? p.wear : {};
   return {name:p.name.trim().slice(0, 14), f:!!p.f, coat:typeof p.coat === 'string' ? p.coat : 'snow',
     born:Number.isFinite(p.born) ? p.born : Date.now(), xp:Number.isFinite(p.xp) ? Math.max(0, p.xp) : 0,
+    stage:Number.isInteger(p.stage) ? Math.min(4, Math.max(0, p.stage)) : 0,
     t:Number.isFinite(p.t) ? p.t : Date.now(),
+    pat:p.pat && typeof p.pat.d === 'string' && Number.isFinite(p.pat.n) ? {d:p.pat.d, n:p.pat.n} : {d:'', n:0},
     needs:{food:level(n.food), bath:level(n.bath), sleep:level(n.sleep), fun:level(n.fun)},
     wear:Object.fromEntries(['head', 'face'].filter(k => typeof w[k] === 'string').map(k => [k, w[k]]))};
 }

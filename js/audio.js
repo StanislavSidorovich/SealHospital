@@ -47,6 +47,9 @@ const sfx = {
   star(){ [1047,1319,1568].forEach((f,i) => tone(f, 0.18, {type:'triangle', vol:0.08, delay:i*0.07})); },
   buy(){ [784,988,1175,1568,1976].forEach((f,i) => tone(f, 0.2, {type:'triangle', vol:0.08, delay:i*0.06})); },
   yawn(){ tone(520, 0.7, {vol:0.06, to:260}); },
+  grow(){ [523,587,659,698,784,880,988,1047,1175,1319].forEach((f,i) => tone(f, 0.2, {type:'triangle', vol:0.06 + i*0.004, delay:i*0.15})); },
+  sparkle(){ tone(2093 + Math.random()*400, 0.12, {vol:0.03}); tone(2637 + Math.random()*400, 0.16, {vol:0.025, delay:0.06}); },
+  purr(){ tone(190 + Math.random()*30, 0.35, {type:'triangle', vol:0.05, to:150}); },
   lullaby(){ [784,659,698,587,523].forEach((f,i) => tone(f, 0.45, {vol:0.05, delay:i*0.32})); }
 };
 function renderMute(){

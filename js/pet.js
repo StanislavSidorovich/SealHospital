@@ -1,13 +1,26 @@
-/* ---------------- мой тюленёнок (Фаза 3, часть 1): знакомство, уголок, потребности, уход ----------------
+/* ---------------- мой тюленёнок (Фаза 3): знакомство, уголок, потребности, уход, рост, ласка ----------------
    Малыш из события «в гости» остаётся жить у Сабрины. Его уголок — вторая льдина справа от больницы
    (PET_POS); кнопка 🦭/🏥 в углу плавно везёт туда камеру (camOff в game.js).
    Четыре потребности тают в реальном времени, у каждой своя мини-игра на слое #mg.
    Проиграть нельзя: малыш не болеет и не обижается, просто грустит и показывает пузырь-мысль.
+   Часть 2: за сердечки дружбы малыш растёт по стадиям STAGES (размер, пропорции, пятнышки, усы, сияние),
+   на новой стадии — праздник, фото в альбом и подарок.
    Подключается после shift.js и до game.js. */
 const PET_POS = new V3(10, 0, 0);           // центр льдины-уголка
 const PET_SPOT = new V3(10, 0.25, 0.2);     // где стоит малыш
-const PET_SCALE = 0.62;
-const PET_VIEW = new V3(0, -0.75, -2.2);   // в уголке камера чуть ближе: малыш меньше взрослого пациента
+// Стадии роста. at — сколько сердечек дружбы нужно; sc — размер; head — голова относительно тела (у малыша большая);
+// body — пропорции тела (x, y, z): с возрастом тюлень вытягивается
+const STAGES = [
+  {m:'Малыш',     f:'Малышка',   ic:'🍼', at:0,  sc:0.62, head:1.14, body:[0.95, 1, 0.9]},
+  {m:'Детёныш',   f:'Детёныш',   ic:'🐾', at:2,  sc:0.72, head:1.08, body:[0.98, 1, 0.96]},
+  {m:'Подросток', f:'Подросток', ic:'⭐', at:5,  sc:0.84, head:1.0,  body:[1, 1, 1.04]},
+  {m:'Взрослый',  f:'Взрослая',  ic:'🦭', at:11, sc:0.96, head:0.94, body:[1.02, 1.02, 1.1]},
+  {m:'Сияющий',   f:'Сияющая',   ic:'✨', at:17, sc:0.96, head:0.94, body:[1.02, 1.02, 1.1]}
+];
+const SHINY = STAGES.length - 1;
+const GROW_GIFT = 10;     // ракушек в подарок на новой стадии
+const PATIENT_XP = 2;     // малыш гордится доктором: за каждого вылеченного пациента (game.js)
+const PAT_XP = 1, PAT_MAX = 6;   // ласка: +1 опыт за «сеанс», не больше 6 раз в день
 const PET_COATS = [
   {id:'snow', c:0xFFFFFF, name:'Белоснежный'},
   {id:'pink', c:0xF6C4D3, name:'Розовый'},   // чуть насыщеннее, чем у пациентов: в мультяшном свете бледные почти не отличить
@@ -35,6 +48,15 @@ const gg = (m, f) => save.pet && save.pet.f ? f : m;   // род: «сыт / с�
 const coatOf = id => PET_COATS.find(c => c.id === id) || PET_COATS[0];
 const hexCss = c => '#' + c.toString(16).padStart(6, '0');
 const adoptPending = () => !save.pet && save.shifts >= 1;
+// GitHub Pages кеширует файлы ~10 минут: если data.js ещё старый, sanitizePet не знает новых полей — подставим
+function petFix(){ const p = save.pet; if(!p) return; if(!Number.isInteger(p.stage)) p.stage = 0; if(!p.pat) p.pat = {d:'', n:0}; }
+const stageOf = xp => STAGES.reduce((i, st, k) => xp >= st.at*HEART_XP ? k : i, 0);
+const stageName = (i, f = save.pet && save.pet.f) => f ? STAGES[i].f : STAGES[i].m;
+const growPending = () => !!save.pet && stageOf(save.pet.xp) > save.pet.stage;
+const petScale = () => STAGES[save.pet ? save.pet.stage : 0].sc;
+const petK = () => petScale()/STAGES[0].sc;   // во сколько раз малыш больше новорождённого: для камеры и ванны
+// в уголке камера ближе, чем в больнице: малыш меньше пациента; подрастает — камера отъезжает
+function petView(){ const q = 1 - 0.75*(petScale() - STAGES[0].sc)/(STAGES[3].sc - STAGES[0].sc); return new V3(0, -0.75*q, -2.2*q); }
 
 /* ---------- уголок: льдина, домик, табличка с именем, миска, мяч ---------- */
 const petCorner = new THREE.Group(); petCorner.position.copy(PET_POS); scene.add(petCorner);
@@ -91,20 +113,56 @@ const petBall = (() => {
 })();
 
 /* ---------- модель малыша ---------- */
+const GLOW_TEX = canvasTex(128, (g, w) => {
+  const r = g.createRadialGradient(w/2, w/2, w*0.12, w/2, w/2, w/2);
+  r.addColorStop(0, 'rgba(255,246,196,.95)'); r.addColorStop(0.5, 'rgba(255,205,228,.55)'); r.addColorStop(1, 'rgba(255,205,228,0)');
+  g.fillStyle = r; g.fillRect(0, 0, w, w);
+});
 function makePetSeal(p = save.pet){
-  const c = coatOf(p.coat);
-  const s = makeSeal({name:p.name, f:p.f, color:c.c, spot:c.spot});
-  s.root.scale.setScalar(PET_SCALE);
+  const c = coatOf(p.coat), sg = p.stage || 0, st = STAGES[sg];
+  // подросток и старше — в пятнышках, как настоящие нерпы (чуть темнее своего окраса)
+  const spot = c.spot || (sg >= 2 ? new THREE.Color(c.c).lerp(new THREE.Color(0x5F6E8C), 0.55).getHex() : undefined);
+  const s = makeSeal({name:p.name, f:p.f, color:c.c, spot});
+  s.root.scale.setScalar(st.sc);
+  s.head.scale.setScalar(st.head); s.head.position.y += (st.head - 1)*0.6; if(s.bodyK) s.bodyK.set(...st.body);
   // ротик «о»: малыш открывает его, когда к нему несут рыбку
   const o = onHead(new THREE.Mesh(new THREE.CircleGeometry(0.075, 20), inkMat), 0, -0.16, 1, 0.012);
   o.scale.y = 1.2; o.visible = false; s.head.add(o); s.mouthO = o;
+  if(sg < 2){   // хохолок у малыша и детёныша
+    const tuft = new THREE.Group(); tuft.position.set(0, 0.7, 0.05);
+    for(const [x, r, k] of [[-0.08, 0.55, 0.08], [0.02, 0, 0.1], [0.11, -0.6, 0.075]]){
+      const t = addOutline(new THREE.Mesh(SMALL, s.bodyMat), 1.18); t.scale.set(k*0.7, k*1.7, k*0.7);
+      t.position.set(x, k*1.2, 0); t.rotation.z = r; tuft.add(t);
+    }
+    s.head.add(tuft); s.tuft = tuft;
+  }
+  if(sg >= 2){   // пятнышки и на макушке: со спины их не видно, а с макушки — сразу
+    const sm = toon(spot);
+    for(const [x, y, z, k] of [[0.5, 0.62, 0.35, 0.13], [-0.58, 0.52, 0.3, 0.1], [0.12, 0.95, 0.1, 0.09], [-0.25, 0.85, -0.3, 0.12]]){
+      const m = onHead(new THREE.Mesh(SMALL, sm), x, y, z, -0.012); m.scale.set(k, k*0.8, 0.03); s.head.add(m);
+    }
+  }
+  if(sg >= 2) for(const sd of [-1, 1]) for(const [x, y] of [[0.17, -0.02], [0.24, -0.08], [0.16, -0.11]])   // точки-усики на мордочке
+    s.head.add(onHead(new THREE.Mesh(new THREE.CircleGeometry(0.018, 10), inkMat), x*sd, y, 1, 0.006));
+  if(sg >= 3) for(const sd of [-1, 1]) for(const [y, r] of [[-0.02, 0.12], [-0.09, -0.1]]){   // взрослые усы
+    const w = onHead(new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.016, 0.01), inkMat), 0.36*sd, y, 0.95, 0.01);
+    w.rotateZ(r*sd); s.head.add(w);
+  }
+  if(sg === SHINY){   // сияние: мягкий ореол позади и радужный отлив (переливается в petTick)
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX, transparent:true, depthWrite:false}));
+    halo.position.set(0, 1.5, -1.7); halo.scale.setScalar(5.2); s.inner.add(halo); s.halo = halo;
+    s.bodyMat.emissive.setHSL(0.12, 0.8, 0.12);
+  }
   for(const slot of ['head', 'face']){ const id = p.wear && p.wear[slot]; if(id && WEAR[id] && owns(id)) wearOn(s, id); }
+  petTuft(s);
   s.happyUntil = 0;
   return s;
 }
+function petTuft(s){ if(s.tuft) s.tuft.visible = !s.wear.head; }   // под шапочкой хохолка не видно
 function placePet(){
   if(petSeal) scene.remove(petSeal.root);
   petSeal = makePetSeal(); petSeal.root.position.copy(PET_SPOT); scene.add(petSeal.root);
+  return petSeal;
 }
 
 /* ---------- потребности ---------- */
@@ -133,6 +191,11 @@ function petRefresh(){
 function renderPetCard(){
   const p = save.pet; $('#petCard').hidden = !p; if(!p) return;
   $('#petName').textContent = p.name;
+  $('#petStage').textContent = `${STAGES[p.stage].ic} ${stageName(p.stage)}`;
+  const left = p.stage < SHINY ? STAGES[p.stage + 1].at - Math.floor(p.xp/HEART_XP) : 0;
+  $('#petGrowHint').textContent = p.stage === SHINY ? 'Лучшие друзья навсегда ♡'
+    : left <= 0 ? '✨ Сейчас что-то будет…'
+    : `${p.stage + 1 === SHINY ? 'Засияет' : 'Подрастёт'} через ${left} 💗`;
   const low = petLow();
   $('#petStatus').textContent = petSeal && petSeal.sleeping ? 'Сладко спит… z-z-z. Нажми, чтобы разбудить'
     : low ? `${NEEDS[low].ic} ${NEEDS[low].want}` : gg('Счастлив! ♡', 'Счастлива! ♡');
@@ -161,7 +224,9 @@ function renderPetBtn(){
   const b = $('#btnPet'); b.hidden = !save.pet; if(!save.pet) return;
   $('#petIc').textContent = petMode ? '🏥' : '🦭';
   b.setAttribute('aria-label', petMode ? 'В больницу' : 'Мой малыш');
-  $('#petAlert').hidden = petMode || !NEED_KEYS.some(k => save.pet.needs[k] < 0.35);
+  const grow = growPending();
+  $('#petAlert').textContent = grow ? '✨' : '!';
+  $('#petAlert').hidden = petMode || !(grow || NEED_KEYS.some(k => save.pet.needs[k] < 0.35));
 }
 // опыт дружбы: «+5 💗» над малышом, каждые HEART_XP — новое сердечко
 function petGive(n){
@@ -179,7 +244,7 @@ function petGive(n){
 /* ---------- переключатель «Больница / Мой малыш» ---------- */
 function setPetMode(on){
   petMode = on; document.body.classList.toggle('pet-mode', on);
-  camOffWant.copy(on ? PET_POS.clone().add(PET_VIEW) : new V3()); unfocusCam();
+  camOffWant.copy(on ? PET_POS.clone().add(petView()) : new V3()); unfocusCam();
   $('#night').classList.toggle('on', on && !!petSeal && petSeal.sleeping);
   renderPetBtn();
 }
@@ -190,7 +255,7 @@ function goPet(on){
   if(on){
     petDecay(); petRefresh();
     if(!petHelloShown){ petHelloShown = true; const low = petLow();
-      toast(low ? `${save.pet.name}: «${NEEDS[low].say}» Выбирай внизу ${NEEDS[low].ic}` : `${save.pet.name} ${gg('рад', 'рада')} тебя видеть! ♡`, 3400); }
+      if(!growPending()) toast(low ? `${save.pet.name}: «${NEEDS[low].say}» Выбирай внизу ${NEEDS[low].ic}` : `${save.pet.name} ${gg('рад', 'рада')} тебя видеть! Погладь пальцем ♡`, 3400); }
   } else if(!shift || shift.n >= SHIFT_SIZE) startShift();   // смена кончилась — в больнице ждёт новая
 }
 $('#btnPet').addEventListener('click', () => { sfx.tap(); goPet(!petMode); });
@@ -277,7 +342,7 @@ async function adopt(){
     mgOn(input, 'keydown', e => { if(e.key === 'Enter') ok(); });
   });
   input.blur();
-  save.pet = sanitizePet({...draft, name, born:Date.now(), xp:0, t:Date.now(), needs:{food:0.35, bath:0.55, sleep:0.7, fun:0.25}});
+  save.pet = sanitizePet({...draft, name, born:Date.now(), xp:0, t:Date.now(), needs:{food:0.35, bath:0.55, sleep:0.7, fun:0.25}}); petFix();
   persist();
   nm.classList.add('away'); await wait(0.3); mgClose();
   petSeal.p.name = name; drawSign();
@@ -287,10 +352,18 @@ async function adopt(){
   await wait(0.9);
   toast(`${name} переезжает в свой уголок! 🦭`, 2600);
   await petMoveIn();
-  petSeal.happyUntil = now + 2; setBusy(false);
+  petSeal.happyUntil = now + 2; setMood(petSeal, 'happy');
+  await wait(0.9);
+  petPhoto('Знакомство ♡');   // первая страница «альбома малыша»
+  setBusy(false);
   petHelloShown = true; petRefresh();
   floatText('Мой домик!', headTop(petSeal));
   toast(`Добро пожаловать домой, ${name}! Выбирай внизу, что ${gg('ему', 'ей')} нужно`, 4200);
+}
+function petPhoto(cap){
+  const img = snapshot(petSeal, 1.9);
+  albumAdd({name:save.pet.name, img, d:Date.now(), pet:true, stage:save.pet.stage, cap});
+  renderAlbumCount(); return img;
 }
 // малыш прыгает в воду, плывёт к своей льдине, камера едет следом
 async function petMoveIn(){
@@ -342,30 +415,24 @@ async function petDo(k){
     petGive(5);
   }
   setBusy(false); petRefresh();
+  petMaybeGrow();
 }
 async function petNope(msg){
   const s = petSeal; setBusy(true); sfx.arf(); floatText(msg, headTop(s)); toast(msg);
   await tween(0.6, k => { s.shake = Math.sin(k*Math.PI*4)*0.3*(1 - k); }, ease.lin); s.shake = 0;
   setBusy(false);
 }
+// касание малыша: гладить (petStroke) или просто «ар!» (petStrokeEnd), спящего — разбудить
 function petTap(e){
-  if(!petSeal || busy || !mgRoot.hidden) return;
-  const rect = canvas.getBoundingClientRect();
-  ndc.set((e.clientX - rect.left)/rect.width*2 - 1, -((e.clientY - rect.top)/rect.height)*2 + 1);
-  ray.setFromCamera(ndc, camera);
-  if(!ray.intersectObjects(petSeal.hits, false).length) return;
+  if(!petSeal || busy || !mgRoot.hidden || !petPart(e)) return;
   if(petSeal.sleeping){ setBusy(true); petWake().then(() => { setBusy(false); petRefresh(); }); return; }
-  sfx.arf(); squash(petSeal, 0.15, 0.3);
-  floatText(['Ар!', 'Хи-хи', '♡', 'Ар-ар!'][Math.floor(Math.random()*4)], headTop(petSeal));
-  emit(TEX.heart, headTop(petSeal), {v:new V3(0, 1, 0.3), life:0.9, size:0.3});
-  const low = petLow();
-  if(low) toast(`${save.pet.name}: «${NEEDS[low].say}» Нажми ${NEEDS[low].ic} внизу`);
+  stroke = {id:e.pointerId, x:e.clientX, y:e.clientY, d:0, fx:0, done:false};
 }
 
 /* ---------- Покормить: неси рыбку ко рту ---------- */
 async function petFeed(s){
   const p = save.pet, n = Math.max(1, Math.min(3, Math.ceil((1 - p.needs.food)/0.34)));
-  focusCam(worldOf(s, new V3(0, -0.35, 0)), 2.2, 0.4);
+  focusCam(worldOf(s, new V3(0, -0.35, 0)), 2.2*petK(), 0.4);
   await wait(0.4);
   mgOpen(n > 1 ? 'Неси рыбку прямо ко рту' : 'Одну рыбку — неси ко рту');
   const plate = mgNode('div', 'plate'), target = mgNode('div', 'target');
@@ -432,10 +499,10 @@ function makeTub(){
   return g;
 }
 async function petBath(s){
-  const tub = makeTub(); tub.position.set(s.root.position.x, 0.525, s.root.position.z); tub.scale.setScalar(0.01); scene.add(tub);
+  const tk = petK(), tub = makeTub(); tub.position.set(s.root.position.x, 0.25 + 0.275*tk, s.root.position.z); tub.scale.setScalar(0.01); scene.add(tub);
   sfx.splash(); hop(s, 0.45, 0.5);
-  await tween(0.5, k => tub.scale.setScalar(Math.max(0.01, k)), ease.back);
-  focusCam(worldOf(s, new V3(0, -0.5, 0)), 2.5, 0.55);
+  await tween(0.5, k => tub.scale.setScalar(Math.max(0.01, k*tk)), ease.back);
+  focusCam(worldOf(s, new V3(0, -0.5, 0)), 2.5*tk, 0.55);
   // грязные пятнышки: три на голове, по одному на боках
   const spots = [];
   for(const [x, y, z] of [[0.45, 0.5, 0.7], [-0.5, 0.4, 0.75], [0.05, 0.8, 0.55]]){
@@ -444,7 +511,7 @@ async function petBath(s){
   }
   for(const x of [1.02, -1.02]){
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:DIRT_TEX, transparent:true, depthWrite:false}));
-    sp.position.set(x, 1.15, 0.05); sp.scale.setScalar(0.34); s.inner.add(sp); spots.push(sp);
+    sp.position.set(x*(s.bodyK ? s.bodyK.x : 1), 1.15, 0.05); sp.scale.setScalar(0.34); s.inner.add(sp); spots.push(sp);
   }
   const foams = [];
   const wp = o => o.getWorldPosition(new V3());
@@ -489,9 +556,9 @@ async function petBath(s){
   let popped = 0, spawnT = 0, fin2;
   const popDone = new Promise(r => fin2 = r);
   const spawn = () => {
-    const a = Math.random()*Math.PI*2, r = Math.random()*0.8;
+    const a = Math.random()*Math.PI*2, r = Math.random()*0.8*tk;
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:SOAP_TEX, transparent:true, depthWrite:false}));
-    sp.position.set(tub.position.x + Math.cos(a)*r, 0.8, tub.position.z + Math.sin(a)*r*0.6 + 0.3);
+    sp.position.set(tub.position.x + Math.cos(a)*r, 0.25 + 0.55*tk, tub.position.z + Math.sin(a)*r*0.6 + 0.3*tk);
     sp.scale.setScalar(0.01); sp.userData = {size:0.3 + Math.random()*0.2, ph:Math.random()*6, v:0.5 + Math.random()*0.35};
     scene.add(sp); bubbles.push(sp);
   };
@@ -528,7 +595,7 @@ async function petBath(s){
   s.shake = 0; s.wobble = 0;
   floatText(gg('Чистенький!', 'Чистенькая!'), headTop(s), '#2F9E72');
   hop(s, 0.45, 0.5);
-  await tween(0.4, k => tub.scale.setScalar(Math.max(0.01, 1 - k)));
+  await tween(0.4, k => tub.scale.setScalar(Math.max(0.01, (1 - k)*tk)));
   scene.remove(tub);
 }
 
@@ -537,11 +604,11 @@ async function petSleep(s){
   const bed = makeBed(); bed.position.copy(s.root.position); bed.scale.setScalar(0.01); scene.add(bed); s.bed = bed;
   s.headBase = s.head.position.clone();
   sfx.whoosh(); hop(s, 0.35, 0.45);
-  await tween(0.45, k => bed.scale.setScalar(Math.max(0.01, k*PET_SCALE)), ease.back);
+  await tween(0.45, k => bed.scale.setScalar(Math.max(0.01, k*petScale())), ease.back);
   const h0 = s.head.position.clone(), h1 = new V3(0, 1.3, 0.78);
   await tween(0.5, k => s.head.position.lerpVectors(h0, h1, k));
   $('#night').classList.add('on');
-  focusCam(worldOf(s, new V3(0, -0.4, -0.3)), 2.5, 0.2);
+  focusCam(worldOf(s, new V3(0, -0.4, -0.3)), 2.5*petK(), 0.2);
 
   mgOpen('Погладь малыша медленно-медленно');
   const gauge = mgNode('div', 'gauge-wrap moon', '<span class="ic">🌙</span><div class="gauge"><div class="fill"></div></div>').lastChild;
@@ -589,16 +656,16 @@ async function petWake(){
   await tween(0.45, k => { if(bl) setBlanket(bl, 1 - k); s.head.position.lerpVectors(h0, s.headBase, k); });
   if(bl) s.inner.remove(bl); s.blanket = null;
   hop(s, 0.35, 0.45);
-  await tween(0.35, k => bed.scale.setScalar(Math.max(0.01, (1 - k)*PET_SCALE)));
+  await tween(0.35, k => bed.scale.setScalar(Math.max(0.01, (1 - k)*petScale())));
   scene.remove(bed); s.bed = null; s.happyUntil = now + 2;
 }
 
 /* ---------- Поиграть: мяч туда-обратно, малыш отбивает носом ---------- */
 async function petPlay(s){
   const ball = petBall, rest = ball.userData.rest.clone();
-  const Q = new V3(PET_SPOT.x + 0.1, 0.95, PET_SPOT.z + 2.3);   // «твоя» точка — ближе к экрану
+  const sc = petScale(), Q = new V3(PET_SPOT.x + 0.1, 0.95, PET_SPOT.z + 1.5 + 1.3*sc);   // «твоя» точка — ближе к экрану
   const nose = () => worldOf(s, s.noseLocal).add(new V3(0, 0.2, 0.05));
-  focusCam(new V3(PET_SPOT.x, 1.05, PET_SPOT.z + 1.1), 3.6, 0.1);
+  focusCam(new V3(PET_SPOT.x, 0.8 + 0.4*sc, PET_SPOT.z + 0.3 + 1.3*sc), 3.6*(0.55 + 0.45*petK()), 0.1);
   sfx.whoosh(); await flyTo(ball, rest.clone(), Q.clone(), 0.6, 0.6);
   const GOAL = 5;
   mgOpen('Нажми — подбрось мяч малышу!');
@@ -609,7 +676,7 @@ async function petPlay(s){
     mgHint(hits >= GOAL ? 'Последний!' : `Отбито: ${hits} из ${GOAL}`); };
   const miss = async () => {
     state = 'miss'; ring.hidden = true;
-    const p0 = ball.position.clone(), floor = new V3(p0.x, 0.47, Math.min(p0.z, PET_SPOT.z + 2.5));
+    const p0 = ball.position.clone(), floor = new V3(p0.x, 0.47, Math.min(p0.z, Q.z + 0.2));
     await tween(0.3, q => ball.position.lerpVectors(p0, floor, q), ease.lin); sfx.plop();
     await tween(0.35, q => { ball.position.copy(floor); ball.position.y += Math.sin(q*Math.PI)*0.35; }, ease.lin); sfx.plop();
     mgHint('Ой, упал! Ничего — ещё разок');
@@ -661,14 +728,14 @@ async function petDress(){
   if(!items.length) return toast('В лавке 🐚 есть бантики и шапочки — купи и наряди малыша!', 3200);
   const s = petSeal; setBusy(true); s.bubble.visible = false;
   if(s.sleeping) await petWake();
-  focusCam(worldOf(s, new V3(0, -0.25, 0)), 2.0, 0.4);
+  focusCam(worldOf(s, new V3(0, -0.25, 0)), 2.0*petK(), 0.4);
   mgOpen('Наряди малыша');
   const nav = mgNode('nav', 'tools wardrobe');
   const mark = () => nav.querySelectorAll('.tool[data-id]').forEach(b => b.classList.toggle('on', Object.values(wearIds(s)).includes(b.dataset.id)));
   for(const it of items){
     const b = document.createElement('button'); b.className = 'tool'; b.dataset.id = it.id;
     b.innerHTML = `<span class="face"><img src="${thumb(it.id)}" alt=""></span><span class="name">${it.name}</span>`;
-    mgOn(b, 'click', () => { wearOn(s, it.id); sfx.pop(); squash(s, 0.1, 0.25); mark(); save.pet.wear = wearIds(s); persist(); });
+    mgOn(b, 'click', () => { wearOn(s, it.id); petTuft(s); sfx.pop(); squash(s, 0.1, 0.25); mark(); save.pet.wear = wearIds(s); persist(); });
     nav.appendChild(b);
   }
   const ok = document.createElement('button'); ok.className = 'tool'; ok.id = 'dressDone';
@@ -680,19 +747,136 @@ async function petDress(){
   setBusy(false); petRefresh();
 }
 
+/* ---------- рост: праздник на новой стадии ---------- */
+// Ждёт, пока малыш свободен и на экране нет окон: опыт мог прийти и в больнице (пациенты, событие смены).
+function petMaybeGrow(){
+  if(!petMode || busy || !mgRoot.hidden || !growPending() || document.querySelector('.overlay:not([hidden])')) return;
+  petGrow();
+}
+async function petGrow(){
+  const p = save.pet, to = stageOf(p.xp), shiny = to === SHINY;
+  setBusy(true); petRefreshT = 99;
+  if(petSeal.sleeping) await petWake();
+  let s = petSeal; s.bubble.visible = false; setMood(s, 'happy');
+  const sc0 = s.root.scale.x, sc1 = STAGES[to].sc;
+  const mid = () => new V3(PET_SPOT.x, 0.25 + 1.1*s.root.scale.x, PET_SPOT.z + 0.2);
+  focusCam(new V3(PET_SPOT.x, 0.25 + 1.1*sc1, PET_SPOT.z + 0.3), 1.6 + 2.6*sc1, 0);
+  floatText('Ой!', headTop(s)); sfx.arf();
+  toast(shiny ? '✨ Что-то волшебное…' : '✨ Ой, что это происходит?', 2400);
+  await wait(0.6);
+  // хоровод звёздочек, малыш кружится всё быстрее
+  sfx.grow(); s.flap = 1;
+  let spark = 0;
+  await tween(1.9, k => {
+    s.inner.rotation.y = k*k*Math.PI*6; s.inner.position.y = Math.sin(k*Math.PI)*0.35;
+    if(now - spark > 0.05){
+      spark = now; const a = now*7, r = 1.5*sc0*(1.2 - k*0.5), c = mid();
+      emit(TEX.star, c.add(new V3(Math.cos(a)*r, (k - 0.5)*1.4*sc0, Math.sin(a)*r*0.6)), {v:new V3(0, 0.6, 0), life:0.7, size:0.2 + k*0.12, spin:5});
+    }
+  }, ease.lin);
+  // пуф! — и вот он уже подрос
+  const puff = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.puff, transparent:true, depthWrite:false, depthTest:false}));
+  puff.position.copy(mid()); puff.renderOrder = 5; scene.add(puff);
+  sfx.pop(); sfx.whoosh();
+  await tween(0.3, k => puff.scale.setScalar(0.5 + k*4.2*sc1), ease.out);
+  scene.remove(s.root); p.stage = to; persist();
+  s = placePet(); s.root.scale.setScalar(sc0); setMood(s, 'happy'); s.flap = 0.6;
+  burst(TEX.star, mid(), 14, 2.4, 0.3);
+  tween(0.5, k => { puff.material.opacity = 1 - k; puff.scale.setScalar((4.7 + k)*sc1); }).then(() => { scene.remove(puff); puff.material.dispose(); });
+  await tween(0.7, k => s.root.scale.setScalar(sc0 + (sc1 - sc0)*k), ease.back);
+  sfx.hug(); burst(TEX.heart, headTop(s), 20, 2.4, 0.34);
+  floatText(shiny ? gg('Я сияю!', 'Я сияю!') : gg('Я подрос!', 'Я подросла!'), headTop(s), '#D9527E');
+  await hop(s, 0.45, 0.5); s.flap = 0;
+  camOffWant.copy(PET_POS.clone().add(petView()));
+  await wait(0.7);
+  const img = petPhoto(stageName(to));
+  // окно праздника: фото, лесенка стадий, подарок
+  $('#growImg').src = img;
+  $('#growTitle').textContent = shiny ? `${p.name} ${gg('засиял', 'засияла')}!` : `${p.name} ${gg('подрос', 'подросла')}!`;
+  $('#growText').textContent = shiny ? `Вы так дружите, что ${gg('он', 'она')} теперь сияет ✨ Фото уже в альбоме ♡`
+    : `Теперь ${gg('он', 'она')} — ${stageName(to).toLowerCase()}. Фото уже в альбоме ♡`;
+  $('#growStages').innerHTML = STAGES.map((st, i) =>
+    `<li class="${i < to ? 'was' : i === to ? 'now' : ''}"><span class="ic">${st.ic}</span><span class="t">${stageName(i)}</span></li>`).join('');
+  $('#growGift').textContent = `Подарок: +${GROW_GIFT} 🐚`;
+  $('#grow').hidden = false; sfx.star();
+  await new Promise(r => $('#btnGrowOk').addEventListener('click', r, {once:true}));
+  sfx.tap(); $('#grow').hidden = true; unfocusCam();
+  addShells(GROW_GIFT, toScreen(headTop(s)));
+  s.happyUntil = now + 3;
+  toast(to === 1 ? `Заботься ${gg('о нём', 'о ней')} дальше — ${gg('он', 'она')} ещё подрастёт!`
+    : to < SHINY - 1 ? 'Ещё немного дружбы — и новая стадия!'
+    : to === SHINY - 1 ? `Совсем ${gg('взрослый', 'взрослая')}! А лучшие друзья даже сияют ✨` : 'Самые лучшие друзья ♡', 3600);
+  setBusy(false); petRefreshT = 0; petRefresh();
+}
+
+/* ---------- ласка: погладь пальцем (голова — «ур-р», пузико — щекотно) ---------- */
+let stroke = null, tickleT = -9;
+function petPart(e){
+  const rect = canvas.getBoundingClientRect();
+  ndc.set((e.clientX - rect.left)/rect.width*2 - 1, -((e.clientY - rect.top)/rect.height)*2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const h = ray.intersectObjects(petSeal.hits, false)[0];
+  return h ? (h.object.parent === petSeal.head ? 'head' : 'body') : null;
+}
+function petStroke(e){
+  if(!stroke || e.pointerId !== stroke.id || !petMode || busy || !petSeal || petSeal.sleeping) return;
+  const d = Math.hypot(e.clientX - stroke.x, e.clientY - stroke.y); stroke.x = e.clientX; stroke.y = e.clientY;
+  if(!d || !petPart(e)) return;
+  const s = petSeal, part = petPart(e);
+  stroke.d += d; stroke.fx += d;
+  if(stroke.fx > 80){
+    stroke.fx = 0; s.happyUntil = now + 1.5; setMood(s, 'happy');
+    if(part === 'head'){ sfx.purr(); emit(TEX.heart, headTop(s).add(new V3((Math.random() - 0.5)*0.5, 0, 0)), {v:new V3(0, 0.9, 0.2), life:0.9, size:0.24}); }
+    else {
+      sfx.rub(); tween(0.4, k => s.wobble = Math.sin(k*Math.PI*4)*0.05*(1 - k), ease.lin);
+      if(now - tickleT > 1.6){ tickleT = now; sfx.arf(); floatText(['Хи-хи! Щекотно!', 'Пузико! Хи-хи', 'Ой, щекотно!'][Math.floor(Math.random()*3)], headTop(s)); }
+    }
+  }
+  if(!stroke.done && stroke.d > 500){   // долго гладили — сердечко дружбы (не больше PAT_MAX раз в день)
+    stroke.done = true;
+    const p = save.pet, today = new Date().toDateString();
+    if(p.pat.d !== today) p.pat = {d:today, n:0};
+    floatText(part === 'head' ? 'Ур-р… ♡' : 'Люблю тебя! ♡', headTop(s).add(new V3(0, 0.4, 0)), '#D9527E');
+    if(p.pat.n < PAT_MAX){ p.pat.n++; petGive(PAT_XP); petMaybeGrow(); }
+  }
+}
+function petStrokeEnd(e){
+  if(!stroke || e.pointerId !== stroke.id) return;
+  const tap = stroke.d < 14; stroke = null;
+  if(!tap || busy || !petSeal) return;
+  sfx.arf(); squash(petSeal, 0.15, 0.3);
+  floatText(['Ар!', 'Хи-хи', '♡', 'Ар-ар!'][Math.floor(Math.random()*4)], headTop(petSeal));
+  emit(TEX.heart, headTop(petSeal), {v:new V3(0, 1, 0.3), life:0.9, size:0.3});
+  const low = petLow();
+  toast(low ? `${save.pet.name}: «${NEEDS[low].say}» Нажми ${NEEDS[low].ic} внизу` : 'Погладь пальцем — по голове или по пузику ♡');
+}
+canvas.addEventListener('pointermove', petStroke);
+for(const ev of ['pointerup', 'pointercancel', 'pointerleave']) canvas.addEventListener(ev, petStrokeEnd);
+
 /* ---------- покадрово ---------- */
-let petRefreshT = 0;
+let petRefreshT = 0, shineT = 0;
 function petTick(t, dt){
   if(!petSeal) return;
   updateSeal(petSeal, t, dt);
+  if(petSeal.halo && petMode){   // сияющий: ореол дышит, отлив переливается, вокруг искорки
+    petSeal.halo.material.opacity = 0.75 + Math.sin(t*2)*0.2;
+    petSeal.bodyMat.emissive.setHSL((t*0.05) % 1, 0.9, 0.1 + Math.sin(t*1.7)*0.03);
+    shineT -= dt;
+    if(shineT < 0){
+      shineT = 0.3 + Math.random()*0.3; const sc = petSeal.root.scale.x, a = Math.random()*Math.PI*2;
+      emit(TEX.star, PET_SPOT.clone().add(new V3(Math.cos(a)*1.4*sc, (0.4 + Math.random()*1.8)*sc, Math.sin(a)*0.9*sc)), {v:new V3(0, 0.35, 0), life:0.9, size:0.13, spin:3});
+      if(Math.random() < 0.12 && !busy) sfx.sparkle();
+    }
+  }
   if(petSeal.sleeping && petMode){
     petSeal.zzzT -= dt;
     if(petSeal.zzzT < 0){ petSeal.zzzT = 1.2; floatText('z', worldOf(petSeal, new V3(0.85 + Math.random()*0.2, 0.35, 0.3)), '#8E99C9'); }
   }
   petRefreshT -= dt;
-  if(petRefreshT < 0){ petRefreshT = 2; if(save.pet){ petDecay(); if(!busy) petRefresh(); } }
+  if(petRefreshT < 0){ petRefreshT = 2; if(save.pet){ petDecay(); if(!busy) petRefresh(); petMaybeGrow(); } }
 }
 
 buildPetBar();
+petFix();
 if(save.pet){ petDecay(); placePet(); drawSign(); }
 if(document.fonts) document.fonts.ready.then(drawSign);

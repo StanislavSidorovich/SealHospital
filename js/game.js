@@ -63,16 +63,31 @@ function renderBucket(){
   }
 }
 function renderAlbumCount(){ $('#albumCount').textContent = save.album.length; }
+// в альбоме до 40 фото; лишние убираем из самых старых пациентов, а фото своего малыша не трогаем
+function albumAdd(e){
+  save.album.push(e);
+  while(save.album.length > 40){ const i = save.album.findIndex(a => !a.pet); if(i < 0) break; save.album.splice(i, 1); }
+  persist();
+}
 function openAlbum(){
   const grid = $('#albumGrid'); grid.innerHTML = '';
-  $('#albumSub').textContent = save.album.length ? `Вылечено: ${save.album.length}` : '';
-  if(!save.album.length) grid.innerHTML = '<p class="empty">Пока пусто. Вылечи первого пациента!</p>';
-  for(const a of save.album.slice().reverse()){
-    const f = document.createElement('figure');
+  const mine = save.album.filter(a => a.pet), cured = save.album.filter(a => !a.pet);
+  $('#albumSub').textContent = save.progress ? `Вылечено: ${save.progress}` : '';
+  const head = t => { const h = document.createElement('h3'); h.className = 'album-h display'; h.textContent = t; grid.appendChild(h); };
+  const fig = (a, cls, capText, date) => {
+    const f = document.createElement('figure'); if(cls) f.className = cls;
     const img = document.createElement('img'); img.src = a.img; img.alt = a.name;
-    const cap = document.createElement('figcaption'); cap.textContent = a.name;
+    const cap = document.createElement('figcaption'); cap.textContent = capText;
+    if(date){ const d = new Date(a.d), sm = document.createElement('small'); sm.textContent = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`; cap.append(sm); }
     f.append(img, cap); grid.appendChild(f);
+  };
+  if(mine.length){   // «как рос мой малыш» — по порядку, от знакомства
+    head(`${save.pet ? save.pet.name : 'Мой малыш'} растёт ♡`);
+    mine.forEach(a => fig(a, 'pet', a.cap || a.name, true));
+    head('Пациенты');
   }
+  if(!cured.length) grid.insertAdjacentHTML('beforeend', '<p class="empty">Пока пусто. Вылечи первого пациента!</p>');
+  for(const a of cured.slice().reverse()) fig(a, '', a.name, false);
   $('#album').hidden = false;
 }
 
@@ -184,8 +199,9 @@ async function hug(){
   burst(TEX.heart, headTop(s), 10, 2, 0.32);
   await wait(0.45);
   const img = snapshot();
-  save.album.push({name:s.p.name, img, d:Date.now(), scarf:S.scarf, wear:wearIds(s)}); if(save.album.length > 40) save.album = save.album.slice(-40);
-  save.progress++; persist();
+  save.progress++;
+  if(save.pet) save.pet.xp += PATIENT_XP;   // малыш гордится доктором: опыт растёт и в больнице
+  albumAdd({name:s.p.name, img, d:Date.now(), scarf:S.scarf, wear:wearIds(s)});
   renderAlbumCount();
   shift.photos.push(img); shift.n++;
   const earned = 3 + S.needs.length;   // 5–8 ракушек: чем больше лечили, тем больше
@@ -193,7 +209,7 @@ async function hug(){
   s.flap = 0.35;
   await wait(1.1);
   await tuckIn(s);
-  $('#curedShells').textContent = `+${earned} 🐚`;
+  $('#curedShells').textContent = `+${earned} 🐚` + (save.pet ? `  +${PATIENT_XP} 💗` : '');
   $('#btnNext').textContent = shift.n >= SHIFT_SIZE ? 'Итоги смены ⭐' : 'Следующий пациент';
   $('#curedImg').src = img;
   $('#curedTitle').textContent = `${s.p.name} ${s.p.f ? 'здорова' : 'здоров'}!`;
@@ -211,11 +227,12 @@ async function nextPatient(){
   if(shift.n >= SHIFT_SIZE){ setBusy(false); return showResults(); }
   await spawnPatient();
 }
-function snapshot(){
+// круглое фото тюленя s для альбома; pad — сколько места вокруг (в размерах тюленя)
+function snapshot(s = S.seal, pad = 1.75){
   renderer.render(scene, camera);
   const src = renderer.domElement, W = src.width, H = src.height;
-  const c = S.seal.root.position;
-  const p1 = new V3(c.x, 1.25, c.z).project(camera), p2 = new V3(c.x + 1.75, 1.25, c.z).project(camera);
+  const c = s.root.position, k = s.root.scale.x, y = c.y + 1.0*k;
+  const p1 = new V3(c.x, y, c.z).project(camera), p2 = new V3(c.x + pad*k, y, c.z).project(camera);
   const cx = (p1.x + 1)/2*W, cy = (1 - p1.y)/2*H, r = Math.abs(p2.x - p1.x)/2*W;
   const out = document.createElement('canvas'); out.width = out.height = 200;
   const g = out.getContext('2d'), grd = g.createLinearGradient(0, 0, 0, 200);

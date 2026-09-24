@@ -38,6 +38,8 @@
 - Кнопки удобно нажимать из JS: `document.getElementById('tool-scarf').click()`, `#btnStart`, `#hugBtn`, `#btnNext`, `#btnShift`, `#btnShop`.
 - Одеяло в кроватке: `pointerdown` внизу `#mg`, затем `pointermove` вверх. Ракушки в событии: касание рядом с `toScreen(shell.position)`. Для лавки удобно положить ракушки: `save.shells = 200; persist()`.
 - Малыш (Фаза 3): знакомство начинается, если `save.pet === null` и `save.shifts >= 1`. Уголок — кнопка `#btnPet` или `#btnIntroPet`, уход — `#pet-food`, `#pet-bath`, `#pet-sleep`, `#pet-fun`, `#pet-dress`. Проверить таяние потребностей: `save.pet.t = Date.now() - 10*3.6e6; persist()` и перезагрузить. Мяч: касание по `#mg`, когда виден `#mgStage .target`; пузыри — касание у `toScreen()` спрайта с `SOAP_TEX`; сон — медленные `pointermove` (до ~1500 px/с) рядом с малышом.
+- Рост (Фаза 3, часть 2): стадии `STAGES` в `pet.js` по сердечкам (`pet.xp / HEART_XP`), отпразднованная стадия — `save.pet.stage`. Праздник: `save.pet.xp = 340; persist()` → в уголке через ~2 с начнётся `petGrow()`, окно `#grow`, кнопка `#btnGrowOk`. Ласка: `pointerdown` по малышу на `#c`, затем `pointermove` того же `pointerId` (≥500 px пути = +1 💗, не больше 6 раз в день, `save.pet.pat`).
+- Встроенный браузер кеширует js: после правок делай `await fetch('js/имя.js', {cache:'reload'})` и перезагрузку, иначе смешаются старые и новые файлы. Лог консоли переживает перезагрузки — старые ошибки не значат новых.
 - Когда панель браузера скрыта, скриншоты обрезаются. Проверяй через JS или открой панель.
 
 ## Публикация
