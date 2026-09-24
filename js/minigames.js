@@ -327,7 +327,7 @@ function hotNear(s, a, x, y){
 // Места выбраны так, чтобы их было видно при осмотре и они не совпадали с симптомами.
 const SECRET_SPOTS = [new V3(1.45, 0.5, 0.4), new V3(0, 0.25, 1.2), new V3(-1.3, 0.2, 1.2)];
 async function mgLupa(s, ailments, onFound, onSecret){
-  focusCam(worldOf(s, new V3(0, -0.55, 0)), 3.1, -0.55);
+  focusCam(worldOf(s, new V3(0, -0.55, 0)), 3.5, -0.55);   // 3,5: тюлень крупный, но по краям видно ящик и аптечку
   mgOpen(L('Води лупой по тюленю — найди, что болит', 'Move the magnifier over the seal — find what hurts'), {card:true, hintBottom:true});
   const lens = mgNode('div', 'lens idle', '<div class="ring"></div>');
   const target = mgNode('div', 'target'); target.hidden = true;

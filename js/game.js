@@ -347,8 +347,9 @@ function resize(){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(w, h, false); camera.aspect = w/h; camera.updateProjectionMatrix();
   const portrait = w < h, tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), th = tv*camera.aspect;
-  const d = Math.max((portrait ? 4.3 : 7.5)/2/th, (portrait ? 7 : 5.6)/2/tv);
-  camBase.set(0, 1.2 + d*0.3, d); camTarget.set(0, portrait ? 1.7 : 1.3, 0);
+  // Портрет: в ширину влезает сцена от почтового ящика (x≈-1,8) до аптечки (x≈2,1) с запасом на покачивание камеры
+  const d = Math.max((portrait ? 5.0 : 7.5)/2/th, (portrait ? 7 : 5.6)/2/tv);
+  camBase.set(0, 1.2 + d*0.3, d); camTarget.set(0, portrait ? 2.0 : 1.3, 0);
 }
 window.addEventListener('resize', resize); resize();
 

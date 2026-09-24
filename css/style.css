@@ -53,7 +53,7 @@ button:focus-visible{outline:3px solid var(--pink-d);outline-offset:2px}
 .tool .face{width:58px;height:58px;border-radius:50%;background:var(--paper);border:2.5px solid var(--ink);
   box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;font-size:29px;position:relative;transition:transform .1s}
 .tool:active .face{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
-.tool .name{font-size:12px;font-weight:800;background:rgba(255,253,248,.85);border-radius:8px;padding:0 5px}
+.tool .name{font-size:12px;font-weight:800;background:rgba(255,253,248,.85);border-radius:8px;padding:0 3px;letter-spacing:-.2px;white-space:nowrap}
 .tool.used .face::after{content:"✓";position:absolute;right:-6px;top:-6px;width:22px;height:22px;border-radius:50%;
   background:var(--mint);border:2px solid var(--mint-d);color:#236B50;font-size:13px;font-weight:800;display:grid;place-items:center}
 .tools[aria-busy="true"] .tool{opacity:.7}
