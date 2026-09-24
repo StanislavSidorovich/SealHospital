@@ -62,6 +62,10 @@
         <span aria-hidden="true">🐚</span>
         <span class="badge" id="shellCount">0</span>
       </button>
+      <button class="round mailbtn" id="btnMail" aria-label="Шкатулка писем">
+        <span aria-hidden="true" id="mailIc">✉️</span>
+        <span class="badge alert" id="mailAlert" hidden>1</span>
+      </button>
       <button class="round pet" id="btnPet" aria-label="Мой малыш" hidden>
         <span aria-hidden="true" id="petIc">🦭</span>
         <span class="badge alert" id="petAlert" hidden>!</span>
@@ -81,6 +85,7 @@
       <h1 class="display">Тюленья больница</h1>
       <p>Доктор Сабрина, к тебе приплывают пациенты! За смену — три тюленя: осмотри, вылечи, обними и уложи спать. За каждого — ракушки 🐚 для лавки.</p>
       <p id="introStat" class="thanks" hidden></p>
+      <p id="introMail" class="intro-mail display" hidden>💌 Тебе письмо от папы!</p>
       <div class="row">
         <button class="btn" id="btnStart">Открыть больницу</button>
         <button class="btn ghost" id="btnIntroPet" hidden>К малышу 🦭</button>
@@ -167,6 +172,49 @@
     </div>
   </div>
 
+  <!-- Папина почта (js/mail.js, сами письма — js/letters.js) -->
+  <div class="overlay mail" id="mail" hidden>
+    <button class="envelope" id="envelope" aria-label="Открыть письмо">
+      <svg viewBox="0 -80 280 270" aria-hidden="true">
+        <rect x="6" y="40" width="268" height="144" rx="14" fill="#FFC9D8" stroke="#3B3A4A" stroke-width="3.5"/>
+        <path class="flap-o" d="M8 42 L140 -46 L272 42 Z" fill="#FFB3C8" stroke="#3B3A4A" stroke-width="3.5" stroke-linejoin="round"/>
+        <g class="paper">
+          <rect x="30" y="50" width="220" height="124" rx="8" fill="#FFF7F2" stroke="#3B3A4A" stroke-width="3"/>
+          <path d="M48 78h184M48 100h184M48 122h120" stroke="#F3C2D1" stroke-width="4" stroke-linecap="round"/>
+        </g>
+        <path d="M6 58 L140 132 L274 58 V170 Q274 184 260 184 H20 Q6 184 6 170 Z" fill="#FFE3EC" stroke="#3B3A4A" stroke-width="3.5" stroke-linejoin="round"/>
+        <path class="flap-c" d="M8 42 L140 124 L272 42 Z" fill="#FFB3C8" stroke="#3B3A4A" stroke-width="3.5" stroke-linejoin="round"/>
+        <g class="seal">
+          <circle cx="140" cy="120" r="21" fill="#D9527E" stroke="#3B3A4A" stroke-width="3"/>
+          <path d="M140 131s-10-6-10-12.5a5.3 5.3 0 0 1 10-2.5 5.3 5.3 0 0 1 10 2.5c0 6.5-10 12.5-10 12.5z" fill="#FFFDF8"/>
+        </g>
+        <text x="24" y="170" class="env-to">Доктору Сабрине</text>
+      </svg>
+    </button>
+    <p class="env-hint display" id="envHint">Нажми на конверт ♡</p>
+
+    <div class="panel mail-read" id="mailRead" hidden>
+      <div class="letter note">
+        <div class="stamp"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.3-7-9.2A3.8 3.8 0 0 1 12 9a3.8 3.8 0 0 1 7 1.8C19 15.7 12 20 12 20z" fill="#FFFDF8" stroke="#3B3A4A" stroke-width="1.8"/></svg></div>
+        <p class="note-text display" id="mailText"></p>
+        <p class="sig display" id="mailSig">— Dad ♡</p>
+        <p class="note-date" id="mailDate"></p>
+      </div>
+      <button class="gift-box" id="mailGift" hidden><span class="ic" aria-hidden="true">🎁</span><span>В конверте что-то есть!</span></button>
+      <p class="gift-got display" id="mailGot" hidden></p>
+      <button class="btn" id="btnMailOk">Спрятать в шкатулку ♡</button>
+    </div>
+
+    <div class="panel mail-box" id="mailBox" hidden>
+      <button class="close" id="btnBoxClose" aria-label="Закрыть">✕</button>
+      <h2 class="display">Шкатулка писем</h2>
+      <p class="thanks" id="boxSub"></p>
+      <div class="box-grid" id="boxGrid"></div>
+      <p class="box-next" id="boxNext"></p>
+      <button class="btn" id="btnBoxNew" hidden>💌 Новое письмо!</button>
+    </div>
+  </div>
+
   <div class="overlay" id="shop" hidden>
     <div class="panel shop">
       <button class="close" id="btnShopClose" aria-label="Закрыть лавку">✕</button>
@@ -185,6 +233,7 @@
 <!-- Обычные скрипты, не модули: так игра открывается и с file://. Порядок важен: они делят глобальную область. -->
 <script src="vendor/three.min.js"></script>
 <script src="js/data.js"></script>
+<script src="js/letters.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/world.js"></script>
 <script src="js/seal.js"></script>
@@ -193,6 +242,7 @@
 <script src="js/shift.js"></script>
 <script src="js/pet.js"></script>
 <script src="js/walk.js"></script>
+<script src="js/mail.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

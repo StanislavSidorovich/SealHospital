@@ -399,3 +399,50 @@ body:not(.pet-mode) .night{opacity:0}
 .circle-hint{position:absolute;width:210px;height:210px;margin:-105px 0 0 -105px;border-radius:50%;pointer-events:none;
   border:3px dashed var(--pink-d);background:conic-gradient(from -90deg,rgba(127,209,168,.45) calc(var(--p,0)*1turn),rgba(255,155,184,.12) 0)}
 @media (prefers-reduced-motion:reduce){ .swipe-up,.circle-hint,.picks .new::after,.finds i.new{animation:none} }
+
+/* ---------------- Папина почта (js/mail.js) ---------------- */
+.round.mailbtn{font-size:23px;line-height:1}
+.intro-mail{font-size:23px!important;font-weight:400!important;color:var(--pink-d);margin:-4px 0 14px!important;animation:pulse 1.4s ease-in-out infinite}
+.overlay.mail{align-content:center;gap:12px}
+.envelope{background:none;border:0;padding:0;width:min(300px,84vw);cursor:pointer;justify-self:center;
+  animation:envbob 1.6s ease-in-out infinite;filter:drop-shadow(0 6px 0 rgba(59,58,74,.22))}
+.envelope svg{width:100%;height:auto;display:block;overflow:visible}
+@keyframes envbob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-8px) rotate(2deg)}}
+.envelope .flap-o{transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(0);transition:transform .25s ease-out .22s}
+.envelope .flap-c{transform-box:fill-box;transform-origin:50% 0;transition:transform .22s ease-in}
+.envelope .paper{transition:transform .45s ease-out .45s}
+.envelope .seal{transition:opacity .15s}
+.envelope.open{animation:none}
+.envelope.open .flap-c{transform:scaleY(0)}
+.envelope.open .flap-o{transform:scaleY(1)}
+.envelope.open .paper{transform:translateY(-78px)}
+.envelope.open .seal{opacity:0}
+.env-to{font-family:"Pangolin","Comic Sans MS",cursive;font-size:21px;fill:var(--pink-d)}
+.env-hint{font-size:22px;margin:0;text-align:center}
+.panel.mail-read{position:relative;padding-top:30px}
+.letter.note{margin:4px 0 16px;padding:16px 20px 10px}
+.letter .note-text{font-size:26px;line-height:33px;margin:0 0 2px;font-weight:400;white-space:pre-line;text-wrap:pretty}
+.letter .note-date{font-size:12px;font-weight:800;color:var(--soft);text-align:right;margin:0}
+.gift-box{display:flex;align-items:center;gap:10px;margin:0 auto 16px;min-height:56px;padding:6px 18px;border-radius:18px;
+  border:2.5px solid var(--ink);background:#FFF1C9;box-shadow:0 4px 0 var(--ink);font-weight:800;font-size:17px;color:var(--ink);
+  animation:wiggle 1.3s ease-in-out infinite}
+.gift-box:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.gift-box .ic{font-size:30px}
+.panel .gift-got{display:flex;align-items:center;justify-content:center;gap:12px;font-size:25px;line-height:1.1;color:var(--pink-d);margin:0 0 16px;animation:rise .35s ease-out}
+.gift-got img{width:68px;height:68px;border-radius:50%;border:2.5px solid var(--ink);background:#DDF1F8}
+.gift-got span{text-align:left;line-height:1.1}
+.gift-got small{display:block;font-family:"Nunito",sans-serif;font-size:13px;font-weight:800;color:var(--soft);margin-top:4px}
+.fly-star{position:absolute;z-index:7;font-size:24px;pointer-events:none;translate:-50% -50%;transition:translate .8s ease-out,opacity .8s ease-in}
+.panel.mail-box{position:relative;padding-top:18px}
+.panel.mail-box h2{margin-top:0;padding:0 40px}
+.box-grid{display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow-y:auto;padding:4px 4px 6px;margin:0 0 12px}
+.box-item{display:flex;align-items:center;gap:10px;min-height:58px;padding:8px 12px;border-radius:16px;border:2.5px solid var(--ink);
+  background:#FFF7F2;box-shadow:0 3px 0 var(--ink);text-align:left;color:var(--ink);flex-shrink:0}
+.box-item:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.box-item .ic{font-size:26px}
+.box-item .t{flex:1;font-family:"Pangolin","Comic Sans MS",cursive;font-size:18px;line-height:1.25;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.box-item small{font-size:12px;font-weight:800;color:var(--soft)}
+.box-next{font-size:14px!important;color:var(--soft);margin:0 0 4px!important}
+.box-next:empty{display:none}
+@media (prefers-reduced-motion:reduce){ .envelope,.gift-box,.intro-mail{animation:none} }

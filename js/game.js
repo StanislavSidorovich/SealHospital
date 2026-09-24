@@ -322,6 +322,7 @@ $('#btnStart').addEventListener('click', async () => {
   if(started) return; started = true;
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
   if(adoptPending()) adopt(); else startShift();   // сыгравших смену у льдины ждёт малыш (Фаза 3)
+  if(mailWaiting && save.progress && !adoptPending()) setTimeout(() => { if(mailWaiting && !mailOpen) toast('💌 Тебе письмо от папы! Нажми на почтовый ящик', 3400); }, 1200);
 });
 $('#btnIntroPet').addEventListener('click', async () => {
   ac(); sfx.good(); keepSave(); $('#intro').hidden = true;
@@ -384,7 +385,7 @@ function frame(ts){
 
   if(S){
     const s = S.seal; updateSeal(s, t, dt);
-    sneezeTick(s, dt, S.stage === 'treat' && S.ail.sneeze && !busy && !shopOpen && !petMode);
+    sneezeTick(s, dt, S.stage === 'treat' && S.ail.sneeze && !busy && !shopOpen && !mailOpen && !petMode);
     if((S.stage === 'treat' && !busy || S.stage === 'diagnose') && !petMode){   // урчит и под лупой: видно, где искать «голодный»
       if(S.ail.hungry){
         s.rumbleT -= dt;
@@ -394,7 +395,7 @@ function frame(ts){
     }
   }
   shiftTick(t, dt);
-  petTick(t, dt); walkTick(t);
+  petTick(t, dt); walkTick(t); mailTick(t, dt);
   updateParts(dt);
   renderer.render(scene, camera);
 }

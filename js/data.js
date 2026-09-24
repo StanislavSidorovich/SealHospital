@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, fish, shells, owned, decor, shifts, pet}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, fish, shells, owned, decor, shifts, pet, mail}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -27,7 +27,14 @@ function sanitize(d){
     owned:strList(d.owned),    // купленное в лавке (id из SHOP)
     decor:strList(d.decor),    // какие украшения сейчас стоят на льдине
     shifts:Number.isFinite(d.shifts) ? d.shifts : 0,   // сколько смен отработано
-    pet:sanitizePet(d.pet)};   // свой тюленёнок (Фаза 3) или null, пока не познакомились
+    pet:sanitizePet(d.pet),    // свой тюленёнок (Фаза 3) или null, пока не познакомились
+    mail:sanitizeMail(d.mail)};   // папина почта (Фаза 7)
+}
+// mail = {got:[{id, t}], d} — полученные письма (id из letterId(), t — когда открыли) и день последнего «письма дня» (ymd)
+function sanitizeMail(m){
+  m = m && typeof m === 'object' ? m : {};
+  const got = Array.isArray(m.got) ? m.got.filter(x => x && typeof x.id === 'string' && Number.isFinite(x.t)).map(x => ({id:x.id, t:x.t})) : [];
+  return {got, d:typeof m.d === 'string' ? m.d : ''};
 }
 // pet = {name, f, coat, born, xp, stage, t, seen, needs:{food, bath, sleep, fun}, wear:{head, face}, pat:{d, n}, walk:{d, n}, finds:[], tricks:{}}
 // needs — от 0 (очень хочет) до 1 (всё хорошо), тают со временем; t — когда их пересчитали последний раз

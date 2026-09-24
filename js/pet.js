@@ -439,6 +439,7 @@ async function petNope(msg){
 // касание малыша: гладить (petStroke) или просто «ар!» (petStrokeEnd), спящего — разбудить
 function petTap(e){
   if(!petSeal || busy || !mgRoot.hidden || !petPart(e)) return;
+  if(petLetterTap()) return;   // в зубах письмо от папы (js/mail.js)
   if(petSeal.sleeping){ setBusy(true); petWake().then(() => { setBusy(false); petRefresh(); }); return; }
   stroke = {id:e.pointerId, x:e.clientX, y:e.clientY, d:0, fx:0, done:false};
 }

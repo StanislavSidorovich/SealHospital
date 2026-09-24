@@ -50,6 +50,8 @@ const sfx = {
   grow(){ [523,587,659,698,784,880,988,1047,1175,1319].forEach((f,i) => tone(f, 0.2, {type:'triangle', vol:0.06 + i*0.004, delay:i*0.15})); },
   sparkle(){ tone(2093 + Math.random()*400, 0.12, {vol:0.03}); tone(2637 + Math.random()*400, 0.16, {vol:0.025, delay:0.06}); },
   purr(){ tone(190 + Math.random()*30, 0.35, {type:'triangle', vol:0.05, to:150}); },
+  paper(){ noise(0.22, {vol:0.09, freq:3800}); noise(0.16, {vol:0.07, freq:2600, delay:0.14}); },
+  letter(){ [784,988,1175,988,1319].forEach((f,i) => tone(f, 0.3, {type:'triangle', vol:0.07, delay:i*0.12})); },
   lullaby(){ [784,659,698,587,523].forEach((f,i) => tone(f, 0.45, {vol:0.05, delay:i*0.32})); }
 };
 function renderMute(){

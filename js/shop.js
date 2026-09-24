@@ -14,7 +14,10 @@ const SHOP = [
   {id:'flags',   kind:'decor', name:'Флажки',   price:20},
   {id:'rug',     kind:'decor', name:'Коврик',   price:25},
   {id:'garland', kind:'decor', name:'Гирлянда', price:35},
-  {id:'snowman', kind:'decor', name:'Снеговик', price:45}
+  {id:'snowman', kind:'decor', name:'Снеговик', price:45},
+  // подарки из папиных писем (js/letters.js, js/mail.js): в лавке не продаются, видны, когда уже есть
+  {id:'dadhat',  kind:'wear', slot:'head', name:'Папина шапочка', gift:true},
+  {id:'hearts',  kind:'wear', slot:'face', name:'Очки-сердечки',  gift:true}
 ];
 const shopItem = id => SHOP.find(x => x.id === id);
 const owns = id => save.owned.includes(id);
@@ -46,6 +49,19 @@ function addShells(n, from){
 }
 
 /* ---------- наряды: 3D-вещицы на голову пациента ---------- */
+// сердечко размером ≈ 1 с центром посередине: объёмное (HEART_GEO), рамка с дыркой (HEART_RING) и плоское (HEART_FLAT)
+function heartShape(k = 1, S = THREE.Shape){
+  const s = new S(); s.moveTo(0, -0.45*k);
+  s.bezierCurveTo(-0.3*k, -0.2*k, -0.52*k, 0.02*k, -0.5*k, 0.22*k);
+  s.bezierCurveTo(-0.48*k, 0.45*k, -0.14*k, 0.52*k, 0, 0.28*k);
+  s.bezierCurveTo(0.14*k, 0.52*k, 0.48*k, 0.45*k, 0.5*k, 0.22*k);
+  s.bezierCurveTo(0.52*k, 0.02*k, 0.3*k, -0.2*k, 0, -0.45*k);
+  return s;
+}
+const HEART_EXTRUDE = {depth:0.16, bevelEnabled:true, bevelThickness:0.05, bevelSize:0.05, bevelSegments:3, curveSegments:18};
+const HEART_GEO = new THREE.ExtrudeGeometry(heartShape(), HEART_EXTRUDE).center();
+const HEART_RING = (() => { const s = heartShape(); s.holes.push(heartShape(0.7, THREE.Path)); return new THREE.ExtrudeGeometry(s, {...HEART_EXTRUDE, depth:0.1}).center(); })();
+const HEART_FLAT = new THREE.ShapeGeometry(heartShape(), 18);
 // at = [x, y, z, rx, ry, rz] в координатах головы (голова — эллипсоид 0.84 × 0.76 × 0.76)
 const WEAR = {
   bow(){
@@ -98,6 +114,25 @@ const WEAR = {
       const b = new THREE.Mesh(SMALL, toon(0xFF8FB1)); b.scale.setScalar(0.035); b.position.set(Math.sin(a)*0.3, 0.2, Math.cos(a)*0.3); g.add(b);
     }
     g.scale.setScalar(1.3); g.userData.at = [0.04, 0.8, 0, -0.12, 0, 0.14]; return g;
+  },
+  dadhat(){   // вязаная шапочка в полоску с помпоном и сердечком — подарок из письма
+    const g = new THREE.Group(), m = toon(0x8CC4F0);
+    const dome = addOutline(new THREE.Mesh(new THREE.SphereGeometry(0.46, 24, 12, 0, Math.PI*2, 0, Math.PI/2), m), 1.05); dome.scale.y = 0.95; g.add(dome);
+    for(const y of [0.2, 0.33]){ const r = new THREE.Mesh(new THREE.TorusGeometry(0.46*Math.cos(Math.asin(y/0.44)), 0.035, 8, 28), toon(0xFFFDF8)); r.rotation.x = Math.PI/2; r.position.y = y*0.95; g.add(r); }
+    const cuff = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.09, 10, 28), toon(0xFF9BB8)), 1.06); cuff.rotation.x = Math.PI/2; g.add(cuff);
+    const pom = addOutline(new THREE.Mesh(SMALL, toon(0xFFFDF8)), 1.08); pom.scale.setScalar(0.13); pom.position.y = 0.5; g.add(pom);
+    const heart = addOutline(new THREE.Mesh(HEART_GEO, toon(0xFF6F95)), 1.1); heart.scale.setScalar(0.2); heart.position.set(0, 0.2, 0.41); heart.rotation.x = -0.35; g.add(heart);
+    g.userData.at = [0, 0.6, -0.02, -0.15, 0, 0.1]; return g;
+  },
+  hearts(){   // очки с оправой-сердечками
+    const g = new THREE.Group(), frame = toon(0xFF6F95);
+    const lens = new THREE.MeshBasicMaterial({color:0xFFC2D4, transparent:true, opacity:0.55, depthWrite:false});
+    for(const s of [-1, 1]){
+      const f = addOutline(new THREE.Mesh(HEART_RING, frame), 1.08); f.scale.setScalar(0.34); f.position.set(0.28*s, 0, 0); f.rotation.y = 0.3*s; g.add(f);
+      const l = new THREE.Mesh(HEART_FLAT, lens); l.scale.setScalar(0.25); l.position.set(0.28*s, 0, 0); l.rotation.y = 0.3*s; g.add(l);
+    }
+    const br = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.03), frame); br.position.set(0, 0.06, 0.03); g.add(br);
+    g.userData.at = [0, 0.14, 0.76, 0, 0, 0]; return g;
   }
 };
 // надеть / снять вещь (повторное нажатие снимает); на голове — одна вещь, очки — отдельно
@@ -261,10 +296,12 @@ function renderShop(){
   const grid = $('#shopGrid'); grid.innerHTML = '';
   for(const it of SHOP){
     if((shopTab === 'decor') !== (it.kind === 'decor')) continue;
+    if(it.gift && !owns(it.id)) continue;   // подарок из письма — в лавке не продаётся
     const b = document.createElement('button'), have = owns(it.id);
     b.className = 'item' + (have ? ' have' : '') + (shopSel === it.id ? ' sel' : '') + (it.kind === 'scarf' ? ' scarf' : '');
     const status = !have ? `<span class="price">🐚 ${it.price}</span>`
-      : it.kind === 'decor' ? `<span class="price own">${save.decor.includes(it.id) ? 'Стоит ✓' : 'Убрано'}</span>` : '<span class="price own">Есть ✓</span>';
+      : it.kind === 'decor' ? `<span class="price own">${save.decor.includes(it.id) ? 'Стоит ✓' : 'Убрано'}</span>`
+      : `<span class="price own">${it.gift ? 'От папы ♡' : 'Есть ✓'}</span>`;
     b.innerHTML = `<img src="${thumb(it.id)}" alt=""><span class="nm">${it.name}</span>${status}`;
     b.addEventListener('click', () => { sfx.tap(); shopSel = it.id; renderShop(); });
     grid.appendChild(b);
