@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, fish, shells, owned, decor, shifts, pet, mail, home}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, fish, shells, owned, decor, shifts, pet, mail, home, adv}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -29,7 +29,15 @@ function sanitize(d){
     shifts:Number.isFinite(d.shifts) ? d.shifts : 0,   // сколько смен отработано
     pet:sanitizePet(d.pet),    // свой тюленёнок (Фаза 3) или null, пока не познакомились
     mail:sanitizeMail(d.mail),   // папина почта (Фаза 7)
-    home:sanitizeHome(d.home)};  // домик малыша (Фаза 4)
+    home:sanitizeHome(d.home),   // домик малыша (Фаза 4)
+    adv:sanitizeAdv(d.adv)};     // приключения (Фаза 9)
+}
+// adv = {best:{уровень: звёзды 0…3}, cups:[уровни, где спасли всех рыбок — кубок на полке в домике], runs, day:{d, n} — забегов сегодня} (js/adventure.js)
+function sanitizeAdv(a){
+  a = a && typeof a === 'object' ? a : {};
+  const best = a.best && typeof a.best === 'object' ? Object.fromEntries(Object.entries(a.best).filter(([, v]) => Number.isInteger(v)).map(([k, v]) => [k, Math.min(3, Math.max(0, v))])) : {};
+  const day = a.day && typeof a.day.d === 'string' && Number.isFinite(a.day.n) ? {d:a.day.d, n:a.day.n} : {d:'', n:0};
+  return {best, cups:[...new Set(strList(a.cups))], runs:Number.isFinite(a.runs) ? a.runs : 0, day};
 }
 // home = {s:{слот: id вещи}, v} — мебель в иглу малыша (js/home.js) и заходили ли туда. Нет поля — стартовая мебель.
 // Купленная мебель, как и всё из лавки, лежит в owned; пустой слот — просто нет ключа.

@@ -373,6 +373,7 @@ function frame(ts){
     _camLook.lerp(_focusLook, k);
     _camPos.lerp(_focusLook.clone().add(new V3(Math.sin(camFocus.yaw)*fd, fd*camFocus.up, Math.cos(camFocus.yaw)*fd)), k);
   }
+  if(runCam.on){ _camPos.copy(runCam.pos); _camLook.copy(runCam.look); }   // забег: камера летит за малышом (js/adventure.js)
   camera.position.copy(_camPos);
   camera.lookAt(_camLook);
   snow.position.set(_camLook.x, 0, _camLook.z);   // снег всегда вокруг того, куда смотрим (уголок, прогулка)

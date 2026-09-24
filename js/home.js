@@ -25,7 +25,7 @@ const HOME_SLOTS = {
   lamp:   {name:L('Лампа', 'Lamp'),          floor:[2.45, -1.3],   rot:-0.4, stand:[1.35, -0.45], mk:2.45},
   tank:   {name:L('Аквариум', 'Fish tank'),  floor:[2.35, 1.15],   rot:-0.6, stand:[1.0, 0.55],   mk:2.0},
   window: {name:L('Окно', 'Window'),         wall:[-0.62, 0.62], tilt:true, stand:[-0.85, -1.25]},
-  shelf:  {name:L('Полка', 'Shelf'),         wall:[0.06, 0.3],               stand:[0.15, -1.45]},
+  shelf:  {name:L('Полка', 'Shelf'),         wall:[0.06, 0.3],               stand:[0.95, -1.65]},   // сбоку: малыш не заслоняет полку
   pic:    {name:L('Картина', 'Picture'),     wall:[0.66, 0.58], tilt:true,  stand:[1.05, -1.25]}
 };
 const SLOT_KEYS = Object.keys(HOME_SLOTS);
@@ -350,13 +350,13 @@ function homeBuild(){
     if(homeItems[k] && homeItems[k].userData.shelf) homeShelf(homeItems[k]);
   }
 }
-// находки с прогулок на полке: по четыре на полочку
+// находки с прогулок и кубки приключений на полке: по пять на полочку
 function homeShelf(o){
   const g = o.userData.finds; while(g.children.length) g.remove(g.children[0]);
-  const list = TREASURES.filter(t => save.pet && save.pet.finds.includes(t.id));
-  list.forEach((t, i) => {
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:findTex(t.ic), transparent:true, depthWrite:false}));
-    sp.scale.setScalar(0.42); sp.position.set(-0.6 + (i % 4)*0.4, (i < 4 ? 0.36 : -0.34) + 0.25, 0.22); g.add(sp);
+  const list = TREASURES.filter(t => save.pet && save.pet.finds.includes(t.id)).map(t => t.ic).concat((save.adv ? save.adv.cups : []).map(() => '🏆'));
+  list.slice(0, 10).forEach((ic, i) => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:findTex(ic), transparent:true, depthWrite:false}));
+    sp.scale.setScalar(0.4); sp.position.set(-0.68 + (i % 5)*0.34, (i < 5 ? 0.36 : -0.34) + 0.24, 0.22); g.add(sp);
   });
 }
 // где у места «середина» (для камеры и значков)
@@ -672,6 +672,7 @@ async function homeFinds(){
   const panel = mgNode('div', 'mg-panel walk-end finds-panel', `
     <p class="ttl display">${L(`Находки: ${got.length} из ${TREASURES.length}`, `Treasures: ${got.length} of ${TREASURES.length}`)}</p>
     <div class="finds">${TREASURES.map(t => p.finds.includes(t.id) ? `<i data-n="${t.name}">${t.ic}</i>` : '<i class="no">?</i>').join('')}</div>
+    ${save.adv.cups.length ? `<p class="got">${L('Кубки:', 'Cups:')} ${save.adv.cups.map(id => `🏆 ${(ISLES.find(is => is.levels && is.levels.includes(id)) || {name:''}).name}`).join(', ')}</p>` : ''}
     <p class="tip">${foundAll() ? L('Все сокровища собраны! ♡', 'All treasures found! ♡') : L('Гуляйте вместе — каждый день новая находка 🐾', 'Go for walks together — a new treasure every day 🐾')}</p>
     <button class="btn" id="findsOk">${L('Закрыть', 'Close')}</button>`);
   panel.querySelectorAll('.finds i[data-n]').forEach(el => mgOn(el, 'click', () => { sfx.tap(); mgHint(el.dataset.n); wiggle(el); }));

@@ -79,6 +79,7 @@ async function petFun(s){
   if(!k) k = await funMenu(s);
   if(k !== 'no'){ s.happyUntil = now + 99; setMood(s, 'happy'); }   // играть с тобой — радость, даже если голоден
   if(k === 'tricks'){ const t = await pickTrick(s); if(!t){ s.happyUntil = 0; return false; } funKind = 'tricks'; return TRICK_GAMES[t.id](s, t); }
+  if(k === 'run'){ const lv = await advMap(); if(!lv){ s.happyUntil = 0; return false; } funKind = 'run'; return petRun(s, lv); }   // js/adventure.js
   if(k === 'no') return false;
   funKind = k;
   return k === 'walk' ? petWalk(s) : petPlay(s);
@@ -93,6 +94,7 @@ async function funMenu(s){
       <button data-k="ball"><span class="ic">⚽</span><b>${L('Мяч', 'Ball')}</b><small>${L('отбивать носом', 'bounce it on the nose')}</small></button>
       <button data-k="walk"><span class="ic">🐾</span><b>${L('Гулять', 'Walk')}</b><small>${newFind ? L('✨ Что-то блестит!', '✨ Something shines!') : L(`Находки ${p.finds.length} из ${TREASURES.length}`, `Finds ${p.finds.length} of ${TREASURES.length}`)}</small></button>
       <button data-k="tricks"><span class="ic">🎓</span><b>${L('Трюки', 'Tricks')}</b><small>${L(`выучено ${learned} из ${open}`, `learned ${learned} of ${open}`)}</small></button>
+      <button data-k="run"><span class="ic">🏔️</span><b>${L('Приключение', 'Adventure')}</b><small>${L('забег по льдинам', 'ice floe dash')}</small></button>
     </div>
     <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
   if(newFind) panel.querySelector('[data-k="walk"]').classList.add('new');
@@ -101,10 +103,11 @@ async function funMenu(s){
   return k;
 }
 // что меняется после игры: гуляли — проголодался и испачкался сильнее
-const FUN_COST = {ball:{food:0.12, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}};
+const FUN_COST = {ball:{food:0.12, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}, run:{food:0.2, bath:0.3, sleep:0.2}};
 const FUN_SAY = {
   ball: () => L(`${gg('Наигрался', 'Наигралась')}! И немножко ${gg('испачкался', 'испачкалась')} 🛁`, 'All played out! And a little bit dirty 🛁'),
   walk: () => L(`${gg('Нагулялся', 'Нагулялась')}! Лапки в снегу — пора купаться 🛁`, 'What a walk! Paws full of snow — bath time 🛁'),
+  run: () => runSay || L(`${gg('Набегался', 'Набегалась')}! Лапки в снегу — пора купаться 🛁`, 'What a run! Snowy flippers — bath time 🛁'),
   tricks: () => trickMsg || L(`Умница! ${save.pet.name} любит учиться с тобой ♡`, `Well done! ${save.pet.name} loves learning with you ♡`)
 };
 

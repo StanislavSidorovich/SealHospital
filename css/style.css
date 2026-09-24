@@ -482,3 +482,31 @@ body.mg-on #homeCard,body.mg-on #homeBar{display:none!important}
 .finds-panel .finds i[data-n]{cursor:pointer}
 .shop-note{font-size:13.5px!important;font-weight:700!important;color:var(--soft);margin:-4px 0 12px!important}
 .shop-note:empty{display:none}
+
+/* ---------------- Фаза 9: приключения (js/adventure.js) ---------------- */
+.fun-pick .picks{grid-template-columns:repeat(2,1fr)}
+.fun-pick .picks button{min-height:96px}
+.run-hud{position:absolute;left:12px;right:74px;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;align-items:center;gap:6px;pointer-events:none;max-width:420px}
+.run-hud .pill{background:var(--paper);border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);padding:4px 10px;font-weight:800;font-size:17px;white-space:nowrap}
+.run-hud .bar{position:relative;flex:1;min-width:60px;height:14px;border:2.5px solid var(--ink);border-radius:9px;background:#fff;box-shadow:0 3px 0 var(--ink)}
+.run-hud .bar i{display:block;height:100%;width:0;border-radius:6px;background:var(--pink)}
+.run-hud .flag{position:absolute;right:-8px;top:-14px;font-size:20px}
+.adv-map .ttl,.run-end .ttl{font-size:28px;margin:2px 0 10px;text-align:center}
+.isles{display:flex;flex-direction:column;gap:8px;position:relative;margin-bottom:4px}
+.isles::before{content:"";position:absolute;left:34px;top:30px;bottom:30px;border-left:3px dashed #9BC6DD}
+.isle{position:relative;display:flex;align-items:center;gap:10px;min-height:62px;padding:6px 12px;border-radius:18px;border:2.5px solid var(--ink);
+  background:#E4F4FB;box-shadow:0 3px 0 var(--ink);text-align:left;color:var(--ink)}
+.isle .ic{font-size:30px;width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:#fff;border:2.5px solid var(--ink);flex:none}
+.isle .t{flex:1;display:flex;flex-direction:column}
+.isle b{font-family:"Pangolin","Comic Sans MS",cursive;font-weight:400;font-size:20px;line-height:1.1}
+.isle small{font-size:12.5px;font-weight:800;color:var(--soft)}
+.isle .st{font-size:20px;color:#E0A21B;letter-spacing:1px}
+.isle.on{background:#FFF7DD;animation:isleglow 1.6s ease-in-out infinite}
+@keyframes isleglow{50%{box-shadow:0 3px 0 var(--ink),0 0 0 6px rgba(255,214,107,.75)}}
+.isle.on:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.isle.lock{opacity:.6;border-style:dashed;box-shadow:none}
+.run-end .res-stars{margin-bottom:8px}
+.run-end .got{font-size:15px;font-weight:800;margin:0 0 8px;text-align:center}
+.run-end .cup{background:#FFF1C9;border:2px solid #C9962E;border-radius:14px;padding:6px 10px}
+.run-end .earned{text-align:center;margin:0 0 10px!important}
+@media (prefers-reduced-motion:reduce){ .isle.on{animation:none} }
