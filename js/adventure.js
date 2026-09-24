@@ -12,6 +12,7 @@ const RUN_POS = new V3(-200, 0, 0);          // старт дорожки; бе�
 const RUN_SPEED = 5.2, RUN_G = 22, RUN_VY = 8.4;   // прыжок: высота ≈1,6, в воздухе ≈0,76 с — пролетаем ≈4 м
 const RUN_W = 3.2;                           // ширина ледяной дорожки
 const runCam = {on:false, pos:new V3(), look:new V3()};
+const BUB_Y = 1.9;   // пузыри с рыбками висят над водой сбоку от дорожки и чуть выше малыша: он их не заслоняет
 const runRoot = new THREE.Group(); runRoot.visible = false; scene.add(runRoot);
 if(!save.adv) save.adv = sanitizeAdv(null);   // Pages мог отдать старый data.js
 
@@ -123,7 +124,7 @@ function runBuild(id){
     if(k === 'line') for(let i = 0; i < it[2]; i++) shell(z + i*1.5, 0, 0);
     if(k === 'drift'){ const d = makeDrift(); d.position.copy(at(z)); grp.add(d); r.drifts.push({o:d, z, hit:false}); }
     if((k === 'drift' && it[2]) || (k === 'crack' && it[3])) for(const dz of [-1.3, 0, 1.3]) shell(z + dz, 0, 1.45*(1 - (dz/2.1)**2));   // дуга по прыжку
-    if(k === 'fish'){ const b = makeBubble(); b.position.copy(at(z, it[2], 1.55)); grp.add(b); r.bubbles.push({o:b, z, x:it[2], ph:Math.random()*6, free:false}); r.fishTotal++; }
+    if(k === 'fish'){ const b = makeBubble(); b.position.copy(at(z, it[2]*1.45, BUB_Y)); grp.add(b); r.bubbles.push({o:b, z, x:it[2], ph:Math.random()*6, free:false}); r.fishTotal++; }
   }
   const fin = makeFinish(); fin.position.copy(at(lv.len)); grp.add(fin); r.finish = fin;
   R = r;
@@ -198,6 +199,7 @@ function runHud(){
 /* ---------- покадрово: движение, прыжки, сбор ---------- */
 function runStep(dt){
   const r = R, s = petSeal;
+  if(r.paused) return;   // пауза (🏠): всё замирает
   // обучение: перед первым сугробом и первым пузырём время почти замирает, пока не нажмёшь
   if(r.state === 'go' && !r.slow){
     const d0 = r.drifts[0], b0 = r.bubbles[0];
@@ -237,7 +239,7 @@ function runStep(dt){
       emit(TEX.star, p.o.position, {v:new V3(0, 1, 0), life:0.45, size:0.22, spin:4}); runHud();
     }
   }
-  for(const b of r.bubbles) if(!b.free) b.o.position.y = 0.25 + 1.55 + Math.sin(now*2 + b.ph)*0.12;
+  for(const b of r.bubbles) if(!b.free) b.o.position.y = 0.25 + BUB_Y +Math.sin(now*2 + b.ph)*0.12;
   // малыш: едет на пузике, в прыжке задирает нос, в кувырке крутится
   const pos = runPupAt(); s.root.position.copy(pos); s.root.rotation.set(0, Math.PI, 0);
   if(r.slow) mgHint(r.slow === 'jump' ? L('Сугроб! Нажми — прыжок 👆', 'A snowdrift! Tap to jump 👆') : L('Рыбка в пузыре! Нажми на пузырь 🫧', 'A fish in a bubble! Tap the bubble 🫧'));
@@ -249,8 +251,9 @@ function runStep(dt){
   if(r.puffT < 0 && !r.air && r.splash <= 0 && r.sp > 1){ r.puffT = 0.09; emit(TEX.puff, pos.clone().add(new V3((Math.random() - 0.5)*0.6, 0.15, 1.2*petScale())), {v:new V3(0, 0.4, 1.5), life:0.5, size:0.35, grow:1}); }
   // вода и камера едут следом
   runWater.position.set(RUN_POS.x, -0.05, pos.z - 30);
-  runCam.pos.set(pos.x + 0.9, 4.6 + Math.max(0, r.y)*0.35, pos.z + 10.5);
-  runCam.look.set(pos.x, 0.9 + Math.max(0, r.y)*0.3, pos.z - 7);
+  const ck = petK() - 1;   // подрос — камера выше и дальше, чтобы малыш не закрывал дорожку
+  runCam.pos.set(pos.x + 0.4, 4.6 + ck*4.5 + Math.max(0, r.y)*0.35, pos.z + 10.5 + ck*6);
+  runCam.look.set(pos.x, 0.9 + ck*0.6 + Math.max(0, r.y)*0.3, pos.z - 7 - ck*2);
   if(r.state === 'end'){   // на финише камера облетает малыша спереди — видно, как он радуется
     r.endK = Math.min(1, (r.endK || 0) + dt*0.8); const k = ease.io(r.endK), sc = petScale();
     runCam.pos.lerp(pos.clone().add(new V3(1.5, 2.3 + 1.2*sc, -7 - 2.2*sc)), k);
@@ -291,7 +294,7 @@ async function petRun(s, id){
   // на старт: вспышка, камера за спиной малыша, свет чуть тише (сверху пастель выгорает)
   sfx.whoosh(); flash();
   runRoot.visible = true; runCam.on = true; HEMI.intensity = 0.62; sun.intensity = 0.58;
-  s.bubble.visible = false;
+  s.bubble.visible = false; runBtn(true);
   while(again){
     runBuild(id); runStep(0);
     mgOpen('', {hintBottom:true});
@@ -301,17 +304,22 @@ async function petRun(s, id){
     const fin = new Promise(r => done = r);
     mgOn(mgRoot, 'pointerdown', e => {
       e.preventDefault();
-      if(!R || R.state !== 'go') return;
+      if(!R || R.state !== 'go' || R.paused) return;
       const b = runBubbleAt(e); if(b) return runFree(b);
       runJump();
     });
     mgTick(dt => { if(R) runStep(dt); if(R.state === 'end' && R.sp < 0.15 && R.endK >= 1 && !R.over){ R.over = true; done(); } });
-    // 3, 2, 1 — поехали!
-    if(R.stars){ mgHint(L('Сегодня вместо ракушек — звёздочки ⭐ Ракушки прилив принесёт завтра', 'Today there are stars instead of shells ⭐ The tide brings new shells tomorrow')); await wait(2.6); }
-    for(const n of ['3', '2', '1']){ mgHint(n); sfx.tick(); await wait(0.55); }
-    mgHint(L('Поехали! 🐾', 'Let\'s go! 🐾')); sfx.arf(); R.state = 'go';
-    setTimeout(() => { if(R && R.state === 'go' && !R.slow) mgHint(''); }, 1200);
+    runQuit = () => { R.quit = true; done(); };
+    // 3, 2, 1 — поехали! (на паузе отсчёт ждёт)
+    const tick = async t => { while(R.paused) await wait(0.1); await wait(t); };
+    if(R.stars){ mgHint(L('Сегодня вместо ракушек — звёздочки ⭐ Ракушки прилив принесёт завтра', 'Today there are stars instead of shells ⭐ The tide brings new shells tomorrow')); await tick(2.6); }
+    for(const n of ['3', '2', '1']){ if(R.quit) break; mgHint(n); sfx.tick(); await tick(0.55); }
+    if(!R.quit){
+      mgHint(L('Поехали! 🐾', 'Let\'s go! 🐾')); sfx.arf(); R.state = 'go';
+      setTimeout(() => { if(R && R.state === 'go' && !R.slow) mgHint(''); }, 1200);
+    }
     await fin;
+    if(R.quit){ mgClose(); break; }   // ушли домой с паузы: без итогов, забег можно пройти потом
     await wait(0.6);
     result = runResults();
     mgHint('');
@@ -319,6 +327,7 @@ async function petRun(s, id){
     mgClose();
   }
   // домой: малыш снова в уголке
+  runQuit = null; runBtn(false);
   flash();
   runRoot.visible = false; runCam.on = false; homeLights(false);
   if(R){ runRoot.remove(R.grp); R = null; } runHudEl = null;
@@ -326,8 +335,41 @@ async function petRun(s, id){
   camOff.copy(cam0); camOffWant.copy(cam0);
   s.happyUntil = now + 3; setMood(s, 'happy');
   runSay = result ? L(`Какое приключение! Звёзд: ${result.stars} ⭐`, `What an adventure! Stars: ${result.stars} ⭐`) : '';
+  if(!result){ s.happyUntil = 0; return false; }   // ушли с паузы, не добежав ни разу — как «Потом»: малыш просто дома
 }
 let runSay = '';
+
+/* ---------- пауза и «домой» посреди забега ----------
+   Пока бежим, в углу остаются только звук и 🏠. Касание 🏠 — пауза: «Бежим дальше!» или «Домой».
+   Домой — без итогов и без наказания, забег можно пройти потом. На итогах 🏠 — то же, что кнопка «Домой». */
+let runQuit = null;
+function runBtn(on){
+  document.body.classList.toggle('run-on', on);
+  let b = $('#btnRunHome');
+  if(!on){ if(b) b.remove(); return; }
+  if(b) return;
+  b = document.createElement('button'); b.id = 'btnRunHome'; b.className = 'round home';
+  b.innerHTML = '<span aria-hidden="true">🏠</span>'; b.setAttribute('aria-label', L('Пауза и домой', 'Pause and go home'));
+  $('#btnSound').after(b);
+  b.addEventListener('click', () => { sfx.tap(); runPause(); });
+}
+async function runPause(){
+  if(!R || !runQuit || R.paused) return;
+  const endBtn = document.querySelector('.run-end [data-k="home"]');
+  if(endBtn) return endBtn.click();
+  if(R.state === 'end') return;   // финишная камера ещё летит — итоги вот-вот появятся
+  R.paused = true; mgHintEl.style.visibility = 'hidden';
+  const panel = mgNode('div', 'mg-panel run-pause', `
+    <p class="ttl display">${L('Пауза ⏸', 'Paused ⏸')}</p>
+    <p class="got">${L(`${save.pet.name} подождёт. Забег можно пройти в другой раз`, `${save.pet.name} will wait. You can do the dash another time`)}</p>
+    <div class="row"><button class="btn" data-k="go">${L('Бежим дальше! ▶', 'Keep going! ▶')}</button><button class="btn ghost" data-k="home">${L('Домой 🏠', 'Home 🏠')}</button></div>`);
+  const k = await new Promise(r => panel.querySelectorAll('[data-k]').forEach(b => mgOn(b, 'click', e => { e.stopPropagation(); sfx.tap(); r(b.dataset.k); })));
+  panel.classList.add('away'); await wait(0.25); panel.remove();
+  mgHintEl.style.visibility = '';
+  if(!R) return;
+  if(k === 'home' && runQuit) runQuit();
+  R.paused = false;
+}
 // подсчёт звёзд, награда, рекорд, кубок
 function runResults(){
   const r = R, shellsOk = r.shells >= Math.ceil(r.total*SHELL_GOAL), fishOk = r.fish >= r.fishTotal;

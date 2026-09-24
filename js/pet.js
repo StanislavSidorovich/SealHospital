@@ -303,9 +303,11 @@ function setPetMode(on){
 }
 function goPet(on){
   if(on === petMode || !save.pet) return;
+  if(on && mgCanPark()) mgPark();   // лупа или лечение подождут: вернёшься — продолжишь с того же места (minigames.js)
   if(busy || !mgRoot.hidden) return toast(L('Сначала закончи то, что начала 🙂', 'Finish what you started first 🙂'));
   if(homeMode) homeExit();   // из домика — сразу в больницу
   sfx.whoosh(); setPetMode(on);
+  if(!on && mgUnpark()) return toast(L(`${S.p.name} ${S.p.f ? 'ждала' : 'ждал'} тебя! Продолжаем 🩺`, `${S.p.name} waited for you! Let's go on 🩺`), 2400);
   if(on){
     const missed = petMissed(); save.pet.seen = Date.now();
     wishT = Math.max(wishT, now + 4);   // желание — после приветствия, а не вместо него
@@ -552,10 +554,15 @@ async function petFeed(s){
 }
 
 /* ---------- Искупать: намылить губкой и полопать пузыри ---------- */
-const SOAP_TEX = canvasTex(64, (g) => {
-  g.beginPath(); g.arc(32, 32, 27, 0, 7); g.fillStyle = 'rgba(190,230,250,.35)'; g.fill();
-  g.lineWidth = 3; g.strokeStyle = 'rgba(59,58,74,.75)'; g.stroke();
-  g.beginPath(); g.arc(22, 21, 7, 0, 7); g.fillStyle = 'rgba(255,255,255,.95)'; g.fill();
+// пузырь с радужным краем и тёмной обводкой: на белом снегу и белой пенке бледный пузырь было не видно
+const SOAP_TEX = canvasTex(128, (g, s) => {
+  const c = s/2, R0 = s/2 - 7;
+  const gr = g.createRadialGradient(c, c, R0*0.35, c, c, R0);
+  gr.addColorStop(0, 'rgba(200,236,252,.25)'); gr.addColorStop(0.7, 'rgba(214,190,255,.5)'); gr.addColorStop(1, 'rgba(255,155,184,.8)');
+  g.beginPath(); g.arc(c, c, R0, 0, 7); g.fillStyle = gr; g.fill();
+  g.lineWidth = 6; g.strokeStyle = '#3B3A4A'; g.stroke();
+  g.beginPath(); g.arc(c, c, R0 - 12, Math.PI*1.08, Math.PI*1.48); g.lineWidth = 8; g.lineCap = 'round'; g.strokeStyle = '#fff'; g.stroke();
+  g.beginPath(); g.arc(c + R0*0.38, c + R0*0.4, 5, 0, 7); g.fillStyle = '#fff'; g.fill();
 });
 function makeTub(){
   const g = new THREE.Group();
@@ -629,7 +636,8 @@ async function petBath(s){
   const popDone = new Promise(r => fin2 = r);
   const spawn = () => {
     const a = Math.random()*Math.PI*2, r = Math.random()*0.8*tk;
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:SOAP_TEX, transparent:true, depthWrite:false}));
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:SOAP_TEX, transparent:true, depthWrite:false, depthTest:false}));   // поверх головы и ванны
+    sp.renderOrder = 5;
     sp.position.set(tub.position.x + Math.cos(a)*r, 0.25 + 0.55*tk, tub.position.z + Math.sin(a)*r*0.6 + 0.3*tk);
     sp.scale.setScalar(0.01); sp.userData = {size:(0.4 + Math.random()*0.2)*Math.max(1, tk*0.85), ph:Math.random()*6, v:(0.28 + Math.random()*0.2)*tk};
     scene.add(sp); bubbles.push(sp);

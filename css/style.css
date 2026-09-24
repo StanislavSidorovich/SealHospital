@@ -509,4 +509,8 @@ body.mg-on #homeCard,body.mg-on #homeBar{display:none!important}
 .run-end .got{font-size:15px;font-weight:800;margin:0 0 8px;text-align:center}
 .run-end .cup{background:#FFF1C9;border:2px solid #C9962E;border-radius:14px;padding:6px 10px}
 .run-end .earned{text-align:center;margin:0 0 10px!important}
+/* пауза в забеге: в углу только звук и 🏠 */
+body.run-on #corner>:not(#btnSound):not(#btnRunHome){display:none!important}
+.run-pause .ttl{font-size:28px;margin:2px 0 6px;text-align:center}
+.run-pause .got{font-size:16px;font-weight:700;margin:0 0 12px;text-align:center}
 @media (prefers-reduced-motion:reduce){ .isle.on{animation:none} }

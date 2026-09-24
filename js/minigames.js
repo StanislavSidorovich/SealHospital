@@ -8,7 +8,7 @@ let mgCleanup = [];
 
 // card:true — карта пациента остаётся на экране (подсказку тогда лучше опустить вниз: hintBottom)
 function mgOpen(hint, {card = false, hintBottom = false} = {}){
-  mgStage.innerHTML = ''; mgRoot.hidden = false; $('#toast').hidden = true;   // тост не должен закрывать панель мини-игры
+  mgStage.innerHTML = ''; mgEnding = false; mgRoot.hidden = false; $('#toast').hidden = true;   // тост не должен закрывать панель мини-игры
   document.body.classList.add('mg-on'); document.body.classList.toggle('mg-card', card);
   mgHintEl.classList.toggle('bottom', hintBottom);
   mgHint(hint);
@@ -22,7 +22,33 @@ function mgHint(text){
   if(mgHintEl.textContent === text) return;
   mgHintEl.textContent = text; mgHintEl.classList.remove('pop'); void mgHintEl.offsetWidth; mgHintEl.classList.add('pop');
 }
-function mgOn(el, type, fn){ el.addEventListener(type, fn); mgCleanup.push(() => el.removeEventListener(type, fn)); }
+function mgOn(el, type, fn){ el.addEventListener(type, fn); const off = () => el.removeEventListener(type, fn); off.on = [el, type, fn]; mgCleanup.push(off); }
+
+/* Смену можно оставить посреди лупы или лечения и сбегать к малышу (goPet в pet.js): мини-игра «засыпает» —
+   её узлы, покадровые обработчики и касания откладываются в сторону и возвращаются, когда придёшь обратно.
+   mgEnding — игра уже решена и вот-вот закроется сама: тогда не откладываем, иначе вернули бы закрытую игру. */
+let mgParked = null, mgEnding = false;
+function mgCanPark(){ return !mgParked && !mgEnding && !petMode && !!S && (S.stage === 'diagnose' || S.stage === 'treat') && !mgRoot.hidden; }
+function mgPark(){
+  const p = mgParked = {nodes:[...mgStage.childNodes], ticks:[...mgTicks], clean:mgCleanup, hint:mgHintEl.textContent, busy,
+    bottom:mgHintEl.classList.contains('bottom'), card:document.body.classList.contains('mg-card'),
+    focus:{want:camFocus.want, center:camFocus.center.clone(), size:camFocus.size, lift:camFocus.lift, up:camFocus.up}};
+  p.clean.forEach(f => f.on && f());   // касания снимаем, остальную уборку просто откладываем
+  p.nodes.forEach(n => n.remove()); mgTicks.clear(); mgCleanup = [];
+  mgHintEl.textContent = ''; mgRoot.hidden = true; document.body.classList.remove('mg-on', 'mg-card');
+  setBusy(false);
+}
+function mgUnpark(){
+  const p = mgParked; if(!p) return false; mgParked = null;
+  mgStage.innerHTML = ''; p.nodes.forEach(n => mgStage.appendChild(n));
+  p.ticks.forEach(f => mgTicks.add(f));
+  p.clean.forEach(f => f.on && f.on[0].addEventListener(f.on[1], f.on[2])); mgCleanup = p.clean;
+  mgRoot.hidden = false; document.body.classList.add('mg-on'); document.body.classList.toggle('mg-card', p.card);
+  mgHintEl.classList.toggle('bottom', p.bottom); mgHint(p.hint);
+  focusCam(p.focus.center, p.focus.size, p.focus.lift, p.focus.up); camFocus.want = p.focus.want;
+  setBusy(p.busy);
+  return true;
+}
 function mgTick(fn){ mgTicks.add(fn); }
 function mgNode(tag, cls, html = ''){
   const el = document.createElement(tag); if(cls) el.className = cls; el.innerHTML = html; mgStage.appendChild(el); return el;
@@ -115,7 +141,7 @@ async function mgMedicine(s){
     if(step < recipe.length) mgHint(step === 1 ? L('Так! Теперь следующий', 'Yes! Now the next one') : L('Ещё один!', 'One more!'));
     else finish();
   }));
-  await done;
+  await done; mgEnding = true;
   panel.querySelector('.spoon').classList.add('full'); sfx.good(); mgHint(L('Готово! Даём лекарство', 'Done! Giving the medicine'));
   await wait(0.8);
   panel.classList.add('away'); await wait(0.35);
@@ -299,7 +325,7 @@ async function mgScarf(s){
   const wiggleScarf = () => { sfx.pop(); tween(0.3, k => s.scarf.scale.setScalar(1 + Math.sin(k*Math.PI)*0.12), ease.lin); };
   panel.querySelectorAll('.swatch').forEach(b => mgOn(b, 'click', () => { color = b.dataset.c; render(); wiggleScarf(); }));
   panel.querySelectorAll('.pat').forEach(b => mgOn(b, 'click', () => { pattern = b.dataset.p; render(); wiggleScarf(); }));
-  await new Promise(r => mgOn(panel.querySelector('#scarfDone'), 'click', r));
+  await new Promise(r => mgOn(panel.querySelector('#scarfDone'), 'click', r)); mgEnding = true;
   panel.classList.add('away'); await wait(0.3);
   mgClose();
   S.scarf = {color, pattern};
@@ -383,7 +409,7 @@ async function mgLupa(s, ailments, onFound, onSecret){
     // долго ничего не находится — подсвечиваем, где искать
     if(left.size && now - lastFind > 8){ const c = toScreen(worldOf(s, new V3())), p = hotNear(s, [...left][0], c.x, c.y).p; target.hidden = false; place(target, p.x, p.y); }
   });
-  await done;
+  await done; mgEnding = true;
   await wait(0.6);
   mgClose();
 }
