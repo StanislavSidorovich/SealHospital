@@ -306,14 +306,23 @@ async function mgScarf(s){
 }
 
 /* ---------- Лупа: водить по тюленю и найти, что болит ---------- */
-// где искать каждый симптом (точки на тюлене в координатах мира)
+// где искать каждый симптом: несколько точек, и каждая — там, где что-то нарисовано
+// (капля пота и красные щёки при жаре, пузырь-мысль с рыбкой и урчащее пузико у голодного, обе ласты у замёрзшего)
+const wpos = o => o.getWorldPosition(new V3());
 const HOTSPOT = {
-  fever:  s => worldOf(s, new V3(0, 0.62, 0.45)),
-  sneeze: s => worldOf(s, s.noseLocal),
-  scratch:s => s.scratch.getWorldPosition(new V3()),
-  hungry: s => s.inner.localToWorld(new V3(0.72, 0.5, 0.85)),
-  cold:   s => s.flippers[0].children[0].getWorldPosition(new V3())
+  fever:  s => [worldOf(s, new V3(0, 0.62, 0.45)), wpos(s.sweat), worldOf(s, new V3(0.5, -0.05, 0.7)), worldOf(s, new V3(-0.5, -0.05, 0.7))],
+  sneeze: s => s.hat.visible ? [worldOf(s, s.noseLocal), wpos(s.hat)] : [worldOf(s, s.noseLocal)],
+  scratch:s => [wpos(s.scratch)],
+  hungry: s => [s.inner.localToWorld(new V3(0.72, 0.5, 0.85)), wpos(s.bubble)],
+  cold:   s => s.flippers.map(f => wpos(f.children[0]))
 };
+const HOT_R = 60;   // радиус «попал лупой», px
+// ближайшая к лупе точка симптома (для подсказки — ближайшая к центру тюленя)
+function hotNear(s, a, x, y){
+  let best = null, bd = 1e9, bw = null;
+  for(const v of HOTSPOT[a](s)){ const p = toScreen(v), d = Math.hypot(p.x - x, p.y - y); if(d < bd){ bd = d; best = p; bw = v; } }
+  return {p:best, d:bd, w:bw};
+}
 // секретик: в одном из этих мест (координаты тела) под лупой прячется ракушка, место иногда блестит.
 // Места выбраны так, чтобы их было видно при осмотре и они не совпадали с симптомами.
 const SECRET_SPOTS = [new V3(1.45, 0.5, 0.4), new V3(0, 0.25, 1.2), new V3(-1.3, 0.2, 1.2)];
@@ -323,37 +332,37 @@ async function mgLupa(s, ailments, onFound, onSecret){
   const lens = mgNode('div', 'lens idle', '<div class="ring"></div>');
   const target = mgNode('div', 'target'); target.hidden = true;
   const place = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; };
-  let lx = innerWidth/2, ly = innerHeight*0.62, touched = false, finish;
+  let lx = innerWidth/2, ly = innerHeight*0.62, touched = false, down = false, finish;
   place(lens, lx, ly);
   const left = new Set(ailments), prog = {}, done = new Promise(r => finish = r);
-  let lastFind = now, lastGiggle = now;
+  let lastFind = now, lastGiggle = now, lensMouse = false;
   const secretAt = SECRET_SPOTS[Math.floor(Math.random()*SECRET_SPOTS.length)];
   let secret = onSecret ? 0 : -1, sparkT = 1;   // -1 — уже найден (или не нужен)
   const secretPos = () => s.inner.localToWorld(secretAt.clone());
   const move = e => {
-    touched = true; lens.classList.remove('idle');
+    touched = true; lensMouse = e.pointerType === 'mouse'; lens.classList.remove('idle');
     lx = e.clientX; ly = e.clientY - 70;   // лупа над пальцем, чтобы палец её не закрывал
     place(lens, lx, ly);
   };
-  mgOn(mgRoot, 'pointerdown', move);
+  // пальцем ищем, только пока он на экране: отпустила — лупа лежит и сама ничего не находит
+  mgOn(mgRoot, 'pointerdown', e => { down = true; move(e); });
   mgOn(mgRoot, 'pointermove', e => { if(e.buttons || e.pointerType === 'touch' || touched) move(e); });
+  for(const ev of ['pointerup', 'pointercancel']) mgOn(mgRoot, ev, e => { if(e.pointerType !== 'mouse') down = false; });
   mgTick(dt => {
-    let hot = null;
-    for(const a of left){
-      const p = toScreen(HOTSPOT[a](s));
-      if(Math.hypot(p.x - lx, p.y - ly) < 52){ hot = a; break; }
-    }
+    const looking = touched && (down || lensMouse);
+    let hot = null, hd = HOT_R;
+    for(const a of left){ const d = hotNear(s, a, lx, ly).d; if(d < hd){ hd = d; hot = a; } }
     for(const a of left) if(a !== hot) prog[a] = Math.max(0, (prog[a] || 0) - dt);
-    if(hot && touched){
+    if(hot && looking){
       prog[hot] = (prog[hot] || 0) + dt/0.55;
       if(prog[hot] >= 1){
         left.delete(hot); lastFind = now; target.hidden = true;
         sfx.ding(); squash(s, 0.12, 0.3);
-        floatText(SYMPTOMS[hot].name(s.p.f) + '!', HOTSPOT[hot](s).add(new V3(0, 0.5, 0)), '#D9527E');
+        floatText(SYMPTOMS[hot].name(s.p.f) + '!', hotNear(s, hot, lx, ly).w.add(new V3(0, 0.5, 0)), '#D9527E');
         onFound(hot);
         if(!left.size) return finish();
       }
-    } else if(touched && now - lastGiggle > 3){
+    } else if(looking && now - lastGiggle > 3){
       const h = toScreen(worldOf(s, new V3()));
       if(Math.hypot(h.x - lx, h.y - ly) < 90){ lastGiggle = now; floatText('Хи-хи', headTop(s)); }
     }
@@ -361,7 +370,7 @@ async function mgLupa(s, ailments, onFound, onSecret){
       sparkT -= dt;
       if(sparkT < 0){ sparkT = 1.6 + Math.random(); emit(TEX.star, secretPos(), {v:new V3(0, 0.35, 0.2), life:0.55, size:0.15, spin:4}); }
       const p = toScreen(secretPos());
-      if(!hot && touched && Math.hypot(p.x - lx, p.y - ly) < 50){
+      if(!hot && looking && Math.hypot(p.x - lx, p.y - ly) < 50){
         secret += dt/0.4;
         if(secret >= 1){
           secret = -1; sfx.ding(); burst(TEX.star, secretPos(), 10, 1.6, 0.24);
@@ -372,7 +381,7 @@ async function mgLupa(s, ailments, onFound, onSecret){
     }
     lens.querySelector('.ring').style.setProperty('--p', hot ? Math.min(1, prog[hot]) : secret > 0 ? Math.min(1, secret) : 0);
     // долго ничего не находится — подсвечиваем, где искать
-    if(left.size && now - lastFind > 6){ const p = toScreen(HOTSPOT[[...left][0]](s)); target.hidden = false; place(target, p.x, p.y); }
+    if(left.size && now - lastFind > 8){ const c = toScreen(worldOf(s, new V3())), p = hotNear(s, [...left][0], c.x, c.y).p; target.hidden = false; place(target, p.x, p.y); }
   });
   await done;
   await wait(0.6);

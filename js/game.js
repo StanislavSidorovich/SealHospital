@@ -383,7 +383,7 @@ function frame(ts){
   if(S){
     const s = S.seal; updateSeal(s, t, dt);
     sneezeTick(s, dt, S.stage === 'treat' && S.ail.sneeze && !busy && !shopOpen && !petMode);
-    if(S.stage === 'treat' && !busy && !petMode){
+    if((S.stage === 'treat' && !busy || S.stage === 'diagnose') && !petMode){   // урчит и под лупой: видно, где искать «голодный»
       if(S.ail.hungry){
         s.rumbleT -= dt;
         if(s.rumbleT < 0){ s.rumbleT = 5 + Math.random()*2; floatText('урр...', worldOf(s, new V3(0.9, -0.9, 0.3)), '#6B6A7E');

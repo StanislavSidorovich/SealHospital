@@ -63,7 +63,7 @@ function makeSeal(p){
   const sweat = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.drop, transparent:true, depthWrite:false}));
   sweat.scale.set(0.2, 0.26, 1); sweat.position.set(-0.78, 0.35, 0.3); sweat.visible = false; head.add(sweat);
   const bubble = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.bubble, transparent:true, depthWrite:false}));
-  bubble.scale.setScalar(0.85); bubble.position.set(1.25, 2.55, 0.4); bubble.visible = false; inner.add(bubble);
+  bubble.scale.setScalar(0.85); bubble.position.set(1.2, 2.3, 0.45); bubble.visible = false; inner.add(bubble);   // ниже столбика кнопок справа: на телефоне они его закрывали
   const scratch = new THREE.Group();
   for(const r of [0.7, -0.7]){ const m = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.026, 0.02), new THREE.MeshBasicMaterial({color:0xE0475B})); m.rotation.z = r; scratch.add(m); }
   onHead(scratch, 0.5, 0.52, 0.69, 0.006); scratch.visible = false; head.add(scratch);
@@ -155,7 +155,7 @@ function updateSeal(s, t, dt){
   s.blinkT -= dt;
   if(s.blinkT < 0){ const sc = s.blinkT > -0.12 ? 0.15 : 1; s.eyes.forEach(e => e.scale.y = sc); if(s.blinkT <= -0.12) s.blinkT = 2 + Math.random()*3; }
   s.sweat.position.y = 0.35 - ((t*0.6) % 1)*0.12;
-  s.bubble.position.y = 2.55 + Math.sin(t*2)*0.06;
+  s.bubble.position.y = 2.3 + Math.sin(t*2)*0.06;
 }
 function worldOf(s, local){ s.root.updateMatrixWorld(true); return s.head.localToWorld(local.clone()); }
 

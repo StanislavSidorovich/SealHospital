@@ -515,7 +515,10 @@ async function petBath(s){
   const tk = petK(), tub = makeTub(); tub.position.set(s.root.position.x, 0.25 + 0.275*tk, s.root.position.z); tub.scale.setScalar(0.01); scene.add(tub);
   sfx.splash(); hop(s, 0.45, 0.5);
   await tween(0.5, k => tub.scale.setScalar(Math.max(0.01, k*tk)), ease.back);
-  focusCam(worldOf(s, new V3(0, -0.5, 0)), 2.5*tk, 0.55);
+  // кадр: от дна ванны до макушки, малыш чуть ниже середины — сверху подсказка
+  const c = s.root.position, y0 = 0.25, y1 = headTop(s).y + 0.15*tk;
+  const frameY = (a, b, k = 1.3) => focusCam(new V3(c.x, (a + b)/2, c.z + 0.2*tk), (b - a)*k, -0.08*(b - a));
+  frameY(y0, y1);
   // грязные пятнышки: три на голове, по одному на боках
   const spots = [];
   for(const [x, y, z] of [[0.45, 0.5, 0.7], [-0.5, 0.4, 0.75], [0.05, 0.8, 0.55]]){
@@ -562,9 +565,12 @@ async function petBath(s){
   mgClose(); sfx.good(); floatText('Пенка!', headTop(s));
   await wait(0.5);
 
-  // пузыри поднимаются из ванны — лопай пальцем
-  const GOAL = 8;
+  // пузыри поднимаются из ванны — лопай пальцем. Камера отъезжает, чтобы над головой было место;
+  // пузыри летят медленно и сами лопаются под подсказкой, а не улетают за край экрана
+  const GOAL = 8, top = y1 + 0.9*tk;
+  frameY(y0, top, 1.2);
   mgOpen(`Лопай пузыри! Ещё ${GOAL}`);
+  const hintY = () => mgHintEl.getBoundingClientRect().bottom + 30;
   const bubbles = [];
   let popped = 0, spawnT = 0, fin2;
   const popDone = new Promise(r => fin2 = r);
@@ -572,7 +578,7 @@ async function petBath(s){
     const a = Math.random()*Math.PI*2, r = Math.random()*0.8*tk;
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:SOAP_TEX, transparent:true, depthWrite:false}));
     sp.position.set(tub.position.x + Math.cos(a)*r, 0.25 + 0.55*tk, tub.position.z + Math.sin(a)*r*0.6 + 0.3*tk);
-    sp.scale.setScalar(0.01); sp.userData = {size:0.3 + Math.random()*0.2, ph:Math.random()*6, v:0.5 + Math.random()*0.35};
+    sp.scale.setScalar(0.01); sp.userData = {size:(0.4 + Math.random()*0.2)*Math.max(1, tk*0.85), ph:Math.random()*6, v:(0.28 + Math.random()*0.2)*tk};
     scene.add(sp); bubbles.push(sp);
   };
   mgTick(dt => {
@@ -582,11 +588,14 @@ async function petBath(s){
       const b = bubbles[i], u = b.userData;
       b.position.y += u.v*dt; b.position.x += Math.sin(now*2 + u.ph)*dt*0.25;
       b.scale.setScalar(Math.min(u.size, b.scale.x + dt*0.8));
-      if(b.position.y > 3.4){ scene.remove(b); b.material.dispose(); bubbles.splice(i, 1); }
+      if(b.position.y > top || toScreen(b.position).y < hintY()){   // долетел до верха — лопается сам (не считается)
+        emit(TEX.puff, b.position, {v:new V3(0, 0.2, 0), life:0.35, size:0.2, grow:1});
+        scene.remove(b); b.material.dispose(); bubbles.splice(i, 1);
+      }
     }
   });
   mgOn(mgRoot, 'pointerdown', e => {
-    let best = -1, bd = 62;
+    let best = -1, bd = 72;
     bubbles.forEach((b, i) => { const p = toScreen(b.position), d = Math.hypot(p.x - e.clientX, p.y - e.clientY); if(d < bd){ bd = d; best = i; } });
     if(best < 0) return;
     const b = bubbles.splice(best, 1)[0];
