@@ -531,15 +531,11 @@ async function petBath(s){
   const c = s.root.position, y0 = 0.25, y1 = headTop(s).y + 0.15*tk;
   const frameY = (a, b, k = 1.3) => focusCam(new V3(c.x, (a + b)/2, c.z + 0.2*tk), (b - a)*k, -0.08*(b - a));
   frameY(y0, y1);
-  // грязные пятнышки: три на голове, по одному на боках
+  // грязные пятнышки — все на голове, спереди: туловище в ванне закрыто головой и пенкой
   const spots = [];
-  for(const [x, y, z] of [[0.45, 0.5, 0.7], [-0.5, 0.4, 0.75], [0.05, 0.8, 0.55]]){
+  for(const [x, y, z] of [[0.45, 0.5, 0.7], [-0.5, 0.4, 0.75], [0.05, 0.8, 0.55], [0.85, 0.05, 0.55], [-0.85, 0.0, 0.55]]){
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:DIRT_TEX, transparent:true, depthWrite:false}));
     onHead(sp, x, y, z, 0.04); sp.scale.setScalar(0.28); s.head.add(sp); spots.push(sp);
-  }
-  for(const x of [1.02, -1.02]){
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:DIRT_TEX, transparent:true, depthWrite:false}));
-    sp.position.set(x*(s.bodyK ? s.bodyK.x : 1), 1.15, 0.05); sp.scale.setScalar(0.34); s.inner.add(sp); spots.push(sp);
   }
   const foams = [];
   const wp = o => o.getWorldPosition(new V3());
