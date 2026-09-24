@@ -33,14 +33,14 @@ async function tuckIn(s){
   sfx.whoosh(); burst(TEX.puff, s.root.position.clone().add(new V3(0, 0.3, 1.2)), 8, 1.2, 0.4);
   hop(s, 0.35, 0.45);
   await tween(0.45, k => bed.scale.setScalar(Math.max(0.01, k)), ease.back);
-  sfx.yawn(); floatText('Ааа-у-у…', headTop(s), '#6B6A7E'); setMood(s, 'ok'); s.flap = 0;
+  sfx.yawn(); floatText(L('Ааа-у-у…', 'Yaaawn…'), headTop(s), '#6B6A7E'); setMood(s, 'ok'); s.flap = 0;
   const h0 = s.head.position.clone(), h1 = new V3(0, 1.3, 0.78);
   await tween(0.6, k => s.head.position.lerpVectors(h0, h1, k));
   const bl = makeBlanket(); setBlanket(bl, 0); s.inner.add(bl); s.blanket = bl;
   focusCam(worldOf(s, new V3(0, -0.45, -0.5)), 3.5, 0.45);
 
-  mgOpen('Укрой одеялом — тяни вверх');
-  const handle = mgNode('div', 'blanket-pull', '<span class="arr">⬆</span><span class="lbl">Тяни</span>');
+  mgOpen(L('Укрой одеялом — тяни вверх', 'Tuck in with the blanket — pull up'));
+  const handle = mgNode('div', 'blanket-pull', `<span class="arr">⬆</span><span class="lbl">${L('Тяни', 'Pull')}</span>`);
   let p = 0, y0 = null, p0 = 0, rustleT = 0, finish;
   const done = new Promise(r => finish = r);
   const set = v => {
@@ -56,7 +56,7 @@ async function tuckIn(s){
   });
   const up = () => {
     if(y0 === null) return; y0 = null; handle.classList.remove('on');
-    mgHint('Ещё выше — до самой шейки!');
+    mgHint(L('Ещё выше — до самой шейки!', 'Higher — all the way to the neck!'));
     const from = p; tween(0.3, k => { if(y0 === null) set(from*(1 - k)); });
   };
   for(const ev of ['pointerup', 'pointercancel']) mgOn(mgRoot, ev, up);
@@ -64,13 +64,13 @@ async function tuckIn(s){
   mgClose();
   const from = p; await tween(0.35, k => setBlanket(bl, from + (1 - from)*k), ease.back);
   setMood(s, 'sleep'); s.sleeping = true; s.zzzT = 0.2; sfx.lullaby();
-  floatText('Сладких снов!', headTop(s).add(new V3(0, 0.3, 0)), '#6B6A7E');
+  floatText(L('Сладких снов!', 'Sweet dreams!'), headTop(s).add(new V3(0, 0.3, 0)), '#6B6A7E');
   await wait(2.2);
 }
 async function wakeUp(s){
   if(!s.bed) return;
   s.sleeping = false; setMood(s, 'happy'); sfx.arf();
-  floatText(s.p.f ? 'Я выспалась!' : 'Я выспался!', headTop(s));
+  floatText(L(s.p.f ? 'Я выспалась!' : 'Я выспался!', 'I slept well!'), headTop(s));
   const bl = s.blanket, bed = s.bed, h0 = s.head.position.clone();
   await tween(0.45, k => { setBlanket(bl, 1 - k); s.head.position.lerpVectors(h0, s.headBase, k); });
   s.inner.remove(bl);
@@ -99,7 +99,7 @@ function makeShell(col, big){
 const SHELL_SPOTS = [[0.1,0.6],[1.1,0.3],[-1.0,0.0],[0.7,-0.8],[-0.5,-0.9],[1.6,-0.2],[-1.8,-0.2],[0.2,1.7],[-0.9,1.0],[0.8,1.6],[0.3,-1.6]];
 async function evShells(){
   focusCam(new V3(0, 0.3, 0.3), 4.4, 0);
-  mgOpen('Волна принесла ракушки! Собери их');
+  mgOpen(L('Волна принесла ракушки! Собери их', 'A wave brought shells! Collect them'));
   sfx.splash();
   const spots = SHELL_SPOTS.slice().sort(() => Math.random() - 0.5).slice(0, 7);
   const cols = [0xFFC2D1, 0xFFD2A8, 0xD9C8FF, 0xFFF4E8, 0xBDE8D6];
@@ -125,9 +125,9 @@ async function evShells(){
     const pos = best.position.clone(); scene.remove(best);
     burst(TEX.star, pos, best.userData.gold ? 12 : 5, 1.4, 0.24); sfx.coin();
     addShells(best.userData.val, toScreen(pos));
-    if(best.userData.gold) floatText('Золотая!', pos.clone().add(new V3(0, 0.6, 0)), '#C9962E');
+    if(best.userData.gold) floatText(L('Золотая!', 'Golden!'), pos.clone().add(new V3(0, 0.6, 0)), '#C9962E');
     if(!--left) finish();
-    else mgHint(`Осталось ${left}`);
+    else mgHint(L(`Осталось ${left}`, `${left} left`));
   });
   let sparkT = 0;
   mgTick(dt => {
@@ -137,25 +137,25 @@ async function evShells(){
     if(sparkT < 0 && g.parent && g.userData.ready){ sparkT = 0.7; emit(TEX.star, g.position.clone().add(new V3(0, 0.2, 0)), {v:new V3(0, 0.5, 0), life:0.6, size:0.16, spin:3}); }
   });
   await done;
-  mgHint('Все собраны! 🐚'); sfx.good();
+  mgHint(L('Все собраны! 🐚', 'All collected! 🐚')); sfx.good();
   await wait(1.1);
   mgClose(); unfocusCam();
 }
 const PUP_COLORS = [0xF8DDE4, 0xE6ECF5, 0xEFE4CF, 0xFFFFFF, 0xDCEBDF];
 async function evPup(){
   const my = save.pet;   // свой малыш приплывает проведать доктора на работе
-  const pup = my ? makePetSeal() : makeSeal({name:'Малыш', f:false, color:PUP_COLORS[Math.floor(Math.random()*PUP_COLORS.length)]});
+  const pup = my ? makePetSeal() : makeSeal({name:L('Малыш', 'Baby'), f:false, color:PUP_COLORS[Math.floor(Math.random()*PUP_COLORS.length)]});
   if(!my) pup.root.scale.setScalar(0.62);   // свой малыш уже нужного роста (makePetSeal)
   setMood(pup, 'ok'); extraSeals.add(pup);
   await arrive(pup);
-  sfx.arf(); floatText(my ? 'Привет, доктор!' : 'Привет!', headTop(pup));
+  sfx.arf(); floatText(my ? L('Привет, доктор!', 'Hello, doctor!') : L('Привет!', 'Hello!'), headTop(pup));
   focusCam(worldOf(pup, new V3(0, -0.5, 0)), 2.4*(my ? petK() : 1), 0.1);
   await wait(0.4);
-  mgOpen(my ? `${my.name} ${gg('приплыл', 'приплыла')} тебя проведать. Обними!` : 'Малыш приплыл в гости. Обними его!');
+  mgOpen(my ? L(`${my.name} ${gg('приплыл', 'приплыла')} тебя проведать. Обними!`, `${my.name} swam over to visit you. Give ${gg('him', 'her')} a hug!`) : L('Малыш приплыл в гости. Обними его!', 'A pup swam over to visit. Give it a hug!'));
   await new Promise(r => mgOn(mgRoot, 'pointerdown', e => {
     const c = toScreen(worldOf(pup, new V3(0, -0.4, 0)));
     if(Math.hypot(c.x - e.clientX, c.y - e.clientY) < 130) r();
-    else mgHint('Нажми на малыша ♡');
+    else mgHint(L('Нажми на малыша ♡', 'Tap the pup ♡'));
   }));
   mgClose();
   setMood(pup, 'happy'); sfx.hug(); pup.flap = 1;
@@ -163,11 +163,11 @@ async function evPup(){
   await tween(0.8, k => { pup.inner.position.y = Math.sin(k*Math.PI)*0.9; pup.inner.rotation.y = k*Math.PI*2; }, ease.io);
   pup.inner.position.y = 0; pup.inner.rotation.y = 0; pup.flap = 0.3;
   await squash(pup, 0.25);
-  floatText('Это тебе!', headTop(pup), '#D9527E');
+  floatText(L('Это тебе!', 'This is for you!'), headTop(pup), '#D9527E');
   addShells(5, toScreen(headTop(pup)));
   await wait(1.2);
   if(my){ my.xp += 3; persist(); }
-  toast(my ? `${my.name}: «Я подожду тебя в уголке!» 🦭` : 'Малыш: «Можно я ещё приплыву?» 🦭', 3200);
+  toast(my ? L(`${my.name}: «Я подожду тебя в уголке!» 🦭`, `${my.name}: “I will wait for you in my corner!” 🦭`) : L('Малыш: «Можно я ещё приплыву?» 🦭', 'Pup: “Can I come again?” 🦭'), 3200);
   unfocusCam();
   await wait(0.6);
   await leave(pup); extraSeals.delete(pup);
@@ -177,13 +177,13 @@ async function evPup(){
 function showResults(){
   save.shifts++;
   const stars = [
-    {ok:true, t:'Все пациенты здоровы'},
-    {ok:shift.mistakes <= 2, t:'Точное лечение', tip:'Читай карту пациента'},
-    {ok:shift.secrets > 0, t:'Секретик под лупой', tip:'Ищи блёстки лупой ✨'}
+    {ok:true, t:L('Все пациенты здоровы', 'All patients are well')},
+    {ok:shift.mistakes <= 2, t:L('Точное лечение', 'Precise treatment'), tip:L('Читай карту пациента', 'Read the patient card')},
+    {ok:shift.secrets > 0, t:L('Секретик под лупой', 'Secret under the magnifier'), tip:L('Ищи блёстки лупой ✨', 'Look for sparkles with the magnifier ✨')}
   ];
   const got = stars.filter(x => x.ok).length, bonus = 2 + got*2;
   save.shells += bonus; shift.shells += bonus; persist(); shellsShown = save.shells; renderShells();
-  $('#resTitle').textContent = `Смена ${save.shifts} окончена!`;
+  $('#resTitle').textContent = L(`Смена ${save.shifts} окончена!`, `Shift ${save.shifts} complete!`);
   $('#resPhotos').innerHTML = shift.photos.map(src => `<img src="${src}" alt="">`).join('');
   const ul = $('#resStars'); ul.innerHTML = '';
   stars.forEach((st, i) => {
@@ -197,7 +197,7 @@ function showResults(){
   const step = () => { shown = Math.min(shift.shells, shown + Math.max(1, Math.ceil(shift.shells/20))); total.textContent = `+${shown} 🐚`; if(shown < shift.shells) setTimeout(step, 45); };
   setTimeout(step, 1900);
   $('#card').hidden = true; $('#tools').hidden = true; $('#wardrobe').hidden = true;
-  $('#btnShift').textContent = adoptPending() ? 'Кто там плывёт? 🦭' : 'Новая смена';
+  $('#btnShift').textContent = adoptPending() ? L('Кто там плывёт? 🦭', 'Who is swimming there? 🦭') : L('Новая смена', 'New shift');
   $('#btnResPet').hidden = !save.pet;
   $('#results').hidden = false;
 }

@@ -3,21 +3,21 @@
    scarf — новый узор в выборе шарфика, decor — украшения больницы (сразу встают на льдину).
    Подключается после minigames.js и до shift.js/game.js. */
 const SHOP = [
-  {id:'bow',     kind:'wear', slot:'head', name:'Бантик',   price:12},
-  {id:'glasses', kind:'wear', slot:'face', name:'Очки',     price:15},
-  {id:'flower',  kind:'wear', slot:'head', name:'Цветочек', price:15},
-  {id:'beanie',  kind:'wear', slot:'head', name:'Шапка с ушками', price:25},
-  {id:'tophat',  kind:'wear', slot:'head', name:'Цилиндр',  price:30},
-  {id:'crown',   kind:'wear', slot:'head', name:'Корона',   price:45},
-  {id:'stars',   kind:'scarf', name:'Шарф со звёздами', price:20, c:'#7FB8F0'},
-  {id:'snow',    kind:'scarf', name:'Шарф-снежинки',   price:20, c:'#B69CF2'},
-  {id:'flags',   kind:'decor', name:'Флажки',   price:20},
-  {id:'rug',     kind:'decor', name:'Коврик',   price:25},
-  {id:'garland', kind:'decor', name:'Гирлянда', price:35},
-  {id:'snowman', kind:'decor', name:'Снеговик', price:45},
+  {id:'bow',     kind:'wear', slot:'head', name:L('Бантик', 'Bow'),   price:12},
+  {id:'glasses', kind:'wear', slot:'face', name:L('Очки', 'Glasses'),     price:15},
+  {id:'flower',  kind:'wear', slot:'head', name:L('Цветочек', 'Flower'), price:15},
+  {id:'beanie',  kind:'wear', slot:'head', name:L('Шапка с ушками', 'Eared beanie'), price:25},
+  {id:'tophat',  kind:'wear', slot:'head', name:L('Цилиндр', 'Top hat'),  price:30},
+  {id:'crown',   kind:'wear', slot:'head', name:L('Корона', 'Crown'),   price:45},
+  {id:'stars',   kind:'scarf', name:L('Шарф со звёздами', 'Star scarf'), price:20, c:'#7FB8F0'},
+  {id:'snow',    kind:'scarf', name:L('Шарф-снежинки', 'Snowflake scarf'),   price:20, c:'#B69CF2'},
+  {id:'flags',   kind:'decor', name:L('Флажки', 'Bunting'),   price:20},
+  {id:'rug',     kind:'decor', name:L('Коврик', 'Rug'),   price:25},
+  {id:'garland', kind:'decor', name:L('Гирлянда', 'Garland'), price:35},
+  {id:'snowman', kind:'decor', name:L('Снеговик', 'Snowman'), price:45},
   // подарки из папиных писем (js/letters.js, js/mail.js): в лавке не продаются, видны, когда уже есть
-  {id:'dadhat',  kind:'wear', slot:'head', name:'Папина шапочка', gift:true},
-  {id:'hearts',  kind:'wear', slot:'face', name:'Очки-сердечки',  gift:true}
+  {id:'dadhat',  kind:'wear', slot:'head', name:L('Папина шапочка', 'Dad\'s beanie'), gift:true},
+  {id:'hearts',  kind:'wear', slot:'face', name:L('Очки-сердечки', 'Heart glasses'),  gift:true}
 ];
 const shopItem = id => SHOP.find(x => x.id === id);
 const owns = id => save.owned.includes(id);
@@ -286,7 +286,7 @@ function thumb(id){
 /* ---------- лавка ---------- */
 let shopTab = 'wear', shopSel = null, shopOpen = false;
 function openShop(){
-  if(!mgRoot.hidden || busy) return toast('Сначала закончи лечение, потом загляни в лавку 🐚');
+  if(!mgRoot.hidden || busy) return toast(L('Сначала закончи лечение, потом загляни в лавку 🐚', 'Finish the treatment first, then visit the shop 🐚'));
   sfx.tap(); shopOpen = true; shopSel = null; renderShop(); $('#shop').hidden = false;
 }
 function closeShop(){ shopOpen = false; $('#shop').hidden = true; }
@@ -300,22 +300,22 @@ function renderShop(){
     const b = document.createElement('button'), have = owns(it.id);
     b.className = 'item' + (have ? ' have' : '') + (shopSel === it.id ? ' sel' : '') + (it.kind === 'scarf' ? ' scarf' : '');
     const status = !have ? `<span class="price">🐚 ${it.price}</span>`
-      : it.kind === 'decor' ? `<span class="price own">${save.decor.includes(it.id) ? 'Стоит ✓' : 'Убрано'}</span>`
-      : `<span class="price own">${it.gift ? 'От папы ♡' : 'Есть ✓'}</span>`;
+      : it.kind === 'decor' ? `<span class="price own">${save.decor.includes(it.id) ? L('Стоит ✓', 'On display ✓') : L('Убрано', 'Put away')}</span>`
+      : `<span class="price own">${it.gift ? L('От папы ♡', 'From Dad ♡') : L('Есть ✓', 'Owned ✓')}</span>`;
     b.innerHTML = `<img src="${thumb(it.id)}" alt=""><span class="nm">${it.name}</span>${status}`;
     b.addEventListener('click', () => { sfx.tap(); shopSel = it.id; renderShop(); });
     grid.appendChild(b);
   }
   const btn = $('#btnBuy'), it = shopSel && shopItem(shopSel);
   btn.classList.remove('off');
-  if(!it){ btn.textContent = 'Выбери, что нравится'; btn.classList.add('off'); }
+  if(!it){ btn.textContent = L('Выбери, что нравится', 'Pick what you like'); btn.classList.add('off'); }
   else if(!owns(it.id)){
     const need = it.price - save.shells;
-    btn.textContent = need > 0 ? `Не хватает ${need} 🐚` : `Купить за ${it.price} 🐚`;
+    btn.textContent = need > 0 ? L(`Не хватает ${need} 🐚`, `Need ${need} more 🐚`) : L(`Купить за ${it.price} 🐚`, `Buy for ${it.price} 🐚`);
     if(need > 0) btn.classList.add('off');
   }
-  else if(it.kind === 'decor') btn.textContent = save.decor.includes(it.id) ? 'Убрать' : 'Поставить';
-  else { btn.textContent = it.kind === 'scarf' ? 'Есть! Выбирай в шарфиках' : 'Есть! Надень после лечения'; btn.classList.add('off'); }
+  else if(it.kind === 'decor') btn.textContent = save.decor.includes(it.id) ? L('Убрать', 'Put away') : L('Поставить', 'Put out');
+  else { btn.textContent = it.kind === 'scarf' ? L('Есть! Выбирай в шарфиках', 'Yours! Pick it with the scarves') : L('Есть! Надень после лечения', 'Yours! Put it on after treatment'); btn.classList.add('off'); }
 }
 function shopAction(){
   const it = shopSel && shopItem(shopSel);
@@ -326,18 +326,18 @@ function shopAction(){
     save.decor = save.decor.includes(it.id) ? save.decor.filter(x => x !== it.id) : save.decor.concat(it.id);
     persist(); applyDecor(); renderShop(); return;
   }
-  if(save.shells < it.price){ sfx.bad(); return toast('Лечи пациентов — за каждого дают ракушки 🐚'); }
+  if(save.shells < it.price){ sfx.bad(); return toast(L('Лечи пациентов — за каждого дают ракушки 🐚', 'Heal patients — you get shells for each one 🐚')); }
   save.shells -= it.price; save.owned.push(it.id);
   if(it.kind === 'decor') save.decor.push(it.id);
   persist(); shellsShown = save.shells; renderShells(); sfx.buy();
   if(it.kind === 'decor'){   // закрываем лавку и показываем обновку на льдине
     applyDecor(); closeShop();
     burst(TEX.star, decorObjs[it.id].userData.center, 14, 2, 0.3);
-    return toast(`${it.name} — теперь в больнице! ✨`);
+    return toast(L(`${it.name} — теперь в больнице! ✨`, `${it.name} — now in the hospital! ✨`));
   }
   renderShop();
   if(it.kind === 'wear' && S && S.stage === 'hug' && showWardrobe(S.seal)) $('#tools').hidden = true;   // обновка сразу в гардеробе
-  toast(it.kind === 'scarf' ? `${it.name} — выбирай, когда лечишь от холода` : `${it.name}! Надевай пациентам после лечения`);
+  toast(it.kind === 'scarf' ? L(`${it.name} — выбирай, когда лечишь от холода`, `${it.name} — pick it when you treat the cold`) : L(`${it.name}! Надевай пациентам после лечения`, `${it.name}! Put it on patients after treatment`));
 }
 $('#btnShop').addEventListener('click', openShop);
 $('#btnShopClose').addEventListener('click', () => { sfx.tap(); closeShop(); });

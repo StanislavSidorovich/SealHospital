@@ -11,34 +11,36 @@ const PET_SPOT = new V3(10, 0.25, 0.2);     // где стоит малыш
 // Стадии роста. at — сколько сердечек дружбы нужно; sc — размер; head — голова относительно тела (у малыша большая);
 // body — пропорции тела (x, y, z): с возрастом тюлень вытягивается
 const STAGES = [
-  {m:'Малыш',     f:'Малышка',   ic:'🍼', at:0,  sc:0.62, head:1.14, body:[0.95, 1, 0.9]},
-  {m:'Детёныш',   f:'Детёныш',   ic:'🐾', at:2,  sc:0.72, head:1.08, body:[0.98, 1, 0.96]},
-  {m:'Подросток', f:'Подросток', ic:'⭐', at:5,  sc:0.84, head:1.0,  body:[1, 1, 1.04]},
-  {m:'Взрослый',  f:'Взрослая',  ic:'🦭', at:11, sc:0.96, head:0.94, body:[1.02, 1.02, 1.1]},
-  {m:'Сияющий',   f:'Сияющая',   ic:'✨', at:17, sc:0.96, head:0.94, body:[1.02, 1.02, 1.1]}
+  {m:L('Малыш', 'Baby'),         f:L('Малышка', 'Baby'),    ic:'🍼', at:0,  sc:0.62, head:1.14, body:[0.95, 1, 0.9]},
+  {m:L('Детёныш', 'Pup'),        f:L('Детёныш', 'Pup'),     ic:'🐾', at:2,  sc:0.72, head:1.08, body:[0.98, 1, 0.96]},
+  {m:L('Подросток', 'Teen'),     f:L('Подросток', 'Teen'),  ic:'⭐', at:5,  sc:0.84, head:1.0,  body:[1, 1, 1.04]},
+  {m:L('Взрослый', 'Adult'),     f:L('Взрослая', 'Adult'),  ic:'🦭', at:11, sc:0.96, head:0.94, body:[1.02, 1.02, 1.1]},
+  {m:L('Сияющий', 'Shiny'),      f:L('Сияющая', 'Shiny'),   ic:'✨', at:17, sc:0.96, head:0.94, body:[1.02, 1.02, 1.1]}
 ];
 const SHINY = STAGES.length - 1;
 const GROW_GIFT = 10;     // ракушек в подарок на новой стадии
 const PATIENT_XP = 2;     // малыш гордится доктором: за каждого вылеченного пациента (game.js)
 const PAT_XP = 1, PAT_MAX = 6;   // ласка: +1 опыт за «сеанс», не больше 6 раз в день
 const PET_COATS = [
-  {id:'snow', c:0xFFFFFF, name:'Белоснежный'},
-  {id:'pink', c:0xF6C4D3, name:'Розовый'},   // чуть насыщеннее, чем у пациентов: в мультяшном свете бледные почти не отличить
-  {id:'sky',  c:0xC6DCF4, name:'Голубой'},
-  {id:'mint', c:0xC4E6D0, name:'Мятный'},
-  {id:'sand', c:0xE9D3AE, spot:0xC9A479, name:'Песочный в пятнышках'},
-  {id:'grey', c:0xB9C2D0, spot:0x8591A8, name:'Серый в пятнышках'}
+  {id:'snow', c:0xFFFFFF, name:L('Белоснежный', 'Snow white')},
+  {id:'pink', c:0xF6C4D3, name:L('Розовый', 'Pink')},   // чуть насыщеннее, чем у пациентов: в мультяшном свете бледные почти не отличить
+  {id:'sky',  c:0xC6DCF4, name:L('Голубой', 'Sky blue')},
+  {id:'mint', c:0xC4E6D0, name:L('Мятный', 'Mint')},
+  {id:'sand', c:0xE9D3AE, spot:0xC9A479, name:L('Песочный в пятнышках', 'Sandy with spots')},
+  {id:'grey', c:0xB9C2D0, spot:0x8591A8, name:L('Серый в пятнышках', 'Grey with spots')}
 ];
 const PET_NAMES = {
-  m:['Пломбир', 'Пончик', 'Кекс', 'Буся', 'Тофу', 'Мармелад', 'Сугроб', 'Орешек', 'Хрустик', 'Пушок'],
-  f:['Булочка', 'Плюшка', 'Льдинка', 'Снежинка', 'Карамелька', 'Пуговка', 'Ватрушка', 'Мася', 'Жемчужинка', 'Пушинка']
+  m:L(['Пломбир', 'Пончик', 'Кекс', 'Буся', 'Тофу', 'Мармелад', 'Сугроб', 'Орешек', 'Хрустик', 'Пушок'],
+      ['Sundae', 'Donut', 'Muffin', 'Bean', 'Tofu', 'Jelly', 'Snowdrift', 'Nutmeg', 'Crunchy', 'Fluff']),
+  f:L(['Булочка', 'Плюшка', 'Льдинка', 'Снежинка', 'Карамелька', 'Пуговка', 'Ватрушка', 'Мася', 'Жемчужинка', 'Пушинка'],
+      ['Bun', 'Cookie', 'Icicle', 'Snowflake', 'Caramel', 'Button', 'Cupcake', 'Daisy', 'Pearl', 'Fluffy'])
 };
 // rate — сколько потребность теряет за час (1 → 0 примерно за 7–14 часов)
 const NEEDS = {
-  food: {ic:'🐟', act:'Покормить', want:'Хочет кушать', say:'Хочу кушать!', rate:0.12},
-  bath: {ic:'🛁', act:'Искупать', want:'Хочет купаться', say:'Хочу купаться!', rate:0.07},
-  sleep:{ic:'🌙', act:'Уложить', want:'Хочет спать', say:'Хочу баиньки…', rate:0.09},
-  fun:  {ic:'⚽', act:'Поиграть', want:'Хочет играть', say:'Давай играть!', rate:0.15}
+  food: {ic:'🐟', act:L('Покормить', 'Feed'), want:L('Хочет кушать', 'Wants to eat'), say:L('Хочу кушать!', 'I want to eat!'), rate:0.12},
+  bath: {ic:'🛁', act:L('Искупать', 'Bathe'), want:L('Хочет купаться', 'Wants a bath'), say:L('Хочу купаться!', 'I want a bath!'), rate:0.07},
+  sleep:{ic:'🌙', act:L('Уложить', 'Bedtime'), want:L('Хочет спать', 'Wants to sleep'), say:L('Хочу баиньки…', 'I want to sleeeep…'), rate:0.09},
+  fun:  {ic:'⚽', act:L('Поиграть', 'Play'), want:L('Хочет играть', 'Wants to play'), say:L('Давай играть!', 'Let us play!'), rate:0.15}
 };
 const NEED_KEYS = Object.keys(NEEDS);
 const NEED_TEX = {food:bubbleTex('🐟'), bath:bubbleTex('🛁'), sleep:bubbleTex('💤'), fun:bubbleTex('⚽')};
@@ -54,6 +56,14 @@ function petFix(){ const p = save.pet; if(!p) return; if(!Number.isInteger(p.sta
   if(!p.walk) p.walk = {d:'', n:0}; if(!Array.isArray(p.finds)) p.finds = []; if(!p.tricks) p.tricks = {}; }
 const stageOf = xp => STAGES.reduce((i, st, k) => xp >= st.at*HEART_XP ? k : i, 0);
 const stageName = (i, f = save.pet && save.pet.f) => f ? STAGES[i].f : STAGES[i].m;
+// подпись к фото малыша в альбоме хранится ключом ('intro', 'stage:2'), старые сохранения — русским текстом; показываем на нужном языке
+const RU_STAGE_CAPS = [['Малыш', 'Малышка'], ['Детёныш'], ['Подросток'], ['Взрослый', 'Взрослая'], ['Сияющий', 'Сияющая']];
+function capL(cap){
+  if(!cap) return '';
+  if(cap === 'intro' || cap === 'Знакомство ♡') return L('Знакомство ♡', 'First meeting ♡');
+  const m = /^stage:(\d)$/.exec(cap), i = m ? +m[1] : RU_STAGE_CAPS.findIndex(a => a.includes(cap));
+  return i >= 0 ? stageName(i) : cap;
+}
 const petMissed = () => !!save.pet && (Date.now() - save.pet.seen)/3.6e6 >= MISS_H;
 const growPending = () => !!save.pet && stageOf(save.pet.xp) > save.pet.stage;
 const petScale = () => STAGES[save.pet ? save.pet.stage : 0].sc;
@@ -196,12 +206,12 @@ function renderPetCard(){
   $('#petName').textContent = p.name;
   $('#petStage').textContent = `${STAGES[p.stage].ic} ${stageName(p.stage)}`;
   const left = p.stage < SHINY ? STAGES[p.stage + 1].at - Math.floor(p.xp/HEART_XP) : 0;
-  $('#petGrowHint').textContent = p.stage === SHINY ? 'Лучшие друзья навсегда ♡'
-    : left <= 0 ? '✨ Сейчас что-то будет…'
-    : `${p.stage + 1 === SHINY ? 'Засияет' : 'Подрастёт'} через ${left} 💗`;
+  $('#petGrowHint').textContent = p.stage === SHINY ? L('Лучшие друзья навсегда ♡', 'Best friends forever ♡')
+    : left <= 0 ? L('✨ Сейчас что-то будет…', '✨ Something is about to happen…')
+    : L(`${p.stage + 1 === SHINY ? 'Засияет' : 'Подрастёт'} через ${left} 💗`, `${p.stage + 1 === SHINY ? 'Will shine' : 'Will grow up'} in ${left} 💗`);
   const low = petLow();
-  $('#petStatus').textContent = petSeal && petSeal.sleeping ? 'Сладко спит… z-z-z. Нажми, чтобы разбудить'
-    : low ? `${NEEDS[low].ic} ${NEEDS[low].want}` : gg('Счастлив! ♡', 'Счастлива! ♡');
+  $('#petStatus').textContent = petSeal && petSeal.sleeping ? L('Сладко спит… z-z-z. Нажми, чтобы разбудить', 'Sleeping sweetly… z-z-z. Tap to wake up')
+    : low ? `${NEEDS[low].ic} ${NEEDS[low].want}` : L(gg('Счастлив! ♡', 'Счастлива! ♡'), 'Happy! ♡');
   $('#petLove').style.width = (p.xp % HEART_XP)/HEART_XP*100 + '%';
   $('#petHearts').textContent = Math.floor(p.xp/HEART_XP);
 }
@@ -209,7 +219,7 @@ function buildPetBar(){
   const nav = $('#petBar'); nav.innerHTML = '';
   for(const k of NEED_KEYS.concat('dress')){
     const b = document.createElement('button'); b.className = 'tool'; b.id = 'pet-' + k;
-    b.innerHTML = k === 'dress' ? '<span class="face" aria-hidden="true">🎀</span><span class="name">Нарядить</span>'
+    b.innerHTML = k === 'dress' ? '<span class="face" aria-hidden="true">🎀</span><span class="name">' + L('Нарядить', 'Dress up') + '</span>'
       : `<span class="face" aria-hidden="true">${NEEDS[k].ic}</span><span class="name">${NEEDS[k].act}</span><span class="meter"><i></i></span>`;
     b.addEventListener('click', () => { sfx.tap(); petDo(k); });
     nav.appendChild(b);
@@ -226,7 +236,7 @@ function renderPetBar(){
 function renderPetBtn(){
   const b = $('#btnPet'); b.hidden = !save.pet; if(!save.pet) return;
   $('#petIc').textContent = petMode ? '🏥' : '🦭';
-  b.setAttribute('aria-label', petMode ? 'В больницу' : 'Мой малыш');
+  b.setAttribute('aria-label', petMode ? L('В больницу', 'To the hospital') : L('Мой малыш', 'My pup'));
   const grow = growPending();
   $('#petAlert').textContent = grow ? '✨' : '!';
   $('#petAlert').hidden = petMode || !(grow || NEED_KEYS.some(k => save.pet.needs[k] < 0.35));
@@ -240,7 +250,7 @@ function petGive(n){
   lbl.style.left = at.x + 'px'; lbl.style.top = at.y + 'px'; $('#app').appendChild(lbl);
   setTimeout(() => lbl.remove(), 1300);
   const lv = Math.floor(p.xp/HEART_XP);
-  if(lv > lv0){ sfx.star(); burst(TEX.heart, headTop(petSeal), 16, 2.2, 0.34); toast(`Вы дружите ещё крепче! Сердечек дружбы: ${lv} 💗`, 3200); }
+  if(lv > lv0){ sfx.star(); burst(TEX.heart, headTop(petSeal), 16, 2.2, 0.34); toast(L(`Вы дружите ещё крепче! Сердечек дружбы: ${lv} 💗`, `You are even closer friends! Friendship hearts: ${lv} 💗`), 3200); }
   renderPetCard();
 }
 
@@ -253,14 +263,14 @@ function setPetMode(on){
 }
 function goPet(on){
   if(on === petMode || !save.pet) return;
-  if(busy || !mgRoot.hidden) return toast('Сначала закончи то, что начала 🙂');
+  if(busy || !mgRoot.hidden) return toast(L('Сначала закончи то, что начала 🙂', 'Finish what you started first 🙂'));
   sfx.whoosh(); setPetMode(on);
   if(on){
     const missed = petMissed(); save.pet.seen = Date.now();
     petDecay(); petRefresh();
     if(missed){ petHelloShown = true; petMiss(); }
     else if(!petHelloShown){ petHelloShown = true; const low = petLow();
-      if(!growPending()) toast(low ? `${save.pet.name}: «${NEEDS[low].say}» Выбирай внизу ${NEEDS[low].ic}` : `${save.pet.name} ${gg('рад', 'рада')} тебя видеть! Погладь пальцем ♡`, 3400); }
+      if(!growPending()) toast(low ? L(`${save.pet.name}: «${NEEDS[low].say}» Выбирай внизу ${NEEDS[low].ic}`, `${save.pet.name}: “${NEEDS[low].say}” Pick below ${NEEDS[low].ic}`) : L(`${save.pet.name} ${gg('рад', 'рада')} тебя видеть! Погладь пальцем ♡`, `${save.pet.name} is happy to see you! Pet with your finger ♡`), 3400); }
   } else if(!shift || shift.n >= SHIFT_SIZE) startShift();   // смена кончилась — в больнице ждёт новая
 }
 // долго не виделись: малыш радуется встрече, а не грустит (что он хочет, видно по пузырю и карточке)
@@ -270,7 +280,7 @@ async function petMiss(){
   if(!petMode || busy || s !== petSeal) return;
   s.happyUntil = now + 4; setMood(s, 'happy'); s.flap = 1;
   sfx.arf(); sfx.star(); burst(TEX.heart, headTop(s), 14, 2.2, 0.34); hop(s, 0.35, 0.45);
-  if(!growPending()) toast(`${p.name}: «Я скучал${gg('', 'а')}! Как хорошо, что ты пришла!» ♡`, 3800);
+  if(!growPending()) toast(L(`${p.name}: «Я скучал${gg('', 'а')}! Как хорошо, что ты пришла!» ♡`, `${p.name}: “I missed you! I am so glad you came!” ♡`), 3800);
 }
 $('#btnPet').addEventListener('click', () => { sfx.tap(); goPet(!petMode); });
 
@@ -282,15 +292,15 @@ function cleanName(v){
 async function adopt(){
   setBusy(true);
   $('#card').hidden = true; $('#tools').hidden = true; $('#wardrobe').hidden = true; unfocusCam();
-  const draft = {name:'Малыш', f:false, coat:PET_COATS[Math.floor(Math.random()*4)].id, wear:{}};
+  const draft = {name:L('Малыш', 'Baby'), f:false, coat:PET_COATS[Math.floor(Math.random()*4)].id, wear:{}};
   petSeal = makePetSeal(draft); setMood(petSeal, 'ok');
   await arrive(petSeal);
-  sfx.arf(); floatText('Привет, доктор!', headTop(petSeal));
+  sfx.arf(); floatText(L('Привет, доктор!', 'Hello, doctor!'), headTop(petSeal));
   focusCam(worldOf(petSeal, new V3(0, -0.7, 0)), 3.2, 0.95);
   await wait(0.6);
 
-  mgOpen('Малыш приплыл снова!');
-  const ask = mgNode('div', 'mg-panel adopt', '<p>Он так тебя полюбил, что хочет остаться жить у тебя. Возьмёшь его?</p><button class="btn" id="adoptYes">Конечно! ♡</button>');
+  mgOpen(L('Малыш приплыл снова!', 'The pup is back!'));
+  const ask = mgNode('div', 'mg-panel adopt', `<p>${L('Он так тебя полюбил, что хочет остаться жить у тебя. Возьмёшь его?', 'He loves you so much that he wants to stay and live with you. Will you take him in?')}</p><button class="btn" id="adoptYes">${L('Конечно! ♡', 'Of course! ♡')}</button>`);
   await new Promise(r => mgOn(ask.querySelector('#adoptYes'), 'click', r));
   sfx.tap(); ask.classList.add('away'); await wait(0.3); mgClose();
   setMood(petSeal, 'happy'); sfx.hug(); petSeal.flap = 1;
@@ -298,17 +308,17 @@ async function adopt(){
   await tween(0.8, k => { petSeal.inner.position.y = Math.sin(k*Math.PI)*0.9; petSeal.inner.rotation.y = k*Math.PI*2; }, ease.io);
   petSeal.inner.position.y = 0; petSeal.inner.rotation.y = 0; petSeal.flap = 0.3;
   await squash(petSeal, 0.25);
-  floatText('Ура-а!', headTop(petSeal), '#D9527E');
+  floatText(L('Ура-а!', 'Hooray!'), headTop(petSeal), '#D9527E');
   await wait(0.6);
 
   // окрас и мальчик/девочка: малыш на экране сразу меняется
-  mgOpen('Какой у тебя малыш?');
+  mgOpen(L('Какой у тебя малыш?', 'What is your pup like?'));
   const look = mgNode('div', 'mg-panel picker', `
-    <p class="row-lbl">Окрас</p>
+    <p class="row-lbl">${L('Окрас', 'Coat')}</p>
     <div class="swatches">${PET_COATS.map(c => `<button class="swatch${c.spot ? ' spotty' : ''}" data-c="${c.id}" style="--c:${hexCss(c.c)};--s:${hexCss(c.spot || c.c)}" aria-label="${c.name}"></button>`).join('')}</div>
-    <p class="row-lbl">Кто это?</p>
-    <div class="sex"><button data-f="0">👦 Мальчик</button><button data-f="1">👧 Девочка</button></div>
-    <button class="btn" id="lookDone">Дальше →</button>`);
+    <p class="row-lbl">${L('Кто это?', 'Who is it?')}</p>
+    <div class="sex"><button data-f="0">${L('👦 Мальчик', '👦 Boy')}</button><button data-f="1">${L('👧 Девочка', '👧 Girl')}</button></div>
+    <button class="btn" id="lookDone">${L('Дальше →', 'Next →')}</button>`);
   const rebuild = () => {
     const pos = petSeal.root.position.clone(); scene.remove(petSeal.root);
     petSeal = makePetSeal(draft); petSeal.root.position.copy(pos); scene.add(petSeal.root);
@@ -321,7 +331,7 @@ async function adopt(){
   mark();
   look.querySelectorAll('.swatch').forEach(b => mgOn(b, 'click', () => { draft.coat = b.dataset.c; mark(); rebuild(); }));
   look.querySelectorAll('.sex button').forEach(b => mgOn(b, 'click', () => {
-    draft.f = b.dataset.f === '1'; mark(); sfx.pop(); floatText(draft.f ? 'Я девочка!' : 'Я мальчик!', headTop(petSeal));
+    draft.f = b.dataset.f === '1'; mark(); sfx.pop(); floatText(draft.f ? L('Я девочка!', 'I am a girl!') : L('Я мальчик!', 'I am a boy!'), headTop(petSeal));
   }));
   await new Promise(r => mgOn(look.querySelector('#lookDone'), 'click', r));
   sfx.tap(); look.classList.add('away'); await wait(0.3); mgClose();
@@ -330,15 +340,15 @@ async function adopt(){
   focusCam(worldOf(petSeal, new V3(0, -0.5, 0)), 3.0, -1.1);   // малыш внизу, панель с именем сверху
   mgOpen('');
   const nm = mgNode('div', 'mg-panel name-panel', `
-    <p class="ttl display">Как зовут ${draft.f ? 'малышку' : 'малыша'}?</p>
-    <input id="petNameIn" maxlength="14" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="Имя" aria-label="Имя малыша">
+    <p class="ttl display">${L(`Как зовут ${draft.f ? 'малышку' : 'малыша'}?`, `What is ${draft.f ? 'her' : 'his'} name?`)}</p>
+    <input id="petNameIn" maxlength="14" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="${L('Имя', 'Name')}" aria-label="${L('Имя малыша', 'Name of the pup')}">
     <div class="chips" id="nameChips"></div>
-    <p class="tip">Придумай вместе с папой ♡</p>
-    <button class="btn" id="nameDone">Готово ✓</button>`);
+    <p class="tip">${L('Придумай вместе с папой ♡', 'Think of one together with Dad ♡')}</p>
+    <button class="btn" id="nameDone">${L('Готово ✓', 'Done ✓')}</button>`);
   const input = nm.querySelector('#petNameIn'), chips = nm.querySelector('#nameChips');
   const deal = () => {
     const pool = PET_NAMES[draft.f ? 'f' : 'm'].slice().sort(() => Math.random() - 0.5).slice(0, 5);
-    chips.innerHTML = pool.map(n => `<button class="chip">${n}</button>`).join('') + '<button class="chip dice" aria-label="Другие имена">🎲</button>';
+    chips.innerHTML = pool.map(n => `<button class="chip">${n}</button>`).join('') + `<button class="chip dice" aria-label="${L('Другие имена', 'More names')}">🎲</button>`;
     chips.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
       sfx.tap();
       if(b.classList.contains('dice')) return deal();
@@ -349,7 +359,7 @@ async function adopt(){
   const name = await new Promise(r => {
     const ok = () => {
       const v = cleanName(input.value);
-      if(!v){ sfx.bad(); wiggle(input); input.placeholder = 'Напиши имя или выбери ↓'; return; }
+      if(!v){ sfx.bad(); wiggle(input); input.placeholder = L('Напиши имя или выбери ↓', 'Write a name or pick one ↓'); return; }
       r(v);
     };
     mgOn(nm.querySelector('#nameDone'), 'click', ok);
@@ -364,15 +374,15 @@ async function adopt(){
   floatText(name + '!', headTop(petSeal), '#D9527E');
   await hop(petSeal, 0.4, 0.45);
   await wait(0.9);
-  toast(`${name} переезжает в свой уголок! 🦭`, 2600);
+  toast(L(`${name} переезжает в свой уголок! 🦭`, `${name} is moving into a cozy corner! 🦭`), 2600);
   await petMoveIn();
   petSeal.happyUntil = now + 2; setMood(petSeal, 'happy');
   await wait(0.9);
-  petPhoto('Знакомство ♡');   // первая страница «альбома малыша»
+  petPhoto('intro');   // первая страница «альбома малыша»
   setBusy(false);
   petHelloShown = true; petRefresh();
-  floatText('Мой домик!', headTop(petSeal));
-  toast(`Добро пожаловать домой, ${name}! Выбирай внизу, что ${gg('ему', 'ей')} нужно`, 4200);
+  floatText(L('Мой домик!', 'My home!'), headTop(petSeal));
+  toast(L(`Добро пожаловать домой, ${name}! Выбирай внизу, что ${gg('ему', 'ей')} нужно`, `Welcome home, ${name}! Pick below what ${gg('he', 'she')} needs`), 4200);
 }
 function petPhoto(cap){
   const img = snapshot(petSeal, 1.9);
@@ -403,9 +413,9 @@ async function petDo(k){
   if(k === 'dress') return petDress();
   petDecay();
   const s = petSeal, p = save.pet, before = p.needs[k];
-  if(k === 'sleep' && s.sleeping) return toast(`${p.name} сладко спит 💤 Нажми на ${gg('него', 'неё')}, чтобы разбудить`);
-  if(k === 'food' && before >= 0.9) return petNope(`${gg('Я сыт', 'Я сыта')}! Давай поиграем?`);
-  if(k === 'sleep' && before >= 0.9) return petNope(`Не хочу спать! Я ${gg('бодрый', 'бодрая')}!`);
+  if(k === 'sleep' && s.sleeping) return toast(L(`${p.name} сладко спит 💤 Нажми на ${gg('него', 'неё')}, чтобы разбудить`, `${p.name} is sleeping sweetly 💤 Tap ${gg('him', 'her')} to wake ${gg('him', 'her')} up`));
+  if(k === 'food' && before >= 0.9) return petNope(L(`${gg('Я сыт', 'Я сыта')}! Давай поиграем?`, 'I am full! Shall we play?'));
+  if(k === 'sleep' && before >= 0.9) return petNope(L(`Не хочу спать! Я ${gg('бодрый', 'бодрая')}!`, 'I do not want to sleep! I am wide awake!'));
   const wasGood = allGood();
   setBusy(true); s.bubble.visible = false;
   if(s.sleeping) await petWake();
@@ -420,9 +430,9 @@ async function petDo(k){
   if(!wasGood && allGood()){   // все потребности закрыты — маленький праздник
     await wait(0.8);
     burst(TEX.heart, headTop(s), 20, 2.4, 0.34);
-    if(s.sleeping){ sfx.lullaby(); floatText(gg('Счастлив во сне ♡', 'Счастлива во сне ♡'), headTop(s).add(new V3(0, 0.4, 0)), '#D9527E'); }
+    if(s.sleeping){ sfx.lullaby(); floatText(L(gg('Счастлив во сне ♡', 'Счастлива во сне ♡'), 'Happy in dreams ♡'), headTop(s).add(new V3(0, 0.4, 0)), '#D9527E'); }
     else {
-      sfx.hug(); s.flap = 1; floatText(gg('Я счастлив!', 'Я счастлива!'), headTop(s), '#D9527E');
+      sfx.hug(); s.flap = 1; floatText(L(gg('Я счастлив!', 'Я счастлива!'), 'I am happy!'), headTop(s), '#D9527E');
       await tween(0.8, q => { s.inner.position.y = Math.sin(q*Math.PI)*0.7; s.inner.rotation.y = q*Math.PI*2; }, ease.io);
       s.inner.position.y = 0; s.inner.rotation.y = 0; s.flap = 0;
     }
@@ -449,7 +459,7 @@ async function petFeed(s){
   const p = save.pet, n = Math.max(1, Math.min(3, Math.ceil((1 - p.needs.food)/0.34)));
   focusCam(worldOf(s, new V3(0, -0.35, 0)), 2.2*petK(), 0.4);
   await wait(0.4);
-  mgOpen(n > 1 ? 'Неси рыбку прямо ко рту' : 'Одну рыбку — неси ко рту');
+  mgOpen(n > 1 ? L('Неси рыбку прямо ко рту', 'Carry the fish right to the mouth') : L('Одну рыбку — неси ко рту', 'One fish — carry it to the mouth'));
   const plate = mgNode('div', 'plate'), target = mgNode('div', 'target');
   const fishes = [];
   for(let i = 0; i < n; i++){ const f = document.createElement('div'); f.className = 'fish-drag'; f.textContent = '🐟'; plate.appendChild(f); fishes.push(f); }
@@ -460,11 +470,11 @@ async function petFeed(s){
   mgTick(() => { const m = mouth(); target.style.left = m.x + 'px'; target.style.top = m.y + 'px'; });
   const eat = async el => {
     el.remove(); drag = null; open(false); left--;
-    floatText(['Ам!', 'Ням!', 'Вкусно!'][left % 3], headTop(s));
+    floatText(L(['Ам!', 'Ням!', 'Вкусно!'], ['Yum!', 'Nom!', 'Tasty!'])[left % 3], headTop(s));
     burst(TEX.star, worldOf(s, s.mouthLocal), 5, 1.2, 0.2);
     for(let i = 0; i < 2; i++){ sfx.chomp(); await tween(0.16, k => s.head.scale.set(1, 1 - Math.sin(k*Math.PI)*0.1, 1), ease.lin); }
     s.head.scale.set(1, 1, 1);
-    if(!left) finish(); else mgHint(`Ещё ${left === 1 ? 'одну' : left}!`);
+    if(!left) finish(); else mgHint(L(`Ещё ${left === 1 ? 'одну' : left}!`, `${left === 1 ? 'One' : left} more!`));
   };
   const move = (el, e) => {
     el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px';
@@ -485,12 +495,12 @@ async function petFeed(s){
       const m = mouth();
       if(Math.hypot(e.clientX - m.x, e.clientY - m.y) < 95) return eat(el);
       drag = null; open(false); el.classList.remove('drag'); el.style.left = el.style.top = ''; plate.appendChild(el);
-      sfx.bad(); mgHint('Почти! Неси прямо ко рту');
+      sfx.bad(); mgHint(L('Почти! Неси прямо ко рту', 'Almost! Carry it right to the mouth'));
     };
     mgOn(el, 'pointerup', drop); mgOn(el, 'pointercancel', drop);
   }
   await done;
-  mgHint('Спасибо! Вкусно! ♡'); sfx.good();
+  mgHint(L('Спасибо! Вкусно! ♡', 'Thank you! Yummy! ♡')); sfx.good();
   await wait(0.8);
   mgClose(); open(false);
   hop(s, 0.3, 0.4);
@@ -535,7 +545,7 @@ async function petBath(s){
   const wp = o => o.getWorldPosition(new V3());
   await wait(0.4);
 
-  mgOpen('Потри губкой — намыль малыша');
+  mgOpen(L('Потри губкой — намыль малыша', 'Rub with the sponge — lather the pup'));
   const sponge = mgNode('div', 'cotton sponge'), finger = mgNode('div', 'finger', '👆');
   let down = false, px = 0, py = 0, rubT = 0, left = spots.length, giggled = false, finish;
   const soaped = new Promise(r => finish = r);
@@ -556,22 +566,22 @@ async function petBath(s){
         const f = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.puff, transparent:true, depthWrite:false}));
         f.position.copy(sp.position); f.scale.setScalar(0.5); sp.parent.add(f); foams.push(f);
         emit(TEX.puff, wp(sp), {v:new V3(0, 0.5, 0.2), life:0.6, size:0.3, grow:1});
-        if(!giggled){ giggled = true; floatText('Хи-хи!', headTop(s)); }
-        if(!left) finish(); else mgHint(`Ещё ${left} ${plural(left, 'пятнышко', 'пятнышка', 'пятнышек')}`);
+        if(!giggled){ giggled = true; floatText(L('Хи-хи!', 'Hehe!'), headTop(s)); }
+        if(!left) finish(); else mgHint(L(`Ещё ${left} ${plural(left, 'пятнышко', 'пятнышка', 'пятнышек')}`, `${left} more ${left === 1 ? 'spot' : 'spots'}`));
       }
     }
   });
   for(const ev of ['pointerup', 'pointercancel']) mgOn(mgRoot, ev, () => { down = false; sponge.classList.remove('on'); });
   mgTick(() => { const sp = spots.find(x => x.visible); if(sp){ const c = toScreen(wp(sp)); place(finger, c.x, c.y); } });
   await soaped;
-  mgClose(); sfx.good(); floatText('Пенка!', headTop(s));
+  mgClose(); sfx.good(); floatText(L('Пенка!', 'Bubbles!'), headTop(s));
   await wait(0.5);
 
   // пузыри поднимаются из ванны — лопай пальцем. Камера отъезжает, чтобы над головой было место;
   // пузыри летят медленно и сами лопаются под подсказкой, а не улетают за край экрана
   const GOAL = 8, top = y1 + 0.9*tk;
   frameY(y0, top, 1.2);
-  mgOpen(`Лопай пузыри! Ещё ${GOAL}`);
+  mgOpen(L(`Лопай пузыри! Ещё ${GOAL}`, `Pop the bubbles! ${GOAL} to go`));
   const hintY = () => mgHintEl.getBoundingClientRect().bottom + 30;
   const bubbles = [];
   let popped = 0, spawnT = 0, fin2;
@@ -605,7 +615,7 @@ async function petBath(s){
     sfx.pop(); emit(TEX.star, b.position, {v:new V3(0, 0.4, 0), life:0.45, size:0.2, spin:4});
     const f = foams.pop(); if(f){ f.parent.remove(f); f.material.dispose(); }
     popped++;
-    if(popped >= GOAL) fin2(); else mgHint(`Лопай пузыри! Ещё ${GOAL - popped}`);
+    if(popped >= GOAL) fin2(); else mgHint(L(`Лопай пузыри! Ещё ${GOAL - popped}`, `Pop the bubbles! ${GOAL - popped} to go`));
   });
   await popDone;
   mgClose();
@@ -617,7 +627,7 @@ async function petBath(s){
   for(let i = 0; i < 12; i++){ const a = i/12*Math.PI*2; emit(TEX.drop, headTop(s), {v:new V3(Math.cos(a)*1.6, 1 + Math.random(), Math.sin(a)*0.8), g:4, life:0.9, size:0.18}); }
   await tween(0.7, k => { s.shake = Math.sin(k*Math.PI*8)*0.45*(1 - k); s.wobble = Math.sin(k*Math.PI*8)*0.06*(1 - k); }, ease.lin);
   s.shake = 0; s.wobble = 0;
-  floatText(gg('Чистенький!', 'Чистенькая!'), headTop(s), '#2F9E72');
+  floatText(L(gg('Чистенький!', 'Чистенькая!'), 'All clean!'), headTop(s), '#2F9E72');
   hop(s, 0.45, 0.5);
   await tween(0.4, k => tub.scale.setScalar(Math.max(0.01, (1 - k)*tk)));
   scene.remove(tub);
@@ -634,7 +644,7 @@ async function petSleep(s){
   $('#night').classList.add('on');
   focusCam(worldOf(s, new V3(0, -0.4, -0.3)), 2.5*petK(), 0.2);
 
-  mgOpen('Погладь малыша медленно-медленно');
+  mgOpen(L('Погладь малыша медленно-медленно', 'Pet the pup very, very slowly'));
   const gauge = mgNode('div', 'gauge-wrap moon', '<span class="ic">🌙</span><div class="gauge"><div class="fill"></div></div>').lastChild;
   const fill = gauge.querySelector('.fill'), finger = mgNode('div', 'finger', '👆');
   s.blinkT = 99;
@@ -649,12 +659,12 @@ async function petSleep(s){
     const c = center();
     if(!d || Math.hypot(e.clientX - c.x, e.clientY - c.y) > 180) return;
     if(v > 1600 && d > 14){   // слишком быстро — щекотно, малыш хихикает (без наказания, чуть бодрее)
-      if(now - tickleT > 1.2){ tickleT = now; sfx.arf(); floatText('Хи-хи! Щекотно', headTop(s)); mgHint('Медленнее… тихонько-тихонько'); sleepy = Math.max(0, sleepy - 0.06); }
+      if(now - tickleT > 1.2){ tickleT = now; sfx.arf(); floatText(L('Хи-хи! Щекотно', 'Hehe! Tickles'), headTop(s)); mgHint(L('Медленнее… тихонько-тихонько', 'Slower… nice and gentle')); sleepy = Math.max(0, sleepy - 0.06); }
       return;
     }
     sleepy = Math.min(1, sleepy + d/1000);
     if(now - rubT > 0.3){ rubT = now; tone(330, 0.25, {vol:0.03, to:300}); }
-    if(!yawned && sleepy > 0.5){ yawned = true; sfx.yawn(); floatText('Ааа-у…', headTop(s), '#6B6A7E'); mgHint('Хорошо! Глазки закрываются…'); }
+    if(!yawned && sleepy > 0.5){ yawned = true; sfx.yawn(); floatText(L('Ааа-у…', 'Yaaawn…'), headTop(s), '#6B6A7E'); mgHint(L('Хорошо! Глазки закрываются…', 'Good! Eyes are getting heavy…')); }
     if(sleepy >= 1) finish();
   });
   for(const ev of ['pointerup', 'pointercancel']) mgOn(mgRoot, ev, () => { last = null; });
@@ -669,13 +679,13 @@ async function petSleep(s){
   await tween(0.6, k => setBlanket(bl, k), ease.back);
   s.eyes.forEach(e => e.scale.y = 1); s.blinkT = 2;
   setMood(s, 'sleep'); s.sleeping = true; s.zzzT = 0.3; sfx.lullaby();
-  floatText('Сладких снов!', headTop(s).add(new V3(0, 0.3, 0)), '#6B6A7E');
+  floatText(L('Сладких снов!', 'Sweet dreams!'), headTop(s).add(new V3(0, 0.3, 0)), '#6B6A7E');
   await wait(1.6);
 }
 async function petWake(){
   const s = petSeal; if(!s.bed) return;
   s.sleeping = false; $('#night').classList.remove('on');
-  setMood(s, 'happy'); sfx.arf(); floatText('Доброе утро!', headTop(s));
+  setMood(s, 'happy'); sfx.arf(); floatText(L('Доброе утро!', 'Good morning!'), headTop(s));
   const bl = s.blanket, bed = s.bed, h0 = s.head.position.clone();
   await tween(0.45, k => { if(bl) setBlanket(bl, 1 - k); s.head.position.lerpVectors(h0, s.headBase, k); });
   if(bl) s.inner.remove(bl); s.blanket = null;
@@ -692,27 +702,27 @@ async function petPlay(s){
   focusCam(new V3(PET_SPOT.x, 0.8 + 0.4*sc, PET_SPOT.z + 0.3 + 1.3*sc), 3.6*(0.55 + 0.45*petK()), 0.1);
   sfx.whoosh(); await flyTo(ball, rest.clone(), Q.clone(), 0.6, 0.6);
   const GOAL = 5;
-  mgOpen('Нажми — подбрось мяч малышу!');
+  mgOpen(L('Нажми — подбрось мяч малышу!', 'Tap — toss the ball to the pup!'));
   const ring = mgNode('div', 'target'); ring.hidden = true;
   let state = 'ready', k = 0, from = Q.clone(), hits = 0, finish;
   const done = new Promise(r => finish = r);
   const up = () => { state = 'up'; k = 0; from = ball.position.clone(); hits++; sfx.tap(); ring.hidden = true;
-    mgHint(hits >= GOAL ? 'Последний!' : `Отбито: ${hits} из ${GOAL}`); };
+    mgHint(hits >= GOAL ? L('Последний!', 'Last one!') : L(`Отбито: ${hits} из ${GOAL}`, `Bounced: ${hits} of ${GOAL}`)); };
   const miss = async () => {
     state = 'miss'; ring.hidden = true;
     const p0 = ball.position.clone(), floor = new V3(p0.x, 0.47, Math.min(p0.z, Q.z + 0.2));
     await tween(0.3, q => ball.position.lerpVectors(p0, floor, q), ease.lin); sfx.plop();
     await tween(0.35, q => { ball.position.copy(floor); ball.position.y += Math.sin(q*Math.PI)*0.35; }, ease.lin); sfx.plop();
-    mgHint('Ой, упал! Ничего — ещё разок');
-    floatText('Ар!', headTop(s)); hop(s, 0.25, 0.35);
+    mgHint(L('Ой, упал! Ничего — ещё разок', 'Oops, it fell! Never mind — once more'));
+    floatText(L('Ар!', 'Arf!'), headTop(s)); hop(s, 0.25, 0.35);
     await flyTo(ball, floor, Q.clone(), 0.6, 0.5);
-    state = 'ready'; mgHint('Нажми — подбрось мяч ещё раз!');
+    state = 'ready'; mgHint(L('Нажми — подбрось мяч ещё раз!', 'Tap — toss the ball again!'));
   };
   mgOn(mgRoot, 'pointerdown', e => {
     e.preventDefault();
     if(state === 'ready') return up();
     if(state === 'down' && k >= 0.45){ burst(TEX.star, ball.position.clone(), 5, 1.2, 0.2); return up(); }
-    if(state === 'down') mgHint('Подожди, пусть долетит до тебя!');
+    if(state === 'down') mgHint(L('Подожди, пусть долетит до тебя!', 'Wait, let it come down to you!'));
   });
   mgTick(dt => {
     ball.rotation.x += dt*5;
@@ -722,14 +732,14 @@ async function petPlay(s){
       if(k >= 1){   // бум носом
         sfx.pop(); tween(0.3, q => s.nod = -Math.sin(q*Math.PI)*0.35, ease.lin);
         if(hits >= GOAL){ state = 'end'; return finish(); }
-        if(Math.random() < 0.5) floatText(['Ап!', 'Оп!', 'Хоп!'][Math.floor(Math.random()*3)], headTop(s));
+        if(Math.random() < 0.5) floatText(L(['Ап!', 'Оп!', 'Хоп!'], ['Up!', 'Hop!', 'Boing!'])[Math.floor(Math.random()*3)], headTop(s));
         state = 'down'; k = 0; from = to.clone();
       }
     } else if(state === 'down'){
       k += dt/0.95;
       if(k <= 1){ ball.position.lerpVectors(from, Q, k); ball.position.y += Math.sin(k*Math.PI)*1.0; }
       else { ball.position.copy(Q); ball.position.y -= (k - 1)*2.2; ball.position.z += (k - 1)*0.6; }
-      if(k >= 0.45){ const p = toScreen(ball.position); ring.hidden = false; ring.style.left = p.x + 'px'; ring.style.top = p.y + 'px'; mgHint('Жми!'); }
+      if(k >= 0.45){ const p = toScreen(ball.position); ring.hidden = false; ring.style.left = p.x + 'px'; ring.style.top = p.y + 'px'; mgHint(L('Жми!', 'Now!')); }
       if(k > 1.35) miss();
     }
   });
@@ -739,7 +749,7 @@ async function petPlay(s){
   const top = nose().add(new V3(0, 1.4, 0)), p0 = ball.position.clone();
   await tween(0.5, q => ball.position.lerpVectors(p0, top, q), ease.out);
   await tween(0.5, q => ball.position.lerpVectors(top, nose().add(new V3(0, 0.12, 0)), q), ease.io);
-  sfx.good(); floatText('Та-да! Мяч на носу!', headTop(s).add(new V3(0, 0.5, 0)), '#D9527E');
+  sfx.good(); floatText(L('Та-да! Мяч на носу!', 'Ta-da! Ball on the nose!'), headTop(s).add(new V3(0, 0.5, 0)), '#D9527E');
   await tween(1.2, q => { const n = nose(); ball.position.set(n.x + Math.sin(q*Math.PI*4)*0.04, n.y + 0.12, n.z); }, ease.lin);
   await flyTo(ball, ball.position.clone(), rest, 0.7, 0.8);
   ball.rotation.set(0, 0, 0.4);
@@ -749,11 +759,11 @@ const PET_GAMES = {food:petFeed, bath:petBath, sleep:petSleep, fun:s => petFun(s
 /* ---------- Нарядить: вещи из лавки ---------- */
 async function petDress(){
   const items = SHOP.filter(x => x.kind === 'wear' && owns(x.id));
-  if(!items.length) return toast('В лавке 🐚 есть бантики и шапочки — купи и наряди малыша!', 3200);
+  if(!items.length) return toast(L('В лавке 🐚 есть бантики и шапочки — купи и наряди малыша!', 'The shop 🐚 has bows and hats — buy some and dress up your pup!'), 3200);
   const s = petSeal; setBusy(true); s.bubble.visible = false;
   if(s.sleeping) await petWake();
   focusCam(worldOf(s, new V3(0, -0.25, 0)), 2.0*petK(), 0.4);
-  mgOpen('Наряди малыша');
+  mgOpen(L('Наряди малыша', 'Dress up the pup'));
   const nav = mgNode('nav', 'tools wardrobe');
   const mark = () => nav.querySelectorAll('.tool[data-id]').forEach(b => b.classList.toggle('on', Object.values(wearIds(s)).includes(b.dataset.id)));
   for(const it of items){
@@ -763,11 +773,11 @@ async function petDress(){
     nav.appendChild(b);
   }
   const ok = document.createElement('button'); ok.className = 'tool'; ok.id = 'dressDone';
-  ok.innerHTML = '<span class="face">✓</span><span class="name">Готово</span>'; nav.appendChild(ok);
+  ok.innerHTML = `<span class="face">✓</span><span class="name">${L('Готово', 'Done')}</span>`; nav.appendChild(ok);
   mark();
   await new Promise(r => mgOn(ok, 'click', r));
   mgClose(); unfocusCam();
-  sfx.arf(); s.happyUntil = now + 3; setMood(s, 'happy'); floatText('Красиво!', headTop(s), '#D9527E');
+  sfx.arf(); s.happyUntil = now + 3; setMood(s, 'happy'); floatText(L('Красиво!', 'Pretty!'), headTop(s), '#D9527E');
   setBusy(false); petRefresh();
 }
 
@@ -785,8 +795,8 @@ async function petGrow(){
   const sc0 = s.root.scale.x, sc1 = STAGES[to].sc;
   const mid = () => new V3(PET_SPOT.x, 0.25 + 1.1*s.root.scale.x, PET_SPOT.z + 0.2);
   focusCam(new V3(PET_SPOT.x, 0.25 + 1.1*sc1, PET_SPOT.z + 0.3), 1.6 + 2.6*sc1, 0);
-  floatText('Ой!', headTop(s)); sfx.arf();
-  toast(shiny ? '✨ Что-то волшебное…' : '✨ Ой, что это происходит?', 2400);
+  floatText(L('Ой!', 'Oh!'), headTop(s)); sfx.arf();
+  toast(shiny ? L('✨ Что-то волшебное…', '✨ Something magical…') : L('✨ Ой, что это происходит?', '✨ Oh, what is happening?'), 2400);
   await wait(0.6);
   // хоровод звёздочек, малыш кружится всё быстрее
   sfx.grow(); s.flap = 1;
@@ -809,27 +819,27 @@ async function petGrow(){
   tween(0.5, k => { puff.material.opacity = 1 - k; puff.scale.setScalar((4.7 + k)*sc1); }).then(() => { scene.remove(puff); puff.material.dispose(); });
   await tween(0.7, k => s.root.scale.setScalar(sc0 + (sc1 - sc0)*k), ease.back);
   sfx.hug(); burst(TEX.heart, headTop(s), 20, 2.4, 0.34);
-  floatText(shiny ? gg('Я сияю!', 'Я сияю!') : gg('Я подрос!', 'Я подросла!'), headTop(s), '#D9527E');
+  floatText(shiny ? L('Я сияю!', 'I am shining!') : L(gg('Я подрос!', 'Я подросла!'), 'I grew up!'), headTop(s), '#D9527E');
   await hop(s, 0.45, 0.5); s.flap = 0;
   camOffWant.copy(PET_POS.clone().add(petView()));
   await wait(0.7);
-  const img = petPhoto(stageName(to));
+  const img = petPhoto('stage:' + to);
   // окно праздника: фото, лесенка стадий, подарок
   $('#growImg').src = img;
-  $('#growTitle').textContent = shiny ? `${p.name} ${gg('засиял', 'засияла')}!` : `${p.name} ${gg('подрос', 'подросла')}!`;
-  $('#growText').textContent = shiny ? `Вы так дружите, что ${gg('он', 'она')} теперь сияет ✨ Фото уже в альбоме ♡`
-    : `Теперь ${gg('он', 'она')} — ${stageName(to).toLowerCase()}. Фото уже в альбоме ♡`;
+  $('#growTitle').textContent = shiny ? L(`${p.name} ${gg('засиял', 'засияла')}!`, `${p.name} is shining!`) : L(`${p.name} ${gg('подрос', 'подросла')}!`, `${p.name} grew up!`);
+  $('#growText').textContent = shiny ? L(`Вы так дружите, что ${gg('он', 'она')} теперь сияет ✨ Фото уже в альбоме ♡`, `You are such good friends that ${gg('he', 'she')} shines now ✨ The photo is already in the album ♡`)
+    : L(`Теперь ${gg('он', 'она')} — ${stageName(to).toLowerCase()}. Фото уже в альбоме ♡`, `Now ${gg('he', 'she')} is ${/^[aeiou]/i.test(stageName(to)) ? 'an' : 'a'} ${stageName(to).toLowerCase()}. The photo is already in the album ♡`);
   $('#growStages').innerHTML = STAGES.map((st, i) =>
     `<li class="${i < to ? 'was' : i === to ? 'now' : ''}"><span class="ic">${st.ic}</span><span class="t">${stageName(i)}</span></li>`).join('');
-  $('#growGift').textContent = `Подарок: +${GROW_GIFT} 🐚`;
+  $('#growGift').textContent = L(`Подарок: +${GROW_GIFT} 🐚`, `Gift: +${GROW_GIFT} 🐚`);
   $('#grow').hidden = false; sfx.star();
   await new Promise(r => $('#btnGrowOk').addEventListener('click', r, {once:true}));
   sfx.tap(); $('#grow').hidden = true; unfocusCam();
   addShells(GROW_GIFT, toScreen(headTop(s)));
   s.happyUntil = now + 3;
-  toast(to === 1 ? `Заботься ${gg('о нём', 'о ней')} дальше — ${gg('он', 'она')} ещё подрастёт!`
-    : to < SHINY - 1 ? 'Ещё немного дружбы — и новая стадия!'
-    : to === SHINY - 1 ? `Совсем ${gg('взрослый', 'взрослая')}! А лучшие друзья даже сияют ✨` : 'Самые лучшие друзья ♡', 3600);
+  toast(to === 1 ? L(`Заботься ${gg('о нём', 'о ней')} дальше — ${gg('он', 'она')} ещё подрастёт!`, `Keep caring for ${gg('him', 'her')} — ${gg('he', 'she')} will grow even more!`)
+    : to < SHINY - 1 ? L('Ещё немного дружбы — и новая стадия!', 'A little more friendship — and a new stage!')
+    : to === SHINY - 1 ? L(`Совсем ${gg('взрослый', 'взрослая')}! А лучшие друзья даже сияют ✨`, 'All grown up! And the best friends even shine ✨') : L('Самые лучшие друзья ♡', 'The very best friends ♡'), 3600);
   setBusy(false); petRefreshT = 0; petRefresh();
 }
 
@@ -853,14 +863,14 @@ function petStroke(e){
     if(part === 'head'){ sfx.purr(); emit(TEX.heart, headTop(s).add(new V3((Math.random() - 0.5)*0.5, 0, 0)), {v:new V3(0, 0.9, 0.2), life:0.9, size:0.24}); }
     else {
       sfx.rub(); tween(0.4, k => s.wobble = Math.sin(k*Math.PI*4)*0.05*(1 - k), ease.lin);
-      if(now - tickleT > 1.6){ tickleT = now; sfx.arf(); floatText(['Хи-хи! Щекотно!', 'Пузико! Хи-хи', 'Ой, щекотно!'][Math.floor(Math.random()*3)], headTop(s)); }
+      if(now - tickleT > 1.6){ tickleT = now; sfx.arf(); floatText(L(['Хи-хи! Щекотно!', 'Пузико! Хи-хи', 'Ой, щекотно!'], ['Hehe! Tickles!', 'Tummy! Hehe', 'Oh, it tickles!'])[Math.floor(Math.random()*3)], headTop(s)); }
     }
   }
   if(!stroke.done && stroke.d > 500){   // долго гладили — сердечко дружбы (не больше PAT_MAX раз в день)
     stroke.done = true;
     const p = save.pet, today = new Date().toDateString();
     if(p.pat.d !== today) p.pat = {d:today, n:0};
-    floatText(part === 'head' ? 'Ур-р… ♡' : 'Люблю тебя! ♡', headTop(s).add(new V3(0, 0.4, 0)), '#D9527E');
+    floatText(part === 'head' ? L('Ур-р… ♡', 'Purr… ♡') : L('Люблю тебя! ♡', 'Love you! ♡'), headTop(s).add(new V3(0, 0.4, 0)), '#D9527E');
     if(p.pat.n < PAT_MAX){ p.pat.n++; petGive(PAT_XP); petMaybeGrow(); }
   }
 }
@@ -869,10 +879,10 @@ function petStrokeEnd(e){
   const tap = stroke.d < 14; stroke = null;
   if(!tap || busy || !petSeal) return;
   sfx.arf(); squash(petSeal, 0.15, 0.3);
-  floatText(['Ар!', 'Хи-хи', '♡', 'Ар-ар!'][Math.floor(Math.random()*4)], headTop(petSeal));
+  floatText(L(['Ар!', 'Хи-хи', '♡', 'Ар-ар!'], ['Arf!', 'Hehe', '♡', 'Arf arf!'])[Math.floor(Math.random()*4)], headTop(petSeal));
   emit(TEX.heart, headTop(petSeal), {v:new V3(0, 1, 0.3), life:0.9, size:0.3});
   const low = petLow();
-  toast(low ? `${save.pet.name}: «${NEEDS[low].say}» Нажми ${NEEDS[low].ic} внизу` : 'Погладь пальцем — по голове или по пузику ♡');
+  toast(low ? L(`${save.pet.name}: «${NEEDS[low].say}» Нажми ${NEEDS[low].ic} внизу`, `${save.pet.name}: “${NEEDS[low].say}” Tap ${NEEDS[low].ic} below`) : L('Погладь пальцем — по голове или по пузику ♡', 'Pet with your finger — on the head or the tummy ♡'));
 }
 canvas.addEventListener('pointermove', petStroke);
 for(const ev of ['pointerup', 'pointercancel', 'pointerleave']) canvas.addEventListener(ev, petStrokeEnd);

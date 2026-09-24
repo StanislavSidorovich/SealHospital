@@ -42,11 +42,11 @@ function renderCard(){
   const hugNow = S.stage === 'hug', hugDone = S.stage === 'cured';
   if(hugNow){
     const b = document.createElement('button'); b.className = 'now'; b.id = 'hugBtn';
-    b.innerHTML = '<span class="ic" aria-hidden="true">♡</span><span class="lbl">Обнять!</span>';
+    b.innerHTML = `<span class="ic" aria-hidden="true">♡</span><span class="lbl">${L('Обнять!', 'Hug!')}</span>`;
     b.addEventListener('click', hug); li.style.cssText = 'border:0;padding:0;background:none'; li.appendChild(b);
   } else {
     li.className = hugDone ? 'done' : 'lock';
-    li.innerHTML = '<span class="ic" aria-hidden="true">♡</span><span class="lbl">Обнять</span>';
+    li.innerHTML = `<span class="ic" aria-hidden="true">♡</span><span class="lbl">${L('Обнять', 'Hug')}</span>`;
   }
   ul.appendChild(li);
   document.querySelectorAll('.tool').forEach(b => b.classList.toggle('used', S.done.has(b.dataset.tool)));
@@ -72,22 +72,22 @@ function albumAdd(e){
 function openAlbum(){
   const grid = $('#albumGrid'); grid.innerHTML = '';
   const mine = save.album.filter(a => a.pet), cured = save.album.filter(a => !a.pet);
-  $('#albumSub').textContent = save.progress ? `Вылечено: ${save.progress}` : '';
+  $('#albumSub').textContent = save.progress ? L(`Вылечено: ${save.progress}`, `Healed: ${save.progress}`) : '';
   const head = t => { const h = document.createElement('h3'); h.className = 'album-h display'; h.textContent = t; grid.appendChild(h); };
   const fig = (a, cls, capText, date) => {
     const f = document.createElement('figure'); if(cls) f.className = cls;
-    const img = document.createElement('img'); img.src = a.img; img.alt = a.name;
+    const img = document.createElement('img'); img.src = a.img; img.alt = nameL(a.name);
     const cap = document.createElement('figcaption'); cap.textContent = capText;
     if(date){ const d = new Date(a.d), sm = document.createElement('small'); sm.textContent = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}`; cap.append(sm); }
     f.append(img, cap); grid.appendChild(f);
   };
   if(mine.length){   // «как рос мой малыш» — по порядку, от знакомства
-    head(`${save.pet ? save.pet.name : 'Мой малыш'} растёт ♡`);
-    mine.forEach(a => fig(a, 'pet', a.cap || a.name, true));
-    head('Пациенты');
+    head(save.pet ? L(`${save.pet.name} растёт ♡`, `${save.pet.name} is growing up ♡`) : L('Мой малыш растёт ♡', 'My pup is growing up ♡'));
+    mine.forEach(a => fig(a, 'pet', capL(a.cap) || nameL(a.name), true));
+    head(L('Пациенты', 'Patients'));
   }
-  if(!cured.length) grid.insertAdjacentHTML('beforeend', '<p class="empty">Пока пусто. Вылечи первого пациента!</p>');
-  for(const a of cured.slice().reverse()) fig(a, '', a.name, false);
+  if(!cured.length) grid.insertAdjacentHTML('beforeend', `<p class="empty">${L('Пока пусто. Вылечи первого пациента!', 'Nothing here yet. Heal your first patient!')}</p>`);
+  for(const a of cured.slice().reverse()) fig(a, '', nameL(a.name), false);
   $('#album').hidden = false;
 }
 
@@ -131,29 +131,29 @@ async function spawnPatient(){
   await mgLupa(seal, p.ail, a => { S.found.add(a); renderCard(); }, at => { shift.secrets++; addShells(3, at); });
   unfocusCam(); setBusy(false);
   S.stage = 'treat'; renderCard();
-  toast('Всё нашла! Теперь лечи — выбирай внизу');
+  toast(L('Всё нашла! Теперь лечи — выбирай внизу', 'Found it all! Now treat — pick below'));
 }
 
 const TREAT = {
   thermo: s => mgThermo(s),
   async medicine(s){
     await mgMedicine(s);
-    floatText('Ам!', headTop(s)); burst(TEX.star, headTop(s), 8, 1.8, 0.3); sfx.pop();
+    floatText(L('Ам!', 'Yum!'), headTop(s)); burst(TEX.star, headTop(s), 8, 1.8, 0.3); sfx.pop();
     S.ail.fever = false; S.ail.sneeze = false; applyAilments(s, S.ail);
   },
   async bandage(s){
     await mgBandage(s);
-    S.ail.scratch = false; applyAilments(s, S.ail); floatText('Не больно!', headTop(s));
+    S.ail.scratch = false; applyAilments(s, S.ail); floatText(L('Не больно!', 'No more ouch!'), headTop(s));
   },
   async fish(s){
     await mgFishing(s);
     for(let i = 0; i < 2; i++){ sfx.chomp(); await tween(0.2, k => { s.head.scale.set(1, 1 - Math.sin(k*Math.PI)*0.1, 1); }, ease.lin); }
     s.head.scale.set(1, 1, 1);
-    S.ail.hungry = false; applyAilments(s, S.ail); floatText('Ням!', headTop(s));
+    S.ail.hungry = false; applyAilments(s, S.ail); floatText(L('Ням!', 'Nom!'), headTop(s));
   },
   async scarf(s){
     await mgScarf(s);
-    S.ail.cold = false; applyAilments(s, S.ail); floatText('Тепло!', headTop(s));
+    S.ail.cold = false; applyAilments(s, S.ail); floatText(L('Тепло!', 'Warm!'), headTop(s));
   }
 };
 async function wrong(s, msg){
@@ -165,15 +165,15 @@ async function wrong(s, msg){
 }
 async function useTool(k){
   if(!S || S.stage !== 'treat' || busy) {
-    if(S && S.stage === 'hug') toast('Лечение закончено. Теперь обними пациента: нажми на тюленя!');
+    if(S && S.stage === 'hug') toast(L('Лечение закончено. Теперь обними пациента: нажми на тюленя!', 'Treatment is done. Now hug your patient: tap the seal!'));
     return;
   }
   const s = S.seal;
-  if(S.done.has(k)) return toast('Это уже сделано!');
+  if(S.done.has(k)) return toast(L('Это уже сделано!', 'That is already done!'));
   if(!S.needs.includes(k)){
-    return wrong(s, k === 'thermo' ? 'Температуры нет, лоб холодный. Посмотри карту пациента!' : 'Этому пациенту это не нужно. Посмотри карту!');
+    return wrong(s, k === 'thermo' ? L('Температуры нет, лоб холодный. Посмотри карту пациента!', 'No fever, the forehead is cool. Check the patient card!') : L('Этому пациенту это не нужно. Посмотри карту!', 'This patient does not need that. Check the card!'));
   }
-  if(k === 'medicine' && S.needs.includes('thermo') && !S.done.has('thermo')) return wrong(s, 'Сначала измерь температуру 🌡️');
+  if(k === 'medicine' && S.needs.includes('thermo') && !S.done.has('thermo')) return wrong(s, L('Сначала измерь температуру 🌡️', 'Take the temperature first 🌡️'));
   setBusy(true);
   await TREAT[k](s);
   unfocusCam();
@@ -181,9 +181,9 @@ async function useTool(k){
   if(S.done.size === S.needs.length){
     S.stage = 'hug'; setMood(s, 'ok');
     await wait(0.5); sfx.arf();
-    const well = `${S.p.name} ${S.p.f ? 'здорова' : 'здоров'}!`;
-    if(showWardrobe(s)){ $('#tools').hidden = true; toast(`${well} Можно нарядить 🎀 и обнять — нажми на тюленя ♡`, 4200); }
-    else toast(`${well} Осталось обнять — нажми на тюленя ♡`, 3600);
+    const well = L(`${S.p.name} ${S.p.f ? 'здорова' : 'здоров'}!`, `${S.p.name} is well!`);
+    if(showWardrobe(s)){ $('#tools').hidden = true; toast(L(`${well} Можно нарядить 🎀 и обнять — нажми на тюленя ♡`, `${well} You can dress up 🎀 and hug — tap the seal ♡`), 4200); }
+    else toast(L(`${well} Осталось обнять — нажми на тюленя ♡`, `${well} Now a hug — tap the seal ♡`), 3600);
   }
   renderCard(); setBusy(false);
 }
@@ -210,10 +210,10 @@ async function hug(){
   await wait(1.1);
   await tuckIn(s);
   $('#curedShells').textContent = `+${earned} 🐚` + (save.pet ? `  +${PATIENT_XP} 💗` : '');
-  $('#btnNext').textContent = shift.n >= SHIFT_SIZE ? 'Итоги смены ⭐' : 'Следующий пациент';
+  $('#btnNext').textContent = shift.n >= SHIFT_SIZE ? L('Итоги смены ⭐', 'Shift results ⭐') : L('Следующий пациент', 'Next patient');
   $('#curedImg').src = img;
-  $('#curedTitle').textContent = `${s.p.name} ${s.p.f ? 'здорова' : 'здоров'}!`;
-  $('#curedThanks').textContent = `${s.p.name}: «Спасибо, доктор Сабрина!»`;
+  $('#curedTitle').textContent = L(`${s.p.name} ${s.p.f ? 'здорова' : 'здоров'}!`, `${s.p.name} is well!`);
+  $('#curedThanks').textContent = L(`${s.p.name}: «Спасибо, доктор Сабрина!»`, `${s.p.name}: “Thank you, Doctor Sabrina!”`);
   $('#cured').hidden = false; setBusy(false);
 }
 async function nextPatient(){
@@ -253,7 +253,7 @@ canvas.addEventListener('pointerdown', e => {
   if(S.stage === 'hug') return hug();
   if(S.stage === 'treat'){
     const s = S.seal; sfx.arf();
-    floatText(['Ар!','Ур-р','Хи-хи','Ар-ар!'][Math.floor(Math.random()*4)], headTop(s));
+    floatText(L(['Ар!','Ур-р','Хи-хи','Ар-ар!'], ['Arf!','Urr','Hehe','Arf arf!'])[Math.floor(Math.random()*4)], headTop(s));
     squash(s, 0.15, 0.3);
   }
 });
@@ -265,7 +265,7 @@ function codeSay(t, bad = false){ codeMsg.textContent = t; codeMsg.classList.tog
 function openSettings(){
   sfx.tap(); codeBox.value = ''; codeNew = null; $('#codeAsk').hidden = true; codeSay('');
   $('#storeNote').textContent = '';
-  keepSave().then(ok => { $('#storeNote').textContent = ok === null ? '' : ok ? '🔒 Браузер обещал не стирать сохранение.' : 'Браузер может стереть сохранение, если кончится место: лучше скопируй код и спрячь его.'; });
+  keepSave().then(ok => { $('#storeNote').textContent = ok === null ? '' : ok ? L('🔒 Браузер обещал не стирать сохранение.', '🔒 The browser promised to keep your save.') : L('Браузер может стереть сохранение, если кончится место: лучше скопируй код и спрячь его.', 'The browser may erase your save if it runs out of space: better copy the code and keep it safe.'); });
   $('#settings').hidden = false;
 }
 async function copyCode(){
@@ -274,20 +274,20 @@ async function copyCode(){
   let ok = false;
   try{ await navigator.clipboard.writeText(code); ok = true; }
   catch(e){ try{ ok = document.execCommand('copy'); }catch(e2){} }
-  codeSay(ok ? 'Код скопирован ✓ Отправь его себе или сохрани в заметки.' : 'Нажми на поле и скопируй код вручную (выдели всё и «Копировать»).', !ok);
+  codeSay(ok ? L('Код скопирован ✓ Отправь его себе или сохрани в заметки.', 'Code copied ✓ Send it to yourself or save it in your notes.') : L('Нажми на поле и скопируй код вручную (выдели всё и «Копировать»).', 'Tap the box and copy the code by hand (select all, then “Copy”).'), !ok);
   if(ok) sfx.good();
 }
 async function pasteCode(){
   sfx.tap(); $('#codeAsk').hidden = true; codeNew = null;
   if(!codeBox.value.trim()){
     try{ codeBox.value = await navigator.clipboard.readText(); }catch(e){}
-    if(!codeBox.value.trim()){ codeBox.focus(); return codeSay('Вставь код в поле (долгое нажатие → «Вставить») и нажми «Вставить» ещё раз.'); }
+    if(!codeBox.value.trim()){ codeBox.focus(); return codeSay(L('Вставь код в поле (долгое нажатие → «Вставить») и нажми «Вставить» ещё раз.', 'Paste the code into the box (long press → “Paste”) and tap “Paste” again.')); }
   }
   const d = readCode(codeBox.value);
-  if(!d){ sfx.bad(); return codeSay('Не получилось прочитать код. Скопируй его целиком ещё раз.', true); }
+  if(!d){ sfx.bad(); return codeSay(L('Не получилось прочитать код. Скопируй его целиком ещё раз.', 'Could not read the code. Copy the whole thing again.'), true); }
   codeNew = d; codeSay('');
-  const has = d.pet ? `малыш ${d.pet.name}` : 'малыша пока нет', lose = save.pet && !d.pet ? ` Внимание: сейчас здесь живёт ${save.pet.name}, а в коде его нет!` : '';
-  $('#codeAskText').textContent = `В коде: ${has}, вылечено ${d.progress}, ракушек ${d.shells} 🐚. Заменить то, что сейчас на этом устройстве?${lose}`;
+  const has = d.pet ? L(`малыш ${d.pet.name}`, `pup ${d.pet.name}`) : L('малыша пока нет', 'no pup yet'), lose = save.pet && !d.pet ? L(` Внимание: сейчас здесь живёт ${save.pet.name}, а в коде его нет!`, ` Careful: ${save.pet.name} lives here now, but is not in the code!`) : '';
+  $('#codeAskText').textContent = L(`В коде: ${has}, вылечено ${d.progress}, ракушек ${d.shells} 🐚. Заменить то, что сейчас на этом устройстве?${lose}`, `In the code: ${has}, healed ${d.progress}, shells ${d.shells} 🐚. Replace what is on this device now?${lose}`);
   $('#codeAsk').hidden = false;
 }
 function applyCode(){
@@ -322,7 +322,7 @@ $('#btnStart').addEventListener('click', async () => {
   if(started) return; started = true;
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
   if(adoptPending()) adopt(); else startShift();   // сыгравших смену у льдины ждёт малыш (Фаза 3)
-  if(mailWaiting && save.progress && !adoptPending()) setTimeout(() => { if(mailWaiting && !mailOpen) toast('💌 Тебе письмо от папы! Нажми на почтовый ящик', 3400); }, 1200);
+  if(mailWaiting && save.progress && !adoptPending()) setTimeout(() => { if(mailWaiting && !mailOpen) toast(L('💌 Тебе письмо от папы! Нажми на почтовый ящик', '💌 You have a letter from Dad! Tap the mailbox'), 3400); }, 1200);
 });
 $('#btnIntroPet').addEventListener('click', async () => {
   ac(); sfx.good(); keepSave(); $('#intro').hidden = true;
@@ -389,7 +389,7 @@ function frame(ts){
     if((S.stage === 'treat' && !busy || S.stage === 'diagnose') && !petMode){   // урчит и под лупой: видно, где искать «голодный»
       if(S.ail.hungry){
         s.rumbleT -= dt;
-        if(s.rumbleT < 0){ s.rumbleT = 5 + Math.random()*2; floatText('урр...', worldOf(s, new V3(0.9, -0.9, 0.3)), '#6B6A7E');
+        if(s.rumbleT < 0){ s.rumbleT = 5 + Math.random()*2; floatText(L('урр...', 'grrr...'), worldOf(s, new V3(0.9, -0.9, 0.3)), '#6B6A7E');
           tween(0.6, k => s.wobble = Math.sin(k*Math.PI*5)*0.04*(1 - k), ease.lin); }
       }
     }
@@ -401,9 +401,9 @@ function frame(ts){
 }
 
 buildTools(); renderMute(); renderAlbumCount(); renderBucket();
-if(save.progress){ const st = $('#introStat'); st.textContent = `Ты уже вылечила пациентов: ${save.progress} · ракушек: ${save.shells} 🐚`; st.hidden = false; $('#btnStart').textContent = 'Начать смену'; }
-if(save.pet){ $('#introStat').textContent += ` · ${save.pet.name} ${petMissed() ? gg('соскучился', 'соскучилась') : 'ждёт тебя'} 🦭`; $('#btnIntroPet').hidden = false; }
-else if(adoptPending()){ $('#introStat').textContent += ' · Кто-то ждёт тебя у льдины…'; $('#btnStart').textContent = 'Открыть больницу'; }
+if(save.progress){ const st = $('#introStat'); st.textContent = L(`Ты уже вылечила пациентов: ${save.progress} · ракушек: ${save.shells} 🐚`, `Patients healed: ${save.progress} · shells: ${save.shells} 🐚`); st.hidden = false; $('#btnStart').textContent = L('Начать смену', 'Start a shift'); }
+if(save.pet){ $('#introStat').textContent += ` · ${save.pet.name} ${petMissed() ? L(gg('соскучился', 'соскучилась'), 'misses you') : L('ждёт тебя', 'is waiting for you')} 🦭`; $('#btnIntroPet').hidden = false; }
+else if(adoptPending()){ $('#introStat').textContent += L(' · Кто-то ждёт тебя у льдины…', ' · Someone is waiting for you by the ice…'); $('#btnStart').textContent = L('Открыть больницу', 'Open the hospital'); }
 renderPetBtn();
 requestAnimationFrame(loop);
 // ?test=1: скрытая вкладка почти не даёт кадров, поэтому подталкиваем кадры таймером

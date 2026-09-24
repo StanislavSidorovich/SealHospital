@@ -38,10 +38,10 @@ async function mgThermo(s){
   focusCam(worldOf(s, new V3(0, -0.1, 0)), 2.7);
   await flyTo(th, camPt(0.3, -1.8, -4), worldOf(s, s.mouthLocal).add(new V3(0.26, 0.16, 0.05)), 0.7, 0.6);
 
-  mgOpen('Нажми и держи 👆');
+  mgOpen(L('Нажми и держи 👆', 'Press and hold 👆'));
   const gauge = mgNode('div', 'gauge-wrap', '<span class="ic">🌡️</span><div class="gauge"><div class="zone"></div><div class="fill"></div></div>').lastChild;
-  const hold = mgNode('button', 'hold display', '<span class="big">👆</span>Держи');
-  hold.setAttribute('aria-label', 'Держи, чтобы измерить температуру');
+  const hold = mgNode('button', 'hold display', `<span class="big">👆</span>${L('Держи', 'Hold')}`);
+  hold.setAttribute('aria-label', L('Держи, чтобы измерить температуру', 'Hold to take the temperature'));
   const fill = gauge.querySelector('.fill'), zone = gauge.querySelector('.zone');
   const Z0 = 0.62, Z1 = 0.86, SPEED = 0.42;   // зелёная зона и скорость: ~1,5 с до зоны, ~0,6 с внутри неё
   const inner = () => gauge.clientHeight - 14;   // clientHeight без рамки; минус отступы столбика по 7px
@@ -53,7 +53,7 @@ async function mgThermo(s){
   const release = () => {
     if(!holding) return; holding = false; hold.classList.remove('on');
     if(level >= Z0 && level <= Z1) return finish();
-    if(level > 0.08){ sfx.bad(); wiggle(gauge); mgHint('Ещё чуть-чуть! Держи подольше'); }
+    if(level > 0.08){ sfx.bad(); wiggle(gauge); mgHint(L('Ещё чуть-чуть! Держи подольше', 'Just a little more! Hold longer')); }
   };
   mgOn(mgRoot, 'pointerdown', press);
   for(const ev of ['pointerup', 'pointercancel', 'pointerleave']) mgOn(mgRoot, ev, release);
@@ -62,9 +62,9 @@ async function mgThermo(s){
       level += dt*SPEED;
       if(level >= 1){   // перебор: мягко сбрасываем, без наказания
         level = 0.2; holding = false; hold.classList.remove('on');
-        sfx.bad(); wiggle(gauge); mgHint('Ой, перебор! Отпусти на зелёном');
+        sfx.bad(); wiggle(gauge); mgHint(L('Ой, перебор! Отпусти на зелёном', 'Oops, too much! Let go on the green'));
       } else if(level - lastTick > 0.08){ lastTick = level; sfx.tick(); }
-      if(level >= Z0 && level <= Z1) mgHint('Отпускай!');
+      if(level >= Z0 && level <= Z1) mgHint(L('Отпускай!', 'Let go!'));
     } else {
       level = Math.max(0, level - dt*0.3); lastTick = Math.min(lastTick, level);
     }
@@ -75,27 +75,27 @@ async function mgThermo(s){
   await done;
   mgClose();
   sfx.beep(true);
-  floatText('38,5°', headTop(s), '#D9364F');
+  floatText(L('38,5°', '38.5°C'), headTop(s), '#D9364F');
   await wait(0.9);
   await tween(0.3, k => th.scale.setScalar(1 - k)); scene.remove(th);
-  toast('Жар 38,5°! Теперь дай лекарство.');
+  toast(L('Жар 38,5°! Теперь дай лекарство.', 'Fever, 38.5°C! Now give some medicine.'));
 }
 
 /* ---------- Лекарство: налить сироп в ложку по рецепту ---------- */
 const SYRUPS = [
-  {id:'rasp', c:'#FF8FB1', hex:0xFF8FB1, ic:'🍓', name:'Малиновый'},
-  {id:'bana', c:'#FFD66B', hex:0xFFD66B, ic:'🍌', name:'Банановый'},
-  {id:'mint', c:'#86DDB5', hex:0x86DDB5, ic:'🌿', name:'Мятный'},
-  {id:'blue', c:'#A5B3F7', hex:0xA5B3F7, ic:'🫐', name:'Черничный'}
+  {id:'rasp', c:'#FF8FB1', hex:0xFF8FB1, ic:'🍓', name:L('Малиновый', 'Raspberry')},
+  {id:'bana', c:'#FFD66B', hex:0xFFD66B, ic:'🍌', name:L('Банановый', 'Banana')},
+  {id:'mint', c:'#86DDB5', hex:0x86DDB5, ic:'🌿', name:L('Мятный', 'Mint')},
+  {id:'blue', c:'#A5B3F7', hex:0xA5B3F7, ic:'🫐', name:L('Черничный', 'Blueberry')}
 ];
 async function mgMedicine(s){
   const recipe = SYRUPS.slice().sort(() => Math.random() - 0.5).slice(0, 3);
   focusCam(worldOf(s, new V3(0, 0, 0)), 2.6, 1.0);
-  mgOpen('Налей сироп по рецепту');
+  mgOpen(L('Налей сироп по рецепту', 'Pour the syrup by the recipe'));
   const panel = mgNode('div', 'mg-panel', `
-    <div class="recipe"><span>Рецепт:</span>${recipe.map((r, i) => `${i ? '<span class="arr">→</span>' : ''}<i style="--c:${r.c}">${r.ic}</i>`).join('')}</div>
+    <div class="recipe"><span>${L('Рецепт:', 'Recipe:')}</span>${recipe.map((r, i) => `${i ? '<span class="arr">→</span>' : ''}<i style="--c:${r.c}">${r.ic}</i>`).join('')}</div>
     <div class="spoon"><div class="bowl">${recipe.map(r => `<b style="--c:${r.c}"></b>`).join('')}</div><div class="handle"></div></div>
-    <div class="bottles">${SYRUPS.map(r => `<button class="bottle" data-id="${r.id}" aria-label="${r.name} сироп"><span class="cap"></span><span class="neck"></span><span class="body" style="--c:${r.c}">${r.ic}</span></button>`).join('')}</div>`);
+    <div class="bottles">${SYRUPS.map(r => `<button class="bottle" data-id="${r.id}" aria-label="${L(`${r.name} сироп`, `${r.name} syrup`)}"><span class="cap"></span><span class="neck"></span><span class="body" style="--c:${r.c}">${r.ic}</span></button>`).join('')}</div>`);
   const steps = [...panel.querySelectorAll('.recipe i')], layers = [...panel.querySelectorAll('.bowl b')];
   let step = 0, pouring = false, finish;
   const done = new Promise(r => finish = r);
@@ -105,18 +105,18 @@ async function mgMedicine(s){
     if(pouring || step >= recipe.length) return;
     const want = recipe[step];
     if(b.dataset.id !== want.id){
-      sfx.bad(); wiggle(b); mgHint(`Сейчас нужен ${want.ic} — посмотри рецепт!`); return;
+      sfx.bad(); wiggle(b); mgHint(L(`Сейчас нужен ${want.ic} — посмотри рецепт!`, `Now you need ${want.ic} — check the recipe!`)); return;
     }
     pouring = true; sfx.pour();
     b.classList.remove('pour'); void b.offsetWidth; b.classList.add('pour');
     await wait(0.25);
     layers[step].classList.add('in'); step++; mark();
     await wait(0.3); pouring = false;
-    if(step < recipe.length) mgHint(step === 1 ? 'Так! Теперь следующий' : 'Ещё один!');
+    if(step < recipe.length) mgHint(step === 1 ? L('Так! Теперь следующий', 'Yes! Now the next one') : L('Ещё один!', 'One more!'));
     else finish();
   }));
   await done;
-  panel.querySelector('.spoon').classList.add('full'); sfx.good(); mgHint('Готово! Даём лекарство');
+  panel.querySelector('.spoon').classList.add('full'); sfx.good(); mgHint(L('Готово! Даём лекарство', 'Done! Giving the medicine'));
   await wait(0.8);
   panel.classList.add('away'); await wait(0.35);
   mgClose();
@@ -143,7 +143,7 @@ async function mgBandage(s){
   const worldPos = o => o.getWorldPosition(new V3());
   await wait(0.5);
 
-  mgOpen('Протри ранку пальцем');
+  mgOpen(L('Протри ранку пальцем', 'Wipe the scratch with your finger'));
   const cotton = mgNode('div', 'cotton'), finger = mgNode('div', 'finger', '👆');
   let down = false, px = 0, py = 0, rubT = 0, giggled = false, left = dirt.length, finish;
   const cleaned = new Promise(r => finish = r);
@@ -166,18 +166,18 @@ async function mgBandage(s){
     if(!down) return;
     const d = Math.hypot(e.clientX - px, e.clientY - py); px = e.clientX; py = e.clientY; place(cotton, px, py);
     if(d > 0){ rub(px, py, d/260); if(now - rubT > 0.09){ rubT = now; sfx.rub(); } }
-    if(!giggled && d > 0 && dirt.some(x => !x.visible)){ giggled = true; floatText('Хи-хи!', headTop(s)); }
+    if(!giggled && d > 0 && dirt.some(x => !x.visible)){ giggled = true; floatText(L('Хи-хи!', 'Hehe!'), headTop(s)); }
   });
   for(const ev of ['pointerup', 'pointercancel']) mgOn(mgRoot, ev, () => { down = false; cotton.classList.remove('on'); });
   mgTick(() => { const c = toScreen(worldPos(s.plaster)); place(finger, c.x, c.y); });
   await cleaned;
   dirt.forEach(d => { s.head.remove(d); d.material.dispose(); });
-  mgClose(); sfx.good(); floatText('Чисто!', headTop(s));
+  mgClose(); sfx.good(); floatText(L('Чисто!', 'Clean!'), headTop(s));
   await wait(0.7);
 
-  mgOpen('Перетащи пластырь на ранку');
+  mgOpen(L('Перетащи пластырь на ранку', 'Drag the bandage onto the scratch'));
   const target = mgNode('div', 'target'), pl = mgNode('div', 'plaster-drag');
-  pl.setAttribute('aria-label', 'Пластырь');
+  pl.setAttribute('aria-label', L('Пластырь', 'Bandage'));
   let drag = null, stuck;
   const placed = new Promise(r => stuck = r);
   mgTick(() => { const c = toScreen(worldPos(s.plaster)); place(target, c.x, c.y); });
@@ -196,7 +196,7 @@ async function mgBandage(s){
     if(!drag) return; drag = null; pl.classList.remove('drag');
     const r = pl.getBoundingClientRect(), c = toScreen(worldPos(s.plaster));
     if(Math.hypot(r.left + r.width/2 - c.x, r.top + r.height/2 - c.y) < 75) return stuck();
-    sfx.bad(); mgHint('Почти! Неси прямо на ранку');
+    sfx.bad(); mgHint(L('Почти! Неси прямо на ранку', 'Almost! Bring it right to the scratch'));
     pl.classList.add('back'); pl.style.left = ''; pl.style.top = ''; pl.style.bottom = ''; pl.style.marginLeft = '';
   };
   mgOn(pl, 'pointerup', drop); mgOn(pl, 'pointercancel', drop);
@@ -223,8 +223,8 @@ async function mgFishing(s){
   await tween(0.5, k => { bob.position.y = 1.4 + (baseY - 1.4)*k; drawLine(); }, ease.out);
   sfx.plop(); emit(TEX.puff, HOLE.clone().add(new V3(0, 0.1, 0)), {v:new V3(0, 0.6, 0), life:0.6, size:0.5, grow:1});
 
-  mgOpen('Жди… Когда поплавок нырнёт — жми!');
-  const pull = mgNode('button', 'btn pull', 'Тяни! 🎣'); pull.hidden = true;
+  mgOpen(L('Жди… Когда поплавок нырнёт — жми!', 'Wait… When the float dips — tap!'));
+  const pull = mgNode('button', 'btn pull', L('Тяни! 🎣', 'Pull! 🎣')); pull.hidden = true;
   // state: wait → bite → (поймал | уплыла → wait)
   let state = 'wait', until = now + 1.6 + Math.random()*1.8, nibbleAt = now + 0.8 + Math.random(), misses = 0, finish;
   const caught = new Promise(r => finish = r);
@@ -232,7 +232,7 @@ async function mgFishing(s){
   const tap = e => {
     e.preventDefault();
     if(state === 'bite'){ state = 'done'; pull.hidden = true; finish(); }
-    else if(state === 'wait') mgHint('Ещё рано! Жди, когда нырнёт');
+    else if(state === 'wait') mgHint(L('Ещё рано! Жди, когда нырнёт', 'Too early! Wait for the dip'));
   };
   mgOn(mgRoot, 'pointerdown', tap);
   mgTick(() => {
@@ -249,7 +249,7 @@ async function mgFishing(s){
       y -= 0.13;
       if(now > until){
         misses++; toWait();
-        mgHint(misses > 1 ? 'Жми сразу, как только нырнёт!' : 'Уплыла! Сейчас клюнет ещё');
+        mgHint(misses > 1 ? L('Жми сразу, как только нырнёт!', 'Tap as soon as it dips!') : L('Уплыла! Сейчас клюнет ещё', 'It got away! Another bite is coming'));
       }
     }
     bob.position.y = y; drawLine();
@@ -264,7 +264,7 @@ async function mgFishing(s){
     const extra = makeFish(); extra.scale.setScalar(0.7);
     flyTo(extra, HOLE.clone(), bucket.position.clone().add(new V3(0, 0.25, 0)), 1.0, 1.8, 12).then(() => {
       scene.remove(extra); save.fish++; persist(); renderBucket(); sfx.pop();
-      toast(`И ещё одна — в ведро! Там ${save.fish} ${plural(save.fish, 'рыбка', 'рыбки', 'рыбок')}`);
+      toast(L(`И ещё одна — в ведро! Там ${save.fish} ${plural(save.fish, 'рыбка', 'рыбки', 'рыбок')}`, `And one more goes in the bucket! It holds ${save.fish} ${plural(save.fish, '', '', '', 'fish', 'fish')} now`));
     });
   }
   await flyTo(fish, HOLE.clone(), worldOf(s, s.mouthLocal), 0.9, 1.4, 10);
@@ -282,13 +282,13 @@ async function mgScarf(s){
   s.scarf.visible = true; sfx.whoosh();
   await tween(0.6, k => s.scarf.scale.setScalar(Math.max(0.001, k)), ease.back);
 
-  mgOpen('Выбери шарфик');
+  mgOpen(L('Выбери шарфик', 'Pick a scarf'));
   const panel = mgNode('div', 'mg-panel picker', `
-    <p class="row-lbl">Цвет</p>
-    <div class="swatches">${SCARF_COLORS.map(c => `<button class="swatch" data-c="${c}" style="--c:${c}" aria-label="Цвет"></button>`).join('')}</div>
-    <p class="row-lbl">Узор</p>
-    <div class="patterns${pats.length > 4 ? ' many' : ''}">${pats.map(p => `<button class="pat ${p}" data-p="${p}" aria-label="Узор">${PAT_LABEL[p] || ''}</button>`).join('')}</div>
-    <button class="btn" id="scarfDone">Готово ✓</button>`);
+    <p class="row-lbl">${L('Цвет', 'Color')}</p>
+    <div class="swatches">${SCARF_COLORS.map(c => `<button class="swatch" data-c="${c}" style="--c:${c}" aria-label="${L('Цвет', 'Color')}"></button>`).join('')}</div>
+    <p class="row-lbl">${L('Узор', 'Pattern')}</p>
+    <div class="patterns${pats.length > 4 ? ' many' : ''}">${pats.map(p => `<button class="pat ${p}" data-p="${p}" aria-label="${L('Узор', 'Pattern')}">${PAT_LABEL[p] || ''}</button>`).join('')}</div>
+    <button class="btn" id="scarfDone">${L('Готово ✓', 'Done ✓')}</button>`);
   const render = () => {
     const ink = color === '#F5F1E8' ? '#FF7A9C' : '#FFFFFF';
     panel.querySelectorAll('.swatch').forEach(b => b.classList.toggle('sel', b.dataset.c === color));
@@ -328,7 +328,7 @@ function hotNear(s, a, x, y){
 const SECRET_SPOTS = [new V3(1.45, 0.5, 0.4), new V3(0, 0.25, 1.2), new V3(-1.3, 0.2, 1.2)];
 async function mgLupa(s, ailments, onFound, onSecret){
   focusCam(worldOf(s, new V3(0, -0.55, 0)), 3.1, -0.55);
-  mgOpen('Води лупой по тюленю — найди, что болит', {card:true, hintBottom:true});
+  mgOpen(L('Води лупой по тюленю — найди, что болит', 'Move the magnifier over the seal — find what hurts'), {card:true, hintBottom:true});
   const lens = mgNode('div', 'lens idle', '<div class="ring"></div>');
   const target = mgNode('div', 'target'); target.hidden = true;
   const place = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; };
@@ -364,7 +364,7 @@ async function mgLupa(s, ailments, onFound, onSecret){
       }
     } else if(looking && now - lastGiggle > 3){
       const h = toScreen(worldOf(s, new V3()));
-      if(Math.hypot(h.x - lx, h.y - ly) < 90){ lastGiggle = now; floatText('Хи-хи', headTop(s)); }
+      if(Math.hypot(h.x - lx, h.y - ly) < 90){ lastGiggle = now; floatText(L('Хи-хи', 'Hehe'), headTop(s)); }
     }
     if(secret >= 0){
       sparkT -= dt;
@@ -374,7 +374,7 @@ async function mgLupa(s, ailments, onFound, onSecret){
         secret += dt/0.4;
         if(secret >= 1){
           secret = -1; sfx.ding(); burst(TEX.star, secretPos(), 10, 1.6, 0.24);
-          floatText('Секретик!', secretPos().add(new V3(0, 0.5, 0)), '#C9962E');
+          floatText(L('Секретик!', 'A secret!'), secretPos().add(new V3(0, 0.5, 0)), '#C9962E');
           onSecret(p);
         }
       } else secret = Math.max(0, secret - dt);
@@ -393,8 +393,8 @@ async function mgLupa(s, ailments, onFound, onSecret){
    начинается «А… а…» и рядом с носом появляется платок. Успела нажать — «Будь здоров!»,
    не успела — чих сдувает шапочку, и она смешно падает обратно. */
 const tissueBtn = document.createElement('button');
-tissueBtn.className = 'tissue'; tissueBtn.hidden = true; tissueBtn.setAttribute('aria-label', 'Платочек');
-tissueBtn.innerHTML = '🤧<small>Платок!</small>';
+tissueBtn.className = 'tissue'; tissueBtn.hidden = true; tissueBtn.setAttribute('aria-label', L('Платочек', 'Tissue'));
+tissueBtn.innerHTML = `🤧<small>${L('Платок!', 'Tissue!')}</small>`;
 $('#app').appendChild(tissueBtn);
 let tissueHintShown = false;
 tissueBtn.addEventListener('click', () => { if(S && S.seal.windup) achoo(S.seal, true); });
@@ -402,7 +402,7 @@ function sneezeTick(s, dt, active){
   if(!active){ if(s.windup){ s.windup = null; tissueBtn.hidden = true; s.sneezeNod = 0; } return; }
   if(!s.windup){
     s.sneezeT -= dt;
-    if(s.sneezeT < 0){ s.windup = {t:0}; floatText('А… а…', headTop(s)); tissueBtn.hidden = false; }
+    if(s.sneezeT < 0){ s.windup = {t:0}; floatText(L('А… а…', 'Ah… ah…'), headTop(s)); tissueBtn.hidden = false; }
     return;
   }
   const w = s.windup; w.t += dt;
@@ -416,7 +416,7 @@ async function achoo(s, caught){
   const nz = worldOf(s, s.noseLocal);
   if(caught){
     sfx.sneezeSoft(); burst(TEX.star, nz, 6, 1.4, 0.24);
-    floatText('Будь здоров!', headTop(s), '#2F9E72');
+    floatText(L('Будь здоров!', 'Bless you!'), headTop(s), '#2F9E72');
     addShells(1, toScreen(nz));
     await tween(0.15, k => s.sneezeNod = -0.25 + 0.35*k);
     await tween(0.35, k => s.sneezeNod = 0.1*(1 - k));
@@ -424,8 +424,8 @@ async function achoo(s, caught){
   }
   sfx.sneeze();
   for(let i = 0; i < 6; i++) emit(TEX.puff, nz, {v:new V3((Math.random()-0.5)*1.2, Math.random()*0.6, 1 + Math.random()), life:0.8, size:0.35, grow:1.5});
-  floatText('Апчхи!', headTop(s));
-  if(!tissueHintShown){ tissueHintShown = true; toast('Лови чих платочком — жми на платок 🤧'); }
+  floatText(L('Апчхи!', 'Achoo!'), headTop(s));
+  if(!tissueHintShown){ tissueHintShown = true; toast(L('Лови чих платочком — жми на платок 🤧', 'Catch the sneeze with the tissue — tap it 🤧')); }
   const hat = s.hat, base = hat.userData.base;
   const nod = tween(0.15, k => s.sneezeNod = -0.25 + 0.6*k).then(() => tween(0.4, k => s.sneezeNod = 0.35*(1 - k)));
   if(hat.visible){   // шапка взлетает, крутится и шлёпается обратно

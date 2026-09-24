@@ -57,5 +57,5 @@ const sfx = {
 function renderMute(){
   $('#waves').toggleAttribute('hidden', save.muted);
   $('#cross').toggleAttribute('hidden', !save.muted);
-  $('#btnSound').setAttribute('aria-label', save.muted ? 'Включить звук' : 'Выключить звук');
+  $('#btnSound').setAttribute('aria-label', save.muted ? L('Включить звук', 'Sound on') : L('Выключить звук', 'Sound off'));
 }

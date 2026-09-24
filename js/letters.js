@@ -5,6 +5,7 @@
 
    Поля письма:
      text  — сам текст. Можно по-русски или по-английски. {pet} заменится на имя малыша.
+     en    — (не обязательно) перевод для тех, кто включил английский; нет перевода — покажется text.
      date  — (не обязательно) 'ГГГГ-ММ-ДД' для праздника: письмо придёт ровно в этот день, даже если сегодня
              уже было письмо. Не играла в тот день — придёт в течение недели, а позже уже нет.
      gift  — (не обязательно) подарок в конверте:
@@ -20,13 +21,13 @@ const LETTERS = [
   {text:'Happy to be your dad.'},
   {text:'Enjoy playing together!', gift:{shells:15}},
   {text:'Love you, my dearest.'},
-  {text:'Доктор Сабрина, я тобой горжусь! Сколько тюленят ты уже вылечила? Расскажешь мне?'},
-  {text:'Как там {pet}? Передай от меня рыбку 🐟 и обними покрепче.', gift:{hearts:1}},
-  {text:'Сегодня я смотрел на небо и думал о тебе. Ты моё солнышко ☀️'},
-  {text:'Загадка от папы: круглый, пушистый, любит рыбку и тебя. Кто это? 🦭', gift:{shells:10}},
-  {text:'Ты очень добрая. Тюленята это чувствуют, и я тоже ♡', gift:{wear:'hearts'}},
-  {text:'Где бы я ни был, я всегда думаю о тебе.'},
-  {text:'Обнимаю тебя крепко-крепко!', gift:{shells:20}},
-  {date:'2027-01-01', text:'С Новым годом, моя звёздочка! Пусть в этом году будет много чудес ✨', gift:{shells:30}},
+  {text:'Доктор Сабрина, я тобой горжусь! Сколько тюленят ты уже вылечила? Расскажешь мне?', en:'Doctor Sabrina, I am proud of you! How many seal pups have you healed so far? Will you tell me?'},
+  {text:'Как там {pet}? Передай от меня рыбку 🐟 и обними покрепче.', en:'How is {pet}? Give a fish 🐟 from me and a big hug.', gift:{hearts:1}},
+  {text:'Сегодня я смотрел на небо и думал о тебе. Ты моё солнышко ☀️', en:'Today I looked at the sky and thought of you. You are my sunshine ☀️'},
+  {text:'Загадка от папы: круглый, пушистый, любит рыбку и тебя. Кто это? 🦭', en:'A riddle from Dad: round, fluffy, loves fish and loves you. Who is it? 🦭', gift:{shells:10}},
+  {text:'Ты очень добрая. Тюленята это чувствуют, и я тоже ♡', en:'You are so kind. The seal pups feel it, and so do I ♡', gift:{wear:'hearts'}},
+  {text:'Где бы я ни был, я всегда думаю о тебе.', en:'Wherever I am, I am always thinking of you.'},
+  {text:'Обнимаю тебя крепко-крепко!', en:'Sending you the biggest hug!', gift:{shells:20}},
+  {date:'2027-01-01', text:'С Новым годом, моя звёздочка! Пусть в этом году будет много чудес ✨', en:'Happy New Year, my little star! May this year be full of wonders ✨', gift:{shells:30}},
   // {date:'2027-03-15', text:'С днём рождения, моя девочка! 🎂', gift:{shells:50}},
 ];

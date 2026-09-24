@@ -33,7 +33,7 @@
 </head>
 <body>
 <div id="app">
-  <canvas id="c" aria-label="Льдина с тюленем"></canvas>
+  <canvas id="c" aria-label="Льдина с тюленем" data-en-aria="An ice floe with a seal"></canvas>
   <div class="night" id="night"></div>
 
   <!-- Слой мини-игр: сюда каждая мини-игра кладёт свой интерфейс (js/minigames.js) -->
@@ -44,7 +44,7 @@
 
   <div class="top">
     <section class="card" id="card" hidden aria-live="polite">
-      <div class="card-label"><span class="cross"></span>Пациент <span id="pNo">1</span> из 3</div>
+      <div class="card-label"><span class="cross"></span><span data-en="Patient">Пациент</span> <span id="pNo">1</span> <span data-en="of 3">из 3</span></div>
       <h2 class="display" id="pName">Моти</h2>
       <p id="pText"></p>
       <ul class="needs" id="pNeeds"></ul>
@@ -53,78 +53,82 @@
       <div class="card-label"><span class="heart-ic">♡</span><span id="petStage">Малыш</span></div>
       <h2 class="display" id="petName"></h2>
       <p id="petStatus"></p>
-      <div class="love"><span class="lbl">💗 Дружба</span><span class="bar"><i id="petLove"></i></span><b id="petHearts">0</b></div>
+      <div class="love"><span class="lbl" data-en="💗 Friendship">💗 Дружба</span><span class="bar"><i id="petLove"></i></span><b id="petHearts">0</b></div>
       <p class="grow-hint" id="petGrowHint"></p>
     </section>
     <div class="corner" id="corner">
-      <button class="round" id="btnSound" aria-label="Звук">
+      <button class="round" id="btnSound" aria-label="Звук" data-en-aria="Sound">
         <svg viewBox="0 0 24 24" fill="none" stroke="#3B3A4A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="#FF9BB8"/>
           <path id="waves" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>
           <path id="cross" d="M16 9.5l5 5M21 9.5l-5 5" hidden/>
         </svg>
       </button>
-      <button class="round" id="btnAlbum" aria-label="Альбом пациентов">
+      <button class="round" id="btnAlbum" aria-label="Альбом пациентов" data-en-aria="Patient album">
         <svg viewBox="0 0 24 24" fill="none" stroke="#3B3A4A" stroke-width="2.2" stroke-linejoin="round">
           <rect x="4.5" y="3.5" width="15" height="17" rx="2.5" fill="#FFFDF8"/>
           <path d="M12 16.2s-3.6-2.2-3.6-4.6a1.9 1.9 0 0 1 3.6-.9 1.9 1.9 0 0 1 3.6.9c0 2.4-3.6 4.6-3.6 4.6z" fill="#FF9BB8" stroke-width="1.6"/>
         </svg>
         <span class="badge" id="albumCount">0</span>
       </button>
-      <button class="round shells" id="btnShop" aria-label="Ракушки и лавка">
+      <button class="round shells" id="btnShop" aria-label="Ракушки и лавка" data-en-aria="Shells and shop">
         <span aria-hidden="true">🐚</span>
         <span class="badge" id="shellCount">0</span>
       </button>
-      <button class="round mailbtn" id="btnMail" aria-label="Шкатулка писем">
+      <button class="round mailbtn" id="btnMail" aria-label="Шкатулка писем" data-en-aria="Letter box">
         <span aria-hidden="true" id="mailIc">✉️</span>
         <span class="badge alert" id="mailAlert" hidden>1</span>
       </button>
-      <button class="round pet" id="btnPet" aria-label="Мой малыш" hidden>
+      <button class="round pet" id="btnPet" aria-label="Мой малыш" data-en-aria="My pup" hidden>
         <span aria-hidden="true" id="petIc">🦭</span>
         <span class="badge alert" id="petAlert" hidden>!</span>
       </button>
-      <button class="round gear" id="btnSettings" aria-label="Код сохранения"><span aria-hidden="true">⚙️</span></button>
+      <button class="round gear" id="btnSettings" aria-label="Настройки" data-en-aria="Settings"><span aria-hidden="true">⚙️</span></button>
     </div>
   </div>
 
-  <nav class="tools" id="tools" hidden aria-label="Лечение"></nav>
-  <nav class="tools wardrobe" id="wardrobe" hidden aria-label="Нарядить"></nav>
-  <nav class="tools pet-bar" id="petBar" aria-label="Уход за малышом"></nav>
+  <nav class="tools" id="tools" hidden aria-label="Лечение" data-en-aria="Treatment"></nav>
+  <nav class="tools wardrobe" id="wardrobe" hidden aria-label="Нарядить" data-en-aria="Dress up"></nav>
+  <nav class="tools pet-bar" id="petBar" aria-label="Уход за малышом" data-en-aria="Pup care"></nav>
   <div class="toast" id="toast" hidden></div>
 
   <div class="overlay" id="intro">
     <div class="panel">
+      <div class="lang" role="group" aria-label="Language / Язык"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
       <div class="sign"><span class="cross"></span></div>
-      <h1 class="display">Тюленья больница</h1>
-      <p>Доктор Сабрина, к тебе приплывают пациенты! За смену — три тюленя: осмотри, вылечи, обними и уложи спать. За каждого — ракушки 🐚 для лавки.</p>
+      <h1 class="display" data-en="Seal Hospital">Тюленья больница</h1>
+      <p data-en="Doctor Sabrina, patients are swimming in! Three seals per shift: check them, heal them, hug them and tuck them in. Every patient earns you shells 🐚 for the shop.">Доктор Сабрина, к тебе приплывают пациенты! За смену — три тюленя: осмотри, вылечи, обними и уложи спать. За каждого — ракушки 🐚 для лавки.</p>
       <p id="introStat" class="thanks" hidden></p>
-      <p id="introMail" class="intro-mail display" hidden>💌 Тебе письмо от папы!</p>
+      <p id="introMail" class="intro-mail display" data-en="💌 You have a letter from Dad!" hidden>💌 Тебе письмо от папы!</p>
       <div class="row">
-        <button class="btn" id="btnStart">Открыть больницу</button>
-        <button class="btn ghost" id="btnIntroPet" hidden>К малышу 🦭</button>
+        <button class="btn" id="btnStart" data-en="Open the hospital">Открыть больницу</button>
+        <button class="btn ghost" id="btnIntroPet" data-en="To my pup 🦭" hidden>К малышу 🦭</button>
       </div>
-      <button class="btn ghost small" id="btnIntroSet">⚙️ Код сохранения</button>
-      <div class="from">от Dad ♡</div>
+      <button class="btn ghost small" id="btnIntroSet" data-en="⚙️ Settings">⚙️ Настройки</button>
+      <div class="from" data-en="from Dad ♡">от Dad ♡</div>
     </div>
   </div>
 
   <!-- Код сохранения: перенести малыша на другое устройство или сохранить копию (js/game.js, js/data.js) -->
   <div class="overlay" id="settings" hidden>
     <div class="panel settings">
-      <button class="close" id="btnSetClose" aria-label="Закрыть">✕</button>
-      <h2 class="display">Код сохранения</h2>
-      <p>Так можно перенести малыша, ракушки и покупки на другой телефон или планшет, а ещё это запасная копия. Фото из альбома в код не входят.</p>
-      <textarea id="codeBox" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Код сохранения" placeholder="Здесь появится код. Или вставь сюда код с другого устройства."></textarea>
+      <button class="close" id="btnSetClose" aria-label="Закрыть" data-en-aria="Close">✕</button>
+      <h2 class="display" data-en="Settings">Настройки</h2>
+      <p class="set-lbl display" data-en="Language">Язык</p>
+      <div class="lang" role="group" aria-label="Language / Язык"><button data-lang="ru">Русский</button><button data-lang="en">English</button></div>
+      <p class="set-lbl display" data-en="Save code">Код сохранения</p>
+      <p data-en="Use it to move your pup, shells and purchases to another phone or tablet. It is also a backup. Album photos are not included in the code.">Так можно перенести малыша, ракушки и покупки на другой телефон или планшет, а ещё это запасная копия. Фото из альбома в код не входят.</p>
+      <textarea id="codeBox" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Код сохранения" data-en-aria="Save code" placeholder="Здесь появится код. Или вставь сюда код с другого устройства." data-en-ph="Your code will appear here. Or paste a code from another device."></textarea>
       <div class="row">
-        <button class="btn" id="btnCodeCopy">Скопировать</button>
-        <button class="btn ghost" id="btnCodePaste">Вставить</button>
+        <button class="btn" id="btnCodeCopy" data-en="Copy">Скопировать</button>
+        <button class="btn ghost" id="btnCodePaste" data-en="Paste">Вставить</button>
       </div>
       <p class="code-msg" id="codeMsg" aria-live="polite"></p>
       <div class="code-ask" id="codeAsk" hidden>
         <p id="codeAskText"></p>
         <div class="row">
-          <button class="btn" id="btnCodeYes">Да, загрузить</button>
-          <button class="btn ghost" id="btnCodeNo">Отмена</button>
+          <button class="btn" id="btnCodeYes" data-en="Yes, load it">Да, загрузить</button>
+          <button class="btn ghost" id="btnCodeNo" data-en="Cancel">Отмена</button>
         </div>
       </div>
       <p class="store-note" id="storeNote"></p>
@@ -133,18 +137,18 @@
 
   <div class="overlay" id="cured" hidden>
     <div class="panel">
-      <img class="thumb" id="curedImg" alt="Вылеченный тюлень">
+      <img class="thumb" id="curedImg" alt="Вылеченный тюлень" data-en-alt="A healed seal">
       <h2 class="display" id="curedTitle">Моти здоров!</h2>
       <p class="thanks" id="curedThanks"></p>
       <p class="earned display" id="curedShells"></p>
       <div class="letter">
         <div class="stamp"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.3-7-9.2A3.8 3.8 0 0 1 12 9a3.8 3.8 0 0 1 7 1.8C19 15.7 12 20 12 20z" fill="#FFFDF8" stroke="#3B3A4A" stroke-width="1.8"/></svg></div>
-        <p class="to display">Для любимой дочи</p>
+        <p class="to display" data-en="For my dearest daughter">Для любимой дочи</p>
         <p class="sig display">— Dad ♡</p>
       </div>
       <div class="row">
-        <button class="btn" id="btnNext">Следующий пациент</button>
-        <button class="btn ghost" id="btnCuredAlbum">Альбом</button>
+        <button class="btn" id="btnNext" data-en="Next patient">Следующий пациент</button>
+        <button class="btn ghost" id="btnCuredAlbum" data-en="Album">Альбом</button>
       </div>
     </div>
   </div>
@@ -155,39 +159,39 @@
       <h2 class="display" id="resTitle">Смена окончена!</h2>
       <div class="res-photos" id="resPhotos"></div>
       <ul class="res-stars" id="resStars"></ul>
-      <p class="earned display">Ракушки за смену: <b id="resShells">+0 🐚</b></p>
+      <p class="earned display"><span data-en="Shells this shift:">Ракушки за смену:</span> <b id="resShells">+0 🐚</b></p>
       <div class="row">
-        <button class="btn" id="btnShift">Новая смена</button>
-        <button class="btn ghost" id="btnResShop">Лавка 🐚</button>
-        <button class="btn ghost" id="btnResPet" hidden>К малышу 🦭</button>
+        <button class="btn" id="btnShift" data-en="New shift">Новая смена</button>
+        <button class="btn ghost" id="btnResShop" data-en="Shop 🐚">Лавка 🐚</button>
+        <button class="btn ghost" id="btnResPet" data-en="To my pup 🦭" hidden>К малышу 🦭</button>
       </div>
     </div>
   </div>
 
   <div class="overlay" id="album" hidden>
     <div class="panel">
-      <h2 class="display">Альбом</h2>
+      <h2 class="display" data-en="Album">Альбом</h2>
       <p class="thanks" id="albumSub"></p>
       <div class="album-grid" id="albumGrid"></div>
-      <button class="btn" id="btnAlbumClose">Вернуться в больницу</button>
+      <button class="btn" id="btnAlbumClose" data-en="Back to the hospital">Вернуться в больницу</button>
     </div>
   </div>
 
   <!-- Праздник роста своего малыша (js/pet.js, petGrow) -->
   <div class="overlay" id="grow" hidden>
     <div class="panel grow">
-      <img class="thumb" id="growImg" alt="Мой малыш">
+      <img class="thumb" id="growImg" alt="Мой малыш" data-en-alt="My pup">
       <h2 class="display" id="growTitle">Подрос!</h2>
       <p id="growText"></p>
       <ol class="stages" id="growStages"></ol>
       <p class="earned display" id="growGift"></p>
-      <button class="btn" id="btnGrowOk">Ура! ♡</button>
+      <button class="btn" id="btnGrowOk" data-en="Hooray! ♡">Ура! ♡</button>
     </div>
   </div>
 
   <!-- Папина почта (js/mail.js, сами письма — js/letters.js) -->
   <div class="overlay mail" id="mail" hidden>
-    <button class="envelope" id="envelope" aria-label="Открыть письмо">
+    <button class="envelope" id="envelope" aria-label="Открыть письмо" data-en-aria="Open the letter">
       <svg viewBox="0 -80 280 270" aria-hidden="true">
         <rect x="6" y="40" width="268" height="144" rx="14" fill="#FFC9D8" stroke="#3B3A4A" stroke-width="3.5"/>
         <path class="flap-o" d="M8 42 L140 -46 L272 42 Z" fill="#FFB3C8" stroke="#3B3A4A" stroke-width="3.5" stroke-linejoin="round"/>
@@ -201,10 +205,10 @@
           <circle cx="140" cy="120" r="21" fill="#D9527E" stroke="#3B3A4A" stroke-width="3"/>
           <path d="M140 131s-10-6-10-12.5a5.3 5.3 0 0 1 10-2.5 5.3 5.3 0 0 1 10 2.5c0 6.5-10 12.5-10 12.5z" fill="#FFFDF8"/>
         </g>
-        <text x="24" y="170" class="env-to">Доктору Сабрине</text>
+        <text x="24" y="170" class="env-to" data-en="To Doctor Sabrina">Доктору Сабрине</text>
       </svg>
     </button>
-    <p class="env-hint display" id="envHint">Нажми на конверт ♡</p>
+    <p class="env-hint display" id="envHint" data-en="Tap the envelope ♡">Нажми на конверт ♡</p>
 
     <div class="panel mail-read" id="mailRead" hidden>
       <div class="letter note">
@@ -213,38 +217,39 @@
         <p class="sig display" id="mailSig">— Dad ♡</p>
         <p class="note-date" id="mailDate"></p>
       </div>
-      <button class="gift-box" id="mailGift" hidden><span class="ic" aria-hidden="true">🎁</span><span>В конверте что-то есть!</span></button>
+      <button class="gift-box" id="mailGift" hidden><span class="ic" aria-hidden="true">🎁</span><span data-en="There is something in the envelope!">В конверте что-то есть!</span></button>
       <p class="gift-got display" id="mailGot" hidden></p>
-      <button class="btn" id="btnMailOk">Спрятать в шкатулку ♡</button>
+      <button class="btn" id="btnMailOk" data-en="Put it in the letter box ♡">Спрятать в шкатулку ♡</button>
     </div>
 
     <div class="panel mail-box" id="mailBox" hidden>
-      <button class="close" id="btnBoxClose" aria-label="Закрыть">✕</button>
-      <h2 class="display">Шкатулка писем</h2>
+      <button class="close" id="btnBoxClose" aria-label="Закрыть" data-en-aria="Close">✕</button>
+      <h2 class="display" data-en="Letter box">Шкатулка писем</h2>
       <p class="thanks" id="boxSub"></p>
       <div class="box-grid" id="boxGrid"></div>
       <p class="box-next" id="boxNext"></p>
-      <button class="btn" id="btnBoxNew" hidden>💌 Новое письмо!</button>
+      <button class="btn" id="btnBoxNew" data-en="💌 New letter!" hidden>💌 Новое письмо!</button>
     </div>
   </div>
 
   <div class="overlay" id="shop" hidden>
     <div class="panel shop">
-      <button class="close" id="btnShopClose" aria-label="Закрыть лавку">✕</button>
-      <h2 class="display">Лавка</h2>
-      <p class="wallet">У тебя <b id="shopShells">0</b> 🐚</p>
+      <button class="close" id="btnShopClose" aria-label="Закрыть лавку" data-en-aria="Close the shop">✕</button>
+      <h2 class="display" data-en="Shop">Лавка</h2>
+      <p class="wallet"><span data-en="You have">У тебя</span> <b id="shopShells">0</b> 🐚</p>
       <div class="tabs" id="shopTabs">
-        <button data-tab="wear" class="on">Пациентам</button>
-        <button data-tab="decor">Больнице</button>
+        <button data-tab="wear" class="on" data-en="For patients">Пациентам</button>
+        <button data-tab="decor" data-en="For the hospital">Больнице</button>
       </div>
       <div class="shop-grid" id="shopGrid"></div>
-      <button class="btn" id="btnBuy">Выбери, что нравится</button>
+      <button class="btn" id="btnBuy" data-en="Pick what you like">Выбери, что нравится</button>
     </div>
   </div>
 </div>
 
 <!-- Обычные скрипты, не модули: так игра открывается и с file://. Порядок важен: они делят глобальную область. -->
 <script src="vendor/three.min.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/data.js"></script>
 <script src="js/letters.js"></script>
 <script src="js/audio.js"></script>

@@ -10,7 +10,7 @@ const MAIL_LATE = 7;   // письмо с датой ещё приходит с�
 const ymd = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const letterId = l => 'L' + codeSum(l.text.trim());   // письмо узнаём по тексту
 const mailHas = id => save.mail.got.some(x => x.id === id);
-const letterText = l => l.text.trim().replace(/\{pet\}/g, save.pet ? save.pet.name : 'твой малыш');
+const letterText = l => (LANG === 'en' && l.en ? l.en : l.text).trim().replace(/\{pet\}/g, save.pet ? save.pet.name : L('твой малыш', 'your pup'));
 const dayGap = (a, b) => Math.round((new Date(a) - new Date(b))/864e5);
 // какое письмо ждёт сегодня: сначала письмо ровно на сегодня, потом праздничное, которое чуть опоздало,
 // потом обычное — но обычное только одно в день
@@ -63,7 +63,7 @@ const mailbox = new THREE.Group(); mailbox.position.copy(MAILBOX_POS); mailbox.r
 function renderMailBtn(){
   $('#mailIc').textContent = mailWaiting ? '💌' : '✉️';
   $('#mailAlert').hidden = !mailWaiting;
-  $('#btnMail').setAttribute('aria-label', mailWaiting ? 'Тебе письмо!' : 'Шкатулка писем');
+  $('#btnMail').setAttribute('aria-label', mailWaiting ? L('Тебе письмо!', 'You have a letter!') : L('Шкатулка писем', 'Letter box'));
   $('#introMail').hidden = !mailWaiting;
 }
 
@@ -78,7 +78,7 @@ function mailShow(part){   // 'env' | 'read' | 'box'
 }
 function mailClose(){ mailOpen = false; mailEl.hidden = true; mailCur = null; }
 function openMail(){
-  if(busy || !mgRoot.hidden) return toast('Сначала закончи то, что начала, потом почитай письмо 💌');
+  if(busy || !mgRoot.hidden) return toast(L('Сначала закончи то, что начала, потом почитай письмо 💌', 'Finish what you started first, then read the letter 💌'));
   mailRefresh();
   if(mailWaiting) mailEnvelope(mailWaiting); else mailBox();
 }
@@ -103,7 +103,7 @@ function mailRead(l, t){
   const d = new Date(t); $('#mailDate').textContent = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
   const gift = mailCur && mailCur.gift && !mailCur.got;
   $('#mailGift').hidden = !gift; $('#mailGot').hidden = true;
-  $('#btnMailOk').textContent = mailCur && mailCur.fromBox ? '← К шкатулке' : 'Спрятать в шкатулку ♡';
+  $('#btnMailOk').textContent = mailCur && mailCur.fromBox ? L('← К шкатулке', '← To the letter box') : L('Спрятать в шкатулку ♡', 'Put it in the letter box ♡');
   mailShow('read');
 }
 // подарок в конверте: ракушки, сердечко дружбы малышу или особая вещь (её нет в лавке)
@@ -115,13 +115,13 @@ function mailGiftOpen(){
   const shells = n => { addShells(n, at); html = `+${n} 🐚`; };
   if(g.wear && shopItem(g.wear) && !owns(g.wear)){
     save.owned.push(g.wear); persist(); sfx.buy();
-    html = `<img src="${thumb(g.wear)}" alt=""><span>${shopItem(g.wear).name}!<small>Надевай пациентам и малышу 🎀</small></span>`;
+    html = `<img src="${thumb(g.wear)}" alt=""><span>${shopItem(g.wear).name}!<small>${L('Надевай пациентам и малышу 🎀', 'Put it on patients and your pup 🎀')}</small></span>`;
     if(S && S.stage === 'hug' && !petMode && showWardrobe(S.seal)) $('#tools').hidden = true;   // обновка сразу в гардеробе
   }
   else if(g.hearts && save.pet){
     const n = Math.max(1, Math.round(g.hearts));
     save.pet.xp += n*HEART_XP; persist(); sfx.hug(); renderPetCard(); renderPetBtn();
-    html = `+${n} 💗 <small>${save.pet.name} ${gg('рад', 'рада')}!</small>`;
+    html = `+${n} 💗 <small>${L(`${save.pet.name} ${gg('рад', 'рада')}!`, `${save.pet.name} is happy!`)}</small>`;
   }
   else shells(Math.round(g.shells) || (g.hearts ? 10*g.hearts : 10));   // вещь уже есть или малыша ещё нет — ракушки
   $('#mailGift').hidden = true; got.innerHTML = html; got.hidden = false;
@@ -144,14 +144,14 @@ function mailDone(){
   if(mailCur && mailCur.fromBox) return mailBox();
   const first = save.mail.got.length === 1;
   mailClose(); updateMailbox();
-  toast(first ? 'Письмо лежит в шкатулке ✉️ Перечитать можно в любой момент' : 'Письмо в шкатулке ✉️', 2800);
+  toast(first ? L('Письмо лежит в шкатулке ✉️ Перечитать можно в любой момент', 'The letter is in your letter box ✉️ You can reread it any time') : L('Письмо в шкатулке ✉️', 'Letter is in the box ✉️'), 2800);
 }
 function mailBox(){
   sfx.tap(); mailCur = null;
   const grid = $('#boxGrid'); grid.innerHTML = '';
   const list = save.mail.got.map(x => ({x, l:MAIL.find(l => letterId(l) === x.id)})).filter(e => e.l).sort((a, b) => b.x.t - a.x.t);   // новые сверху
-  $('#boxSub').textContent = list.length ? `Писем от папы: ${list.length}` : '';
-  if(!list.length) grid.insertAdjacentHTML('beforeend', '<p class="empty">Здесь будут жить папины письма ♡</p>');
+  $('#boxSub').textContent = list.length ? L(`Писем от папы: ${list.length}`, `Letters from Dad: ${list.length}`) : '';
+  if(!list.length) grid.insertAdjacentHTML('beforeend', `<p class="empty">${L('Здесь будут жить папины письма ♡', 'Dad\'s letters will live here ♡')}</p>`);
   for(const {x, l} of list){
     const b = document.createElement('button'), d = new Date(x.t);
     b.className = 'box-item';
@@ -162,7 +162,7 @@ function mailBox(){
   }
   mailRefresh();
   const more = MAIL.some(l => !mailHas(letterId(l)));
-  $('#boxNext').textContent = mailWaiting ? '' : more ? 'Новое письмо придёт завтра ✉️' : 'Папа скоро напишет ещё ♡';
+  $('#boxNext').textContent = mailWaiting ? '' : more ? L('Новое письмо придёт завтра ✉️', 'A new letter arrives tomorrow ✉️') : L('Папа скоро напишет ещё ♡', 'Dad will write again soon ♡');
   $('#btnBoxNew').hidden = !mailWaiting;
   mailShow('box');
 }
@@ -180,7 +180,7 @@ canvas.addEventListener('pointerdown', e => {
 function petLetterTap(){
   const env = petSeal && petSeal.letter;
   if(!env || !env.visible) return false;
-  setBusy(true); sfx.arf(); floatText('Это тебе!', headTop(petSeal), '#D9527E'); squash(petSeal, 0.15, 0.3);
+  setBusy(true); sfx.arf(); floatText(L('Это тебе!', 'This is for you!'), headTop(petSeal), '#D9527E'); squash(petSeal, 0.15, 0.3);
   wait(0.5).then(() => { env.visible = false; setBusy(false); openMail(); });
   return true;
 }
@@ -206,7 +206,7 @@ function mailTick(t, dt){
   petSeal.letter.visible = carry;
   if(carry && !carrySaid){
     if(carryT < 0) carryT = t + 2.6;
-    else if(t > carryT){ carrySaid = true; toast(`${save.pet.name} ${gg('принёс', 'принесла')} тебе письмо! Нажми ${gg('на него', 'на неё')} 💌`, 3600); }
+    else if(t > carryT){ carrySaid = true; toast(L(`${save.pet.name} ${gg('принёс', 'принесла')} тебе письмо! Нажми ${gg('на него', 'на неё')} 💌`, `${save.pet.name} brought you a letter! Tap ${gg('him', 'her')} 💌`), 3600); }
   }
   if(!petMode) carryT = -1;
 }

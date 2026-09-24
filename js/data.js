@@ -109,42 +109,43 @@ function readCode(text){
 
 /* ---------------- game data ---------------- */
 const TOOLS = {
-  thermo:  {icon:'🌡️', name:'Градусник', task:'Измерить температуру'},
-  medicine:{icon:'💊', name:'Лекарство', task:'Дать лекарство'},
-  bandage: {icon:'🩹', name:'Пластырь', task:'Заклеить ранку'},
-  fish:    {icon:'🐟', name:'Рыбка', task:'Покормить'},
-  scarf:   {icon:'🧣', name:'Шарфик', task:'Согреть шарфиком'}
+  thermo:  {icon:'🌡️', name:L('Градусник', 'Thermo'), task:L('Измерить температуру', 'Take temperature')},
+  medicine:{icon:'💊', name:L('Лекарство', 'Medicine'), task:L('Дать лекарство', 'Give medicine')},
+  bandage: {icon:'🩹', name:L('Пластырь', 'Bandage'), task:L('Заклеить ранку', 'Cover the scratch')},
+  fish:    {icon:'🐟', name:L('Рыбка', 'Fish'), task:L('Покормить', 'Feed')},
+  scarf:   {icon:'🧣', name:L('Шарфик', 'Scarf'), task:L('Согреть шарфиком', 'Warm up with a scarf')}
 };
 const ORDER = ['thermo','medicine','bandage','fish','scarf'];
 const PATIENTS = [
-  {name:'Моти', f:false, color:0xF7F5EF, ail:['cold','sneeze'], text:'Моти весь день катался с ледяной горки. Замёрз и теперь чихает.'},
-  {name:'Бублик', f:false, color:0xCBD2DC, spot:0x98A3B4, ail:['scratch','hungry'], text:'Бублик поцарапал лобик об острую льдинку и очень-очень проголодался.'},
-  {name:'Зефирка', f:true, color:0xF8DDE4, ail:['fever','sneeze'], text:'У Зефирки горячий лоб, и она всё время чихает. Похоже, простуда!'},
-  {name:'Тюпа', f:false, color:0xEFE4CF, spot:0xD2BF9C, ail:['scratch','cold'], text:'Тюпа нырял за ракушкой, стукнулся о льдину и замёрз.'},
-  {name:'Пельмешка', f:true, color:0xE6ECF5, ail:['hungry','cold'], text:'Пельмешка уплыла далеко от дома, замёрзла и ничего не ела с утра.'},
-  {name:'Снежок', f:false, color:0xFFFFFF, spot:0xD6DCE6, ail:['fever','hungry'], text:'Снежок какой-то вялый: лоб горячий, а в животике урчит.'},
-  {name:'Ириска', f:true, color:0xE3CBAE, spot:0xC4A27E, ail:['scratch','sneeze','hungry'], text:'Ириска поцарапала лобик, чихает и мечтает о рыбке.'},
-  {name:'Кнопка', f:true, color:0xC4CCDA, spot:0x8E99AD, ail:['fever','cold','scratch','hungry'], text:'Кнопка — самый трудный пациент: жар, замёрзла, поцарапалась и голодная. Доктор, вся надежда на тебя!'}
+  {name:L('Моти', 'Mochi'), f:false, color:0xF7F5EF, ail:['cold','sneeze'], text:L('Моти весь день катался с ледяной горки. Замёрз и теперь чихает.', 'Mochi has been sliding down the ice slide all day. Now he is cold and sneezing.')},
+  {name:L('Бублик', 'Bagel'), f:false, color:0xCBD2DC, spot:0x98A3B4, ail:['scratch','hungry'], text:L('Бублик поцарапал лобик об острую льдинку и очень-очень проголодался.', 'Bagel scratched his forehead on a sharp piece of ice and is very, very hungry.')},
+  {name:L('Зефирка', 'Marshmallow'), f:true, color:0xF8DDE4, ail:['fever','sneeze'], text:L('У Зефирки горячий лоб, и она всё время чихает. Похоже, простуда!', 'Marshmallow has a hot forehead and keeps sneezing. Looks like a cold!')},
+  {name:L('Тюпа', 'Tyupa'), f:false, color:0xEFE4CF, spot:0xD2BF9C, ail:['scratch','cold'], text:L('Тюпа нырял за ракушкой, стукнулся о льдину и замёрз.', 'Tyupa dove for a shell, bumped into the ice and got cold.')},
+  {name:L('Пельмешка', 'Dumpling'), f:true, color:0xE6ECF5, ail:['hungry','cold'], text:L('Пельмешка уплыла далеко от дома, замёрзла и ничего не ела с утра.', 'Dumpling swam far from home, got cold and has not eaten since morning.')},
+  {name:L('Снежок', 'Snowball'), f:false, color:0xFFFFFF, spot:0xD6DCE6, ail:['fever','hungry'], text:L('Снежок какой-то вялый: лоб горячий, а в животике урчит.', 'Snowball looks sleepy: his forehead is hot and his tummy is rumbling.')},
+  {name:L('Ириска', 'Toffee'), f:true, color:0xE3CBAE, spot:0xC4A27E, ail:['scratch','sneeze','hungry'], text:L('Ириска поцарапала лобик, чихает и мечтает о рыбке.', 'Toffee scratched her forehead, keeps sneezing and dreams of a fish.')},
+  {name:L('Кнопка', 'Button'), f:true, color:0xC4CCDA, spot:0x8E99AD, ail:['fever','cold','scratch','hungry'], text:L('Кнопка — самый трудный пациент: жар, замёрзла, поцарапалась и голодная. Доктор, вся надежда на тебя!', 'Button is the hardest patient: fever, cold, a scratch and hungry. Doctor, all hope is on you!')}
 ];
 // симптомы, которые доктор находит лупой (Фаза 1)
 const SYMPTOMS = {
-  fever:  {ic:'🤒', name:() => 'Горячий лоб'},
-  sneeze: {ic:'🤧', name:() => 'Чихает'},
-  scratch:{ic:'🤕', name:() => 'Ранка'},
-  hungry: {ic:'😋', name:f => f ? 'Голодная' : 'Голодный'},
-  cold:   {ic:'🥶', name:f => f ? 'Замёрзла' : 'Замёрз'}
+  fever:  {ic:'🤒', name:() => L('Горячий лоб', 'Hot forehead')},
+  sneeze: {ic:'🤧', name:() => L('Чихает', 'Sneezing')},
+  scratch:{ic:'🤕', name:() => L('Ранка', 'Scratch')},
+  hungry: {ic:'😋', name:f => L(f ? 'Голодная' : 'Голодный', 'Hungry')},
+  cold:   {ic:'🥶', name:f => L(f ? 'Замёрзла' : 'Замёрз', 'Cold')}
 };
-const PHRASE = {fever:'горячий лоб', sneeze:'чихает', scratch:'ранка на лобике', hungry:'урчит животик', cold:f => f ? 'замёрзла' : 'замёрз'};
+const PHRASE = {fever:L('горячий лоб', 'hot forehead'), sneeze:L('чихает', 'sneezing'), scratch:L('ранка на лобике', 'a scratch on the forehead'), hungry:L('урчит животик', 'a rumbling tummy'), cold:f => L(f ? 'замёрзла' : 'замёрз', 'feeling cold')};
 function patientFor(n){
   if(n < PATIENTS.length) return PATIENTS[n];
   const base = PATIENTS[Math.floor(Math.random()*PATIENTS.length)];
   const pool = ['fever','sneeze','scratch','hungry','cold'].sort(() => Math.random() - 0.5);
   const ail = pool.slice(0, 2 + (Math.random() < 0.35 ? 1 : 0));
   const list = ail.map(a => typeof PHRASE[a] === 'function' ? PHRASE[a](base.f) : PHRASE[a]);
-  return {...base, ail, text:`${base.name} снова ${base.f ? 'приплыла' : 'приплыл'} в больницу: ${list.join(', ')}.`};
+  return {...base, ail, text:L(`${base.name} снова ${base.f ? 'приплыла' : 'приплыл'} в больницу: ${list.join(', ')}.`, `${base.name} is back at the hospital: ${list.join(', ')}.`)};
 }
-// 1 рыбка, 2 рыбки, 5 рыбок
-function plural(n, one, few, many){
+// 1 рыбка, 2 рыбки, 5 рыбок; по-английски — enOne для 1, enMany для остальных (1 fish, 2 fish)
+function plural(n, one, few, many, enOne, enMany){
+  if(LANG === 'en') return n === 1 ? enOne : enMany;
   const a = n % 10, b = n % 100;
   return a === 1 && b !== 11 ? one : a >= 2 && a <= 4 && (b < 12 || b > 14) ? few : many;
 }

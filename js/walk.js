@@ -6,21 +6,21 @@
    три звезды — трюк выучен. Проиграть нельзя: малыш иногда путает трюк, это смешно, и пробуем ещё раз.
    Подключается после pet.js и до game.js. */
 const TREASURES = [
-  {id:'star',   ic:'⭐', name:'Морская звёздочка'},
-  {id:'gem',    ic:'💎', name:'Ледяной кристалл'},
-  {id:'marble', ic:'🔮', name:'Стеклянный шарик'},
-  {id:'anchor', ic:'⚓', name:'Якорёк'},
-  {id:'bow',    ic:'🎀', name:'Розовый бантик'},
-  {id:'bell',   ic:'🔔', name:'Колокольчик'},
-  {id:'key',    ic:'🗝️', name:'Старинный ключик'},
-  {id:'bear',   ic:'🧸', name:'Мишка-потеряшка'}
+  {id:'star',   ic:'⭐', name:L('Морская звёздочка', 'Starfish')},
+  {id:'gem',    ic:'💎', name:L('Ледяной кристалл', 'Ice crystal')},
+  {id:'marble', ic:'🔮', name:L('Стеклянный шарик', 'Glass marble')},
+  {id:'anchor', ic:'⚓', name:L('Якорёк', 'Little anchor')},
+  {id:'bow',    ic:'🎀', name:L('Розовый бантик', 'Pink bow')},
+  {id:'bell',   ic:'🔔', name:L('Колокольчик', 'Little bell')},
+  {id:'key',    ic:'🗝️', name:L('Старинный ключик', 'Old key')},
+  {id:'bear',   ic:'🧸', name:L('Мишка-потеряшка', 'Lost teddy')}
 ];
 // stage — с какой стадии роста малыш может выучить трюк
 const TRICKS = [
-  {id:'paw',  ic:'🤝', name:'Дай ласту',   stage:0, how:'Нажми на ласту малыша'},
-  {id:'jump', ic:'⬆️', name:'Прыжок',      stage:1, how:'Проведи пальцем вверх'},
-  {id:'roll', ic:'🔄', name:'Кувырок',     stage:2, how:'Нарисуй круг вокруг малыша'},
-  {id:'ball', ic:'⚽', name:'Мяч на носу', stage:3, how:'Нажимай, когда мяч опускается'}
+  {id:'paw',  ic:'🤝', name:L('Дай ласту', 'Shake flipper'),  stage:0, how:L('Нажми на ласту малыша', 'Tap the pup\'s flipper')},
+  {id:'jump', ic:'⬆️', name:L('Прыжок', 'Jump'),              stage:1, how:L('Проведи пальцем вверх', 'Swipe up')},
+  {id:'roll', ic:'🔄', name:L('Кувырок', 'Roll'),             stage:2, how:L('Нарисуй круг вокруг малыша', 'Draw a circle around the pup')},
+  {id:'ball', ic:'⚽', name:L('Мяч на носу', 'Ball on the nose'), stage:3, how:L('Нажимай, когда мяч опускается', 'Tap when the ball comes down')}
 ];
 const TRICK_GIFT = 5;   // ракушек, когда трюк выучен (три звезды)
 const foundAll = () => save.pet.finds.length >= TREASURES.length;
@@ -77,14 +77,14 @@ async function petFun(s){
   focusCam(worldOf(s, new V3(0, -0.3, 0)), 2.6*petK(), 0.9);
   const newFind = walkGiftToday(), learned = TRICKS.filter(t => (p.tricks[t.id] || 0) >= 3).length;
   const open = TRICKS.filter(t => p.stage >= t.stage).length;
-  mgOpen('Во что поиграем?');
+  mgOpen(L('Во что поиграем?', 'What shall we play?'));
   const panel = mgNode('div', 'mg-panel fun-pick', `
     <div class="picks">
-      <button data-k="ball"><span class="ic">⚽</span><b>Мяч</b><small>отбивать носом</small></button>
-      <button data-k="walk"><span class="ic">🐾</span><b>Гулять</b><small>${newFind ? '✨ Что-то блестит!' : `Находки ${p.finds.length} из ${TREASURES.length}`}</small></button>
-      <button data-k="tricks"><span class="ic">🎓</span><b>Трюки</b><small>выучено ${learned} из ${open}</small></button>
+      <button data-k="ball"><span class="ic">⚽</span><b>${L('Мяч', 'Ball')}</b><small>${L('отбивать носом', 'bounce it on the nose')}</small></button>
+      <button data-k="walk"><span class="ic">🐾</span><b>${L('Гулять', 'Walk')}</b><small>${newFind ? L('✨ Что-то блестит!', '✨ Something shines!') : L(`Находки ${p.finds.length} из ${TREASURES.length}`, `Finds ${p.finds.length} of ${TREASURES.length}`)}</small></button>
+      <button data-k="tricks"><span class="ic">🎓</span><b>${L('Трюки', 'Tricks')}</b><small>${L(`выучено ${learned} из ${open}`, `learned ${learned} of ${open}`)}</small></button>
     </div>
-    <button class="btn ghost small" data-k="no">Потом</button>`);
+    <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
   if(newFind) panel.querySelector('[data-k="walk"]').classList.add('new');
   let k = await new Promise(r => panel.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
   panel.classList.add('away'); await wait(0.25); mgClose();
@@ -97,9 +97,9 @@ async function petFun(s){
 // что меняется после игры: гуляли — проголодался и испачкался сильнее
 const FUN_COST = {ball:{food:0.12, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}};
 const FUN_SAY = {
-  ball: () => `${gg('Наигрался', 'Наигралась')}! И немножко ${gg('испачкался', 'испачкалась')} 🛁`,
-  walk: () => `${gg('Нагулялся', 'Нагулялась')}! Лапки в снегу — пора купаться 🛁`,
-  tricks: () => trickMsg || `Умница! ${save.pet.name} любит учиться с тобой ♡`
+  ball: () => L(`${gg('Наигрался', 'Наигралась')}! И немножко ${gg('испачкался', 'испачкалась')} 🛁`, 'All played out! And a little bit dirty 🛁'),
+  walk: () => L(`${gg('Нагулялся', 'Нагулялась')}! Лапки в снегу — пора купаться 🛁`, 'What a walk! Paws full of snow — bath time 🛁'),
+  tricks: () => trickMsg || L(`Умница! ${save.pet.name} любит учиться с тобой ♡`, `Well done! ${save.pet.name} loves learning with you ♡`)
 };
 
 /* ---------- прогулка ---------- */
@@ -111,7 +111,7 @@ async function petWalk(s){
   const kinds = ['shell', 'fish', 'shells'].sort(() => Math.random() - 0.5).concat('dig');
   const res = {shells:0, fish:0, find:null};
 
-  mgOpen('Идём гулять! 🐾');
+  mgOpen(L('Идём гулять! 🐾', 'Let us go for a walk! 🐾'));
   const ring = mgNode('div', 'target'); ring.hidden = true;
   let ringAt = null, onTap = null, onMove = null, onUp = null;
   mgOn(mgRoot, 'pointerdown', e => onTap && onTap(e));
@@ -132,16 +132,16 @@ async function petWalk(s){
   // к краю своей льдины — и первый прыжок
   const first = floeTop(WALK_FLOES[0]);
   frame(s.root.position, first);
-  sfx.arf(); floatText('Гулять!', headTop(s));
+  sfx.arf(); floatText(L('Гулять!', 'Walk!'), headTop(s));
   await waddleTo(s, WALK_EDGE);
   let at = WALK_EDGE;
   for(let i = 0; i < WALK_FLOES.length; i++){
     const to = floeTop(WALK_FLOES[i]);
     frame(at, to);
     ringAt = to.clone().add(new V3(0, 0.1, 0));
-    mgHint(i ? 'Прыгаем дальше? Нажми на льдинку' : 'Нажми на льдинку — малыш прыгнет!');
+    mgHint(i ? L('Прыгаем дальше? Нажми на льдинку', 'Jump on? Tap the ice floe') : L('Нажми на льдинку — малыш прыгнет!', 'Tap the ice floe — the pup will jump!'));
     await faceTo(s, to);
-    await tapAt(ringAt, 120, 'Нажми на льдинку с кружком');
+    await tapAt(ringAt, 120, L('Нажми на льдинку с кружком', 'Tap the ice floe with the ring'));
     ringAt = null; sfx.tap();
     await hopTo(s, to, 1.1*Math.max(0.8, sc), 0.75);
     at = to;
@@ -155,18 +155,18 @@ async function petWalk(s){
   // итоги прогулки: что нашли и полка находок
   await wait(0.4);
   const cells = TREASURES.map(t => p.finds.includes(t.id) ? `<i class="${res.find === t ? 'new' : ''}" title="${t.name}">${t.ic}</i>` : '<i class="no">?</i>').join('');
-  const got = [res.shells ? `+${res.shells} 🐚` : '', res.fish ? `${gg('съел', 'съела')} рыбку 🐟` : ''].filter(Boolean).join(' · ');
+  const got = [res.shells ? `+${res.shells} 🐚` : '', res.fish ? L(`${gg('съел', 'съела')} рыбку 🐟`, 'ate a fish 🐟') : ''].filter(Boolean).join(' · ');
   mgHint('');
   const end = mgNode('div', 'mg-panel walk-end', `
-    <p class="ttl display">Хорошо погуляли!</p>
+    <p class="ttl display">${L('Хорошо погуляли!', 'Great walk!')}</p>
     ${got ? `<p class="got">${got}</p>` : ''}
-    ${res.find ? `<p class="got">Новая находка: ${res.find.ic} ${res.find.name}!</p>` : ''}
+    ${res.find ? `<p class="got">${L('Новая находка:', 'New find:')} ${res.find.ic} ${res.find.name}!</p>` : ''}
     <div class="finds">${cells}</div>
-    <p class="tip">${foundAll() ? 'Все находки собраны! Ты настоящий следопыт ♡' : res.find ? 'Под снегом ещё много всего. Новая находка — завтра ✨' : 'Сегодняшнюю находку ты уже нашла. Новая спрячется под снегом завтра ✨'}</p>
-    <button class="btn" id="walkHome">Домой ♡</button>`);
+    <p class="tip">${foundAll() ? L('Все находки собраны! Ты настоящий следопыт ♡', 'All finds collected! You are a real explorer ♡') : res.find ? L('Под снегом ещё много всего. Новая находка — завтра ✨', 'There is still lots under the snow. A new find tomorrow ✨') : L('Сегодняшнюю находку ты уже нашла. Новая спрячется под снегом завтра ✨', 'You already found today\'s treasure. A new one will hide under the snow tomorrow ✨')}</p>
+    <button class="btn" id="walkHome">${L('Домой ♡', 'Home ♡')}</button>`);
   await new Promise(r => mgOn(end.querySelector('#walkHome'), 'click', r));
   sfx.tap(); end.classList.add('away'); await wait(0.3);
-  mgHint('Плывём домой…');
+  mgHint(L('Плывём домой…', 'Swimming home…'));
   await swimHome(s, at);
   mgClose();
   s.happyUntil = now + 2;
@@ -203,9 +203,9 @@ const WALK_EVENTS = {
   async shell({s, at, res, tapAt, setRing, hint}){
     const sh = makeShell(0xFFC2D1, true), pos = at.clone().add(new V3(0.55, 0.06, 0.45));
     sh.position.copy(pos); sh.rotation.set(0.5, 0.8, 0.2); scene.add(sh);
-    sniff(s, pos, 'Ой, что это?');
-    setRing(pos.clone().add(new V3(0, 0.1, 0))); hint('Малыш что-то учуял! Нажми на ракушку');
-    await tapAt(pos, 90, 'Ракушка — в кружке, нажми на неё');
+    sniff(s, pos, L('Ой, что это?', 'Oh, what is that?'));
+    setRing(pos.clone().add(new V3(0, 0.1, 0))); hint(L('Малыш что-то учуял! Нажми на ракушку', 'The pup smells something! Tap the shell'));
+    await tapAt(pos, 90, L('Ракушка — в кружке, нажми на неё', 'The shell is in the ring, tap it'));
     setRing(null); scene.remove(sh);
     burst(TEX.star, pos, 8, 1.4, 0.24); sfx.coin(); addShells(2, toScreen(pos)); res.shells += 2;
     s.happyUntil = now + 2; await hop(s, 0.3, 0.4);
@@ -218,8 +218,8 @@ const WALK_EVENTS = {
       sh.scale.setScalar(0.01); scene.add(sh); list.push(sh);
       wait(i*0.15).then(() => { sfx.pop(); return tween(0.3, q => sh.scale.setScalar(Math.max(0.01, 1.35*q)), ease.back); });
     });
-    floatText('Ракушки!', headTop(s)); sfx.arf();
-    hint('Тут ракушки! Собери все три');
+    floatText(L('Ракушки!', 'Shells!'), headTop(s)); sfx.arf();
+    hint(L('Тут ракушки! Собери все три', 'Shells here! Collect all three'));
     let left = 3;
     await new Promise(done => handlers(e => {
       let best = null, bd = 80;
@@ -227,9 +227,9 @@ const WALK_EVENTS = {
       if(!best) return;
       scene.remove(best); burst(TEX.star, best.position, 5, 1.2, 0.22); sfx.coin();
       addShells(1, toScreen(best.position)); res.shells++;
-      if(!--left) done(); else hint(`Ещё ${left === 1 ? 'одна' : left}!`);
+      if(!--left) done(); else hint(L(`Ещё ${left === 1 ? 'одна' : left}!`, `${left === 1 ? 'One' : left} more!`));
     }));
-    s.happyUntil = now + 2; floatText('Все!', headTop(s)); await hop(s, 0.3, 0.4);
+    s.happyUntil = now + 2; floatText(L('Все!', 'All!'), headTop(s)); await hop(s, 0.3, 0.4);
   },
   // рыбка выпрыгивает из воды рядом с льдинкой — поймай её, малыш съест
   async fish({s, at, res, hint, handlers, ticks}){
@@ -238,13 +238,13 @@ const WALK_EVENTS = {
     fish.visible = false; scene.add(fish);
     let t = -0.6, caught = false, jumps = 0;
     const T = 1.3;   // сколько рыбка в воздухе
-    hint('Смотри! Рыбка! Нажми на неё, когда выпрыгнет');
-    sniff(s, a, 'Рыбка!');
+    hint(L('Смотри! Рыбка! Нажми на неё, когда выпрыгнет', 'Look! A fish! Tap it when it jumps out'));
+    sniff(s, a, L('Рыбка!', 'A fish!'));
     ticks.add(dt => {
       if(caught) return;
       t += dt;
       if(t < 0){ fish.visible = false; return; }
-      if(t > T){ t = -1.0; fish.visible = false; sfx.plop(); burst(TEX.puff, b.clone().setY(0.1), 4, 0.6, 0.3); if(++jumps >= 2) hint('Жми прямо на рыбку, пока она в воздухе'); return; }
+      if(t > T){ t = -1.0; fish.visible = false; sfx.plop(); burst(TEX.puff, b.clone().setY(0.1), 4, 0.6, 0.3); if(++jumps >= 2) hint(L('Жми прямо на рыбку, пока она в воздухе', 'Tap right on the fish while it is in the air')); return; }
       if(!fish.visible){ fish.visible = true; sfx.splash(); burst(TEX.puff, a.clone().setY(0.1), 4, 0.6, 0.3); }
       const k = t/T; fish.position.lerpVectors(a, b, k); fish.position.y += Math.sin(k*Math.PI)*1.9;
       fish.rotation.set(0, side > 0 ? Math.PI : 0, (0.5 - k)*2.2*side);
@@ -254,14 +254,14 @@ const WALK_EVENTS = {
       const q = toScreen(fish.position);
       if(Math.hypot(q.x - e.clientX, q.y - e.clientY) < 90){ caught = true; done(); }
     }));
-    sfx.ding(); floatText('Поймала!', fish.position.clone().add(new V3(0, 0.5, 0)), '#2F9E72');
+    sfx.ding(); floatText(L('Поймала!', 'Caught it!'), fish.position.clone().add(new V3(0, 0.5, 0)), '#2F9E72');
     s.mouthO.visible = true; s.smile.visible = false;
     await flyTo(fish, fish.position.clone(), worldOf(s, s.mouthLocal), 0.6, 0.6);
     scene.remove(fish); s.mouthO.visible = false; s.smile.visible = true;
     for(let i = 0; i < 2; i++){ sfx.chomp(); await tween(0.16, q => s.head.scale.set(1, 1 - Math.sin(q*Math.PI)*0.1, 1), ease.lin); }
     s.head.scale.set(1, 1, 1);
     save.pet.needs.food = Math.min(1, save.pet.needs.food + 0.2); res.fish++;
-    floatText('Ням!', headTop(s)); s.happyUntil = now + 2;
+    floatText(L('Ням!', 'Nom!'), headTop(s)); s.happyUntil = now + 2;
   },
   // снежная горка: потри пальцем, малыш помогает копать; раз в день — новая находка
   async dig({s, at, res, gift, hint, handlers, setRing}){
@@ -269,9 +269,9 @@ const WALK_EVENTS = {
     const mound = addOutline(new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 10, 0, Math.PI*2, 0, Math.PI/2), toon(0xFFFFFF)), 1.06);
     mound.position.copy(pos); mound.scale.set(1, 0.8, 1); scene.add(mound);
     const t = gift ? TREASURES.filter(x => !save.pet.finds.includes(x.id))[Math.floor(Math.random()*(TREASURES.length - save.pet.finds.length))] : null;
-    sniff(s, pos, gift ? 'Тут что-то блестит!' : 'Копаем?');
+    sniff(s, pos, gift ? L('Тут что-то блестит!', 'Something shines here!') : L('Копаем?', 'Shall we dig?'));
     const center = pos.clone().add(new V3(0, 0.2, 0));
-    setRing(center); hint('Потри снег пальцем — копаем!');
+    setRing(center); hint(L('Потри снег пальцем — копаем!', 'Rub the snow with your finger — dig!'));
     let dug = 0, down = false, lx = 0, ly = 0, rubT = 0;
     const spark = setInterval(() => { if(gift && dug < 1) emit(TEX.star, center.clone().add(new V3((Math.random() - 0.5)*0.5, 0.25, 0.2)), {v:new V3(0, 0.4, 0), life:0.5, size:0.14, spin:4}); }, 700);
     await new Promise(done => handlers(
@@ -301,7 +301,7 @@ const WALK_EVENTS = {
       await tween(0.4, q => { sp.scale.setScalar(0.9*(1 - q) + 0.01); sp.position.y += 0.02; });
       scene.remove(sp); sp.material.map.dispose(); sp.material.dispose();
     } else {   // находку сегодня уже нашли — под снегом ракушки
-      const n = 3; floatText('Ракушки!', center.clone().add(new V3(0, 0.6, 0)), '#C9962E');
+      const n = 3; floatText(L('Ракушки!', 'Shells!'), center.clone().add(new V3(0, 0.6, 0)), '#C9962E');
       sfx.coin(); addShells(n, toScreen(center)); res.shells += n;
       s.happyUntil = now + 2; await hop(s, 0.3, 0.4);
     }
@@ -317,19 +317,19 @@ function sniff(s, pos, say){
 /* ---------- 🎓 трюки ---------- */
 async function pickTrick(s){
   const p = save.pet;
-  mgOpen('Какой трюк учим?');
+  mgOpen(L('Какой трюк учим?', 'Which trick shall we learn?'));
   const rows = TRICKS.map(t => {
     const lvl = p.tricks[t.id] || 0, open = p.stage >= t.stage;
     const stars = '★'.repeat(lvl) + '☆'.repeat(3 - lvl);
     return `<button class="trick${open ? '' : ' locked'}${lvl >= 3 ? ' done' : ''}" data-id="${t.id}">
       <span class="ic">${open ? t.ic : '🔒'}</span>
-      <span class="t"><b>${t.name}</b><small>${open ? (lvl >= 3 ? 'Выучен! Можно показывать' : t.how) : `когда подрастёт: ${stageName(t.stage).toLowerCase()}`}</small></span>
+      <span class="t"><b>${t.name}</b><small>${open ? (lvl >= 3 ? L('Выучен! Можно показывать', 'Learned! Time to show off') : t.how) : L(`когда подрастёт: ${stageName(t.stage).toLowerCase()}`, `unlocks at: ${stageName(t.stage).toLowerCase()}`)}</small></span>
       <span class="st">${open ? stars : ''}</span></button>`;
   }).join('');
-  const panel = mgNode('div', 'mg-panel trick-pick', `<div class="tricks">${rows}</div><button class="btn ghost small" data-id="">Назад</button>`);
+  const panel = mgNode('div', 'mg-panel trick-pick', `<div class="tricks">${rows}</div><button class="btn ghost small" data-id="">${L('Назад', 'Back')}</button>`);
   const t = await new Promise(r => panel.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => {
     const t = TRICKS.find(x => x.id === b.dataset.id);
-    if(t && p.stage < t.stage){ sfx.bad(); wiggle(b); mgHint(`Этот трюк — когда ${p.name} подрастёт`); return; }
+    if(t && p.stage < t.stage){ sfx.bad(); wiggle(b); mgHint(L(`Этот трюк — когда ${p.name} подрастёт`, `This trick unlocks when ${p.name} grows up`)); return; }
     sfx.tap(); r(t || null);
   })));
   panel.classList.add('away'); await wait(0.25); mgClose();
@@ -342,11 +342,11 @@ async function trickSession(s, t, reps, aim, act){
   mgOpen(`${t.ic} ${t.how}`);
   for(let i = 0; i < reps; i++){
     await aim(i);
-    if(oops && i === oopsAt){ oops = false; await trickOops(s); i--; mgHint(`${save.pet.name} ещё учится. Ещё разок!`); continue; }
+    if(oops && i === oopsAt){ oops = false; await trickOops(s); i--; mgHint(L(`${save.pet.name} ещё учится. Ещё разок!`, `${save.pet.name} is still learning. One more time!`)); continue; }
     await act(i);
     sfx.good(); burst(TEX.star, headTop(s), 6, 1.4, 0.24);
-    floatText(['Молодец!', 'Ура!', 'Здорово!'][i % 3], headTop(s), '#2F9E72');
-    if(i < reps - 1) mgHint(`Отлично! Ещё ${reps - 1 - i === 1 ? 'разок' : reps - 1 - i + ' раза'}`);
+    floatText(L(['Молодец!', 'Ура!', 'Здорово!'], ['Good job!', 'Hooray!', 'Great!'])[i % 3], headTop(s), '#2F9E72');
+    if(i < reps - 1) mgHint(L(`Отлично! Ещё ${reps - 1 - i === 1 ? 'разок' : reps - 1 - i + ' раза'}`, `Great! ${reps - 1 - i === 1 ? 'One more time' : (reps - 1 - i) + ' more times'}`));
     await wait(0.5);
   }
   mgClose();
@@ -358,16 +358,16 @@ function trickStar(s, t){
   trickMsg = '';
   if(nl === lvl) return;
   p.tricks[t.id] = nl; persist();
-  trickMsg = (nl >= 3 ? `${p.name} ${gg('выучил', 'выучила')} трюк «${t.name}»! 🎓` : `«${t.name}» ${'★'.repeat(nl)}${'☆'.repeat(3 - nl)} — ещё занятие, и получится лучше!`);   // покажет petDo после игры
+  trickMsg = (nl >= 3 ? L(`${p.name} ${gg('выучил', 'выучила')} трюк «${t.name}»! 🎓`, `${p.name} learned the trick “${t.name}”! 🎓`) : L(`«${t.name}» ${'★'.repeat(nl)}${'☆'.repeat(3 - nl)} — ещё занятие, и получится лучше!`, `“${t.name}” ${'★'.repeat(nl)}${'☆'.repeat(3 - nl)} — one more lesson and it gets even better!`));   // покажет petDo после игры
   if(nl >= 3){ sfx.buy(); burst(TEX.star, headTop(s), 18, 2.4, 0.3); addShells(TRICK_GIFT, toScreen(headTop(s))); }
 }
 // «ой, не то!» — малыш путается: плюхается на бок, кружится или чихает
 async function trickOops(s){
   sfx.arf();
   const what = Math.floor(Math.random()*3);
-  if(what === 0){ floatText('Ой, не то!', headTop(s)); await tween(0.5, k => s.inner.rotation.z = Math.sin(k*Math.PI/2)*1.1, ease.out); await wait(0.3); await tween(0.4, k => s.inner.rotation.z = 1.1*(1 - k)); }
-  else if(what === 1){ floatText('Голова кружится…', headTop(s)); await tween(0.9, k => s.inner.rotation.y = k*Math.PI*4, ease.io); }
-  else { floatText('Апчхи!', headTop(s)); sfx.sneezeSoft(); await tween(0.5, k => s.nod = -Math.sin(k*Math.PI)*0.4, ease.lin); }
+  if(what === 0){ floatText(L('Ой, не то!', 'Oops, wrong one!'), headTop(s)); await tween(0.5, k => s.inner.rotation.z = Math.sin(k*Math.PI/2)*1.1, ease.out); await wait(0.3); await tween(0.4, k => s.inner.rotation.z = 1.1*(1 - k)); }
+  else if(what === 1){ floatText(L('Голова кружится…', 'So dizzy…'), headTop(s)); await tween(0.9, k => s.inner.rotation.y = k*Math.PI*4, ease.io); }
+  else { floatText(L('Апчхи!', 'Achoo!'), headTop(s)); sfx.sneezeSoft(); await tween(0.5, k => s.nod = -Math.sin(k*Math.PI)*0.4, ease.lin); }
   s.inner.rotation.set(0, 0, 0); s.nod = 0;
 }
 // жест: ждём, пока обработчик вернёт true; обработчики снимаются сами
@@ -397,7 +397,7 @@ const TRICK_GAMES = {
       const f = fl(i);
       sfx.pop();
       await tween(0.3, k => f.userData.up = k*1.3);
-      sfx.tap(); burst(TEX.star, tip(i), 5, 1.2, 0.2); floatText('Дай пять!', tip(i).add(new V3(0, 0.4, 0)));
+      sfx.tap(); burst(TEX.star, tip(i), 5, 1.2, 0.2); floatText(L('Дай пять!', 'High five!'), tip(i).add(new V3(0, 0.4, 0)));
       await wait(0.35);
       await tween(0.3, k => f.userData.up = (1 - k)*1.3); f.userData.up = 0;
     });
@@ -456,21 +456,21 @@ const TRICK_GAMES = {
     const win = () => ph > 0.72;   // последняя четверть полёта — пора жать
     mgTick(dt => {
       ph += dt/T;
-      if(ph >= 1){ ph -= 1; sfx.pop(); tween(0.2, q => s.nod = -Math.sin(q*Math.PI)*0.3, ease.lin); if(!tapped && good) mgHint('Жми, когда мяч внизу!'); tapped = false; }
+      if(ph >= 1){ ph -= 1; sfx.pop(); tween(0.2, q => s.nod = -Math.sin(q*Math.PI)*0.3, ease.lin); if(!tapped && good) mgHint(L('Жми, когда мяч внизу!', 'Tap when the ball is low!')); tapped = false; }
       const n = nose(); ball.position.copy(n); ball.position.y += Math.sin(ph*Math.PI)*H; ball.rotation.x += dt*6;
       ring.hidden = !win() || tapped;
       if(!ring.hidden){ const q = toScreen(ball.position); ring.style.left = q.x + 'px'; ring.style.top = q.y + 'px'; }
     });
     mgOn(mgRoot, 'pointerdown', e => {
       e.preventDefault(); if(tapped) return;
-      if(!win()){ mgHint(ph < 0.5 ? 'Рано! Мяч ещё летит вверх' : 'Чуть позже!'); return; }
+      if(!win()){ mgHint(ph < 0.5 ? L('Рано! Мяч ещё летит вверх', 'Too early! The ball is still going up') : L('Чуть позже!', 'A bit later!')); return; }
       tapped = true; good++; sfx.tap(); burst(TEX.star, ball.position.clone(), 4, 1, 0.18);
-      floatText(['Оп!', 'Ап!', 'Хоп!'][good % 3], headTop(s));
-      if(good >= GOAL) finish(); else mgHint(`Ритм! ${good} из ${GOAL}`);
+      floatText(L(['Оп!', 'Ап!', 'Хоп!'], ['Hop!', 'Up!', 'Boing!'])[good % 3], headTop(s));
+      if(good >= GOAL) finish(); else mgHint(L(`Ритм! ${good} из ${GOAL}`, `Rhythm! ${good} of ${GOAL}`));
     });
     await done;
     mgClose();
-    sfx.good(); floatText('Та-да!', headTop(s).add(new V3(0, 0.5, 0)), '#D9527E');
+    sfx.good(); floatText(L('Та-да!', 'Ta-da!'), headTop(s).add(new V3(0, 0.5, 0)), '#D9527E');
     await tween(1.0, q => { const n = nose(); ball.position.set(n.x + Math.sin(q*Math.PI*4)*0.04, n.y, n.z); }, ease.lin);
     await flyTo(ball, ball.position.clone(), rest, 0.7, 0.8); ball.rotation.set(0, 0, 0.4);
     trickStar(s, t);
