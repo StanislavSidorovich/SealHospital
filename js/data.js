@@ -32,12 +32,13 @@ function sanitize(d){
     home:sanitizeHome(d.home),   // домик малыша (Фаза 4)
     adv:sanitizeAdv(d.adv)};     // приключения (Фаза 9)
 }
-// adv = {best:{уровень: звёзды 0…3}, cups:[уровни, где спасли всех рыбок — кубок на полке в домике], runs, day:{d, n} — забегов сегодня} (js/adventure.js)
+// adv = {best:{уровень: звёзды 0…3}, cups:[уровни, где спасли всех рыбок — кубок на полке в домике], runs, day:{d, n} — забегов сегодня,
+//        tips:[какие подсказки забега уже показали: lane, boost, snow, tickle]} (js/adventure.js)
 function sanitizeAdv(a){
   a = a && typeof a === 'object' ? a : {};
   const best = a.best && typeof a.best === 'object' ? Object.fromEntries(Object.entries(a.best).filter(([, v]) => Number.isInteger(v)).map(([k, v]) => [k, Math.min(3, Math.max(0, v))])) : {};
   const day = a.day && typeof a.day.d === 'string' && Number.isFinite(a.day.n) ? {d:a.day.d, n:a.day.n} : {d:'', n:0};
-  return {best, cups:[...new Set(strList(a.cups))], runs:Number.isFinite(a.runs) ? a.runs : 0, day};
+  return {best, cups:[...new Set(strList(a.cups))], runs:Number.isFinite(a.runs) ? a.runs : 0, day, tips:[...new Set(strList(a.tips))]};
 }
 // home = {s:{слот: id вещи}, v} — мебель в иглу малыша (js/home.js) и заходили ли туда. Нет поля — стартовая мебель.
 // Купленная мебель, как и всё из лавки, лежит в owned; пустой слот — просто нет ключа.
@@ -150,6 +151,26 @@ const SYMPTOMS = {
   cold:   {ic:'🥶', name:f => L(f ? 'Замёрзла' : 'Замёрз', 'Cold')}
 };
 const PHRASE = {fever:L('горячий лоб', 'hot forehead'), sneeze:L('чихает', 'sneezing'), scratch:L('ранка на лобике', 'a scratch on the forehead'), hungry:L('урчит животик', 'a rumbling tummy'), cold:f => L(f ? 'замёрзла' : 'замёрз', 'feeling cold')};
+// «Спасибо» вылеченного пациента: про то, что лечили, плюс общие; одна и та же фраза два раза подряд не выпадает
+const THANKS = {
+  fever:  [f => L('Лобик больше не горячий! Спасибо, доктор Сабрина!', 'My forehead isn\'t hot anymore! Thank you, Doctor Sabrina!')],
+  sneeze: [f => L('Апчхи… ой, а я больше не чихаю! Спасибо!', 'Achoo… oh, I\'m not sneezing anymore! Thank you!')],
+  scratch:[f => L(`С пластырем я ${f ? 'как настоящая героиня' : 'как настоящий герой'}!`, 'With this bandage I look like a real hero!')],
+  hungry: [f => L('Рыбка была такая вкусная! Ням-ням, спасибо!', 'That fish was so yummy! Nom-nom, thank you!')],
+  cold:   [f => L(`Шарфик такой тёплый! Я ${f ? 'согрелась' : 'согрелся'}, спасибо!`, 'The scarf is so warm! I\'m all cozy now, thank you!')],
+  any:    [f => L('Спасибо, доктор Сабрина!', 'Thank you, Doctor Sabrina!'),
+           f => L('Ты самый лучший доктор на всём льду!', 'You\'re the best doctor on the whole ice!'),
+           f => L('Я расскажу всем друзьям про твою больницу!', 'I\'ll tell all my friends about your hospital!'),
+           f => L(`Я снова ${f ? 'здорова' : 'здоров'} и могу нырять! Спасибо!`, 'I\'m well again and can dive! Thank you!'),
+           f => L('Можно я тебя ещё разочек обниму?', 'Can I hug you one more time?')],
+  wear:   [f => L('А можно мне оставить этот наряд? Он чудесный!', 'Can I keep this outfit? It\'s wonderful!')]
+};
+let lastThanks = null;
+function thanksFor(p, dressed){
+  const pool = [...p.ail.flatMap(a => THANKS[a] || []), ...THANKS.any, ...(dressed ? THANKS.wear : [])].filter(t => t !== lastThanks);
+  lastThanks = pool[Math.floor(Math.random()*pool.length)];
+  return lastThanks(p.f);
+}
 function patientFor(n){
   if(n < PATIENTS.length) return PATIENTS[n];
   const base = PATIENTS[Math.floor(Math.random()*PATIENTS.length)];

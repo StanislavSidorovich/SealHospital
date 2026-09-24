@@ -672,7 +672,7 @@ async function homeFinds(){
   const panel = mgNode('div', 'mg-panel walk-end finds-panel', `
     <p class="ttl display">${L(`Находки: ${got.length} из ${TREASURES.length}`, `Treasures: ${got.length} of ${TREASURES.length}`)}</p>
     <div class="finds">${TREASURES.map(t => p.finds.includes(t.id) ? `<i data-n="${t.name}">${t.ic}</i>` : '<i class="no">?</i>').join('')}</div>
-    ${save.adv.cups.length ? `<p class="got">${L('Кубки:', 'Cups:')} ${save.adv.cups.map(id => `🏆 ${(ISLES.find(is => is.levels && is.levels.includes(id)) || {name:''}).name}`).join(', ')}</p>` : ''}
+    ${save.adv.cups.length ? `<p class="got">${L('Кубки:', 'Cups:')} ${save.adv.cups.map(id => `🏆 ${LEVELS[id] ? LEVELS[id].name : ''}`).join(', ')}</p>` : ''}
     <p class="tip">${foundAll() ? L('Все сокровища собраны! ♡', 'All treasures found! ♡') : L('Гуляйте вместе — каждый день новая находка 🐾', 'Go for walks together — a new treasure every day 🐾')}</p>
     <button class="btn" id="findsOk">${L('Закрыть', 'Close')}</button>`);
   panel.querySelectorAll('.finds i[data-n]').forEach(el => mgOn(el, 'click', () => { sfx.tap(); mgHint(el.dataset.n); wiggle(el); }));

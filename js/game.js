@@ -213,7 +213,8 @@ async function hug(){
   $('#btnNext').textContent = shift.n >= SHIFT_SIZE ? L('Итоги смены ⭐', 'Shift results ⭐') : L('Следующий пациент', 'Next patient');
   $('#curedImg').src = img;
   $('#curedTitle').textContent = L(`${s.p.name} ${s.p.f ? 'здорова' : 'здоров'}!`, `${s.p.name} is well!`);
-  $('#curedThanks').textContent = L(`${s.p.name}: «Спасибо, доктор Сабрина!»`, `${s.p.name}: “Thank you, Doctor Sabrina!”`);
+  const thx = thanksFor(s.p, Object.keys(wearIds(s)).length > 0);
+  $('#curedThanks').textContent = L(`${s.p.name}: «${thx}»`, `${s.p.name}: “${thx}”`);
   $('#cured').hidden = false; setBusy(false);
 }
 async function nextPatient(){
@@ -396,7 +397,7 @@ function frame(ts){
     }
   }
   shiftTick(t, dt);
-  petTick(t, dt); walkTick(t); homeTick(t, dt); mailTick(t, dt);
+  petTick(t, dt); walkTick(t); homeTick(t, dt); mailTick(t, dt); advTick(t, dt);
   updateParts(dt);
   renderer.render(scene, camera);
 }
