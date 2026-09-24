@@ -66,6 +66,7 @@
         <span aria-hidden="true" id="petIc">🦭</span>
         <span class="badge alert" id="petAlert" hidden>!</span>
       </button>
+      <button class="round gear" id="btnSettings" aria-label="Код сохранения"><span aria-hidden="true">⚙️</span></button>
     </div>
   </div>
 
@@ -84,7 +85,31 @@
         <button class="btn" id="btnStart">Открыть больницу</button>
         <button class="btn ghost" id="btnIntroPet" hidden>К малышу 🦭</button>
       </div>
+      <button class="btn ghost small" id="btnIntroSet">⚙️ Код сохранения</button>
       <div class="from">от Dad ♡</div>
+    </div>
+  </div>
+
+  <!-- Код сохранения: перенести малыша на другое устройство или сохранить копию (js/game.js, js/data.js) -->
+  <div class="overlay" id="settings" hidden>
+    <div class="panel settings">
+      <button class="close" id="btnSetClose" aria-label="Закрыть">✕</button>
+      <h2 class="display">Код сохранения</h2>
+      <p>Так можно перенести малыша, ракушки и покупки на другой телефон или планшет, а ещё это запасная копия. Фото из альбома в код не входят.</p>
+      <textarea id="codeBox" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Код сохранения" placeholder="Здесь появится код. Или вставь сюда код с другого устройства."></textarea>
+      <div class="row">
+        <button class="btn" id="btnCodeCopy">Скопировать</button>
+        <button class="btn ghost" id="btnCodePaste">Вставить</button>
+      </div>
+      <p class="code-msg" id="codeMsg" aria-live="polite"></p>
+      <div class="code-ask" id="codeAsk" hidden>
+        <p id="codeAskText"></p>
+        <div class="row">
+          <button class="btn" id="btnCodeYes">Да, загрузить</button>
+          <button class="btn ghost" id="btnCodeNo">Отмена</button>
+        </div>
+      </div>
+      <p class="store-note" id="storeNote"></p>
     </div>
   </div>
 

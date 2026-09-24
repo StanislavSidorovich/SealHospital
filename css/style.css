@@ -347,3 +347,20 @@ body:not(.pet-mode) .night{opacity:0}
 .album-grid figure.pet img{border-color:var(--pink-d);box-shadow:0 0 0 3px #FFE3EC}
 .album-grid figcaption small{display:block;font-size:11px;color:var(--soft);font-weight:700;text-align:center}
 @media (prefers-reduced-motion:reduce){ .stages .now .ic{animation:none} }
+
+/* ---------------- код сохранения ---------------- */
+.round.gear{font-size:23px;line-height:1}
+.btn.small{font-size:17px;padding:8px 16px;min-height:48px;margin-top:14px}
+.panel.settings{position:relative;padding-top:18px}
+.panel.settings h2{margin-top:0;padding:0 40px}
+.panel.settings p{font-size:15px;margin-bottom:12px}
+#codeBox{width:100%;box-sizing:border-box;min-height:96px;padding:10px 12px;margin-bottom:12px;resize:none;
+  border:2.5px solid var(--ink);border-radius:14px;background:#fff;color:var(--ink);
+  font:600 13px/1.35 ui-monospace,Menlo,Consolas,monospace;word-break:break-all;
+  -webkit-user-select:text;user-select:text;-webkit-touch-callout:default;touch-action:manipulation}
+#codeBox:focus{outline:3px solid var(--pink);outline-offset:1px}
+.code-msg{min-height:1.4em;margin:12px 0 0!important;font-weight:800!important}
+.code-msg.bad{color:var(--pink-d)}
+.code-ask{margin-top:10px;padding:12px;border-radius:16px;background:#FFF1C9;border:2.5px solid var(--ink)}
+.code-ask p{margin-bottom:10px!important}
+.store-note{margin:10px 0 0!important;font-size:13px!important;color:var(--soft)}

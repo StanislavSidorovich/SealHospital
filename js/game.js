@@ -258,6 +258,56 @@ canvas.addEventListener('pointerdown', e => {
   }
 });
 $('#btnSound').addEventListener('click', () => { save.muted = !save.muted; persist(); renderMute(); if(!save.muted) sfx.tap(); });
+/* ---------------- код сохранения (настройки) ---------------- */
+const codeBox = $('#codeBox'), codeMsg = $('#codeMsg');
+let codeNew = null;   // прочитанный код, который ждёт «Да, загрузить»
+function codeSay(t, bad = false){ codeMsg.textContent = t; codeMsg.classList.toggle('bad', bad); }
+function openSettings(){
+  sfx.tap(); codeBox.value = ''; codeNew = null; $('#codeAsk').hidden = true; codeSay('');
+  $('#storeNote').textContent = '';
+  keepSave().then(ok => { $('#storeNote').textContent = ok === null ? '' : ok ? '🔒 Браузер обещал не стирать сохранение.' : 'Браузер может стереть сохранение, если кончится место: лучше скопируй код и спрячь его.'; });
+  $('#settings').hidden = false;
+}
+async function copyCode(){
+  sfx.tap(); $('#codeAsk').hidden = true; codeNew = null;
+  const code = makeCode(); codeBox.value = code; codeBox.focus(); codeBox.select(); codeBox.scrollTop = 0;
+  let ok = false;
+  try{ await navigator.clipboard.writeText(code); ok = true; }
+  catch(e){ try{ ok = document.execCommand('copy'); }catch(e2){} }
+  codeSay(ok ? 'Код скопирован ✓ Отправь его себе или сохрани в заметки.' : 'Нажми на поле и скопируй код вручную (выдели всё и «Копировать»).', !ok);
+  if(ok) sfx.good();
+}
+async function pasteCode(){
+  sfx.tap(); $('#codeAsk').hidden = true; codeNew = null;
+  if(!codeBox.value.trim()){
+    try{ codeBox.value = await navigator.clipboard.readText(); }catch(e){}
+    if(!codeBox.value.trim()){ codeBox.focus(); return codeSay('Вставь код в поле (долгое нажатие → «Вставить») и нажми «Вставить» ещё раз.'); }
+  }
+  const d = readCode(codeBox.value);
+  if(!d){ sfx.bad(); return codeSay('Не получилось прочитать код. Скопируй его целиком ещё раз.', true); }
+  codeNew = d; codeSay('');
+  const has = d.pet ? `малыш ${d.pet.name}` : 'малыша пока нет', lose = save.pet && !d.pet ? ` Внимание: сейчас здесь живёт ${save.pet.name}, а в коде его нет!` : '';
+  $('#codeAskText').textContent = `В коде: ${has}, вылечено ${d.progress}, ракушек ${d.shells} 🐚. Заменить то, что сейчас на этом устройстве?${lose}`;
+  $('#codeAsk').hidden = false;
+}
+function applyCode(){
+  if(!codeNew) return;
+  const album = save.album;   // фото альбома остаются свои
+  Object.keys(save).forEach(k => delete save[k]);
+  Object.assign(save, codeNew, {album});
+  persist(); location.reload();   // сцена собирается из сохранения при запуске: проще всего начать заново
+}
+$('#btnSettings').addEventListener('click', openSettings);
+$('#btnIntroSet').addEventListener('click', openSettings);
+$('#btnSetClose').addEventListener('click', () => { sfx.tap(); $('#settings').hidden = true; });
+$('#btnCodeCopy').addEventListener('click', copyCode);
+$('#btnCodePaste').addEventListener('click', pasteCode);
+$('#btnCodeYes').addEventListener('click', () => { sfx.good(); applyCode(); });
+$('#btnCodeNo').addEventListener('click', () => { sfx.tap(); $('#codeAsk').hidden = true; codeNew = null; });
+codeBox.addEventListener('input', () => { $('#codeAsk').hidden = true; codeNew = null; });
+// когда вкладку закрывают или прячут, дописываем сохранение (там же «когда навещали малыша»)
+addEventListener('pagehide', persist);
+document.addEventListener('visibilitychange', () => { if(document.hidden) persist(); });
 $('#btnAlbum').addEventListener('click', () => { sfx.tap(); openAlbum(); });
 let albumFromCured = false;
 $('#btnCuredAlbum').addEventListener('click', () => { sfx.tap(); $('#cured').hidden = true; albumFromCured = true; openAlbum(); });
@@ -268,13 +318,13 @@ $('#btnAlbumClose').addEventListener('click', () => {
 });
 $('#btnNext').addEventListener('click', () => { sfx.tap(); nextPatient(); });
 $('#btnStart').addEventListener('click', async () => {
-  ac(); sfx.good(); $('#intro').hidden = true;
+  ac(); sfx.good(); keepSave(); $('#intro').hidden = true;
   if(started) return; started = true;
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
   if(adoptPending()) adopt(); else startShift();   // сыгравших смену у льдины ждёт малыш (Фаза 3)
 });
 $('#btnIntroPet').addEventListener('click', async () => {
-  ac(); sfx.good(); $('#intro').hidden = true;
+  ac(); sfx.good(); keepSave(); $('#intro').hidden = true;
   if(started) return; started = true;
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
   goPet(true);
@@ -349,7 +399,7 @@ function frame(ts){
 
 buildTools(); renderMute(); renderAlbumCount(); renderBucket();
 if(save.progress){ const st = $('#introStat'); st.textContent = `Ты уже вылечила пациентов: ${save.progress} · ракушек: ${save.shells} 🐚`; st.hidden = false; $('#btnStart').textContent = 'Начать смену'; }
-if(save.pet){ $('#introStat').textContent += ` · ${save.pet.name} ждёт тебя 🦭`; $('#btnIntroPet').hidden = false; }
+if(save.pet){ $('#introStat').textContent += ` · ${save.pet.name} ${petMissed() ? gg('соскучился', 'соскучилась') : 'ждёт тебя'} 🦭`; $('#btnIntroPet').hidden = false; }
 else if(adoptPending()){ $('#introStat').textContent += ' · Кто-то ждёт тебя у льдины…'; $('#btnStart').textContent = 'Открыть больницу'; }
 renderPetBtn();
 requestAnimationFrame(loop);

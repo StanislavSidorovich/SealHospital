@@ -43,15 +43,17 @@ const NEEDS = {
 const NEED_KEYS = Object.keys(NEEDS);
 const NEED_TEX = {food:bubbleTex('🐟'), bath:bubbleTex('🛁'), sleep:bubbleTex('💤'), fun:bubbleTex('⚽')};
 const HEART_XP = 30;   // столько опыта — одно сердечко дружбы
+const MISS_H = 8;     // столько часов малыша не навещали — он встречает радостно: «Я скучал!» (без упрёков)
 let petMode = false, petSeal = null, petHelloShown = false;
 const gg = (m, f) => save.pet && save.pet.f ? f : m;   // род: «сыт / сыта»
 const coatOf = id => PET_COATS.find(c => c.id === id) || PET_COATS[0];
 const hexCss = c => '#' + c.toString(16).padStart(6, '0');
 const adoptPending = () => !save.pet && save.shifts >= 1;
 // GitHub Pages кеширует файлы ~10 минут: если data.js ещё старый, sanitizePet не знает новых полей — подставим
-function petFix(){ const p = save.pet; if(!p) return; if(!Number.isInteger(p.stage)) p.stage = 0; if(!p.pat) p.pat = {d:'', n:0}; }
+function petFix(){ const p = save.pet; if(!p) return; if(!Number.isInteger(p.stage)) p.stage = 0; if(!p.pat) p.pat = {d:'', n:0}; if(!Number.isFinite(p.seen)) p.seen = Number.isFinite(p.t) ? p.t : Date.now(); }
 const stageOf = xp => STAGES.reduce((i, st, k) => xp >= st.at*HEART_XP ? k : i, 0);
 const stageName = (i, f = save.pet && save.pet.f) => f ? STAGES[i].f : STAGES[i].m;
+const petMissed = () => !!save.pet && (Date.now() - save.pet.seen)/3.6e6 >= MISS_H;
 const growPending = () => !!save.pet && stageOf(save.pet.xp) > save.pet.stage;
 const petScale = () => STAGES[save.pet ? save.pet.stage : 0].sc;
 const petK = () => petScale()/STAGES[0].sc;   // во сколько раз малыш больше новорождённого: для камеры и ванны
@@ -253,10 +255,21 @@ function goPet(on){
   if(busy || !mgRoot.hidden) return toast('Сначала закончи то, что начала 🙂');
   sfx.whoosh(); setPetMode(on);
   if(on){
+    const missed = petMissed(); save.pet.seen = Date.now();
     petDecay(); petRefresh();
-    if(!petHelloShown){ petHelloShown = true; const low = petLow();
+    if(missed){ petHelloShown = true; petMiss(); }
+    else if(!petHelloShown){ petHelloShown = true; const low = petLow();
       if(!growPending()) toast(low ? `${save.pet.name}: «${NEEDS[low].say}» Выбирай внизу ${NEEDS[low].ic}` : `${save.pet.name} ${gg('рад', 'рада')} тебя видеть! Погладь пальцем ♡`, 3400); }
   } else if(!shift || shift.n >= SHIFT_SIZE) startShift();   // смена кончилась — в больнице ждёт новая
+}
+// долго не виделись: малыш радуется встрече, а не грустит (что он хочет, видно по пузырю и карточке)
+async function petMiss(){
+  const s = petSeal, p = save.pet; if(!s || s.sleeping) return;
+  await wait(0.8);
+  if(!petMode || busy || s !== petSeal) return;
+  s.happyUntil = now + 4; setMood(s, 'happy'); s.flap = 1;
+  sfx.arf(); sfx.star(); burst(TEX.heart, headTop(s), 14, 2.2, 0.34); hop(s, 0.35, 0.45);
+  if(!growPending()) toast(`${p.name}: «Я скучал${gg('', 'а')}! Как хорошо, что ты пришла!» ♡`, 3800);
 }
 $('#btnPet').addEventListener('click', () => { sfx.tap(); goPet(!petMode); });
 
@@ -343,7 +356,7 @@ async function adopt(){
   });
   input.blur();
   save.pet = sanitizePet({...draft, name, born:Date.now(), xp:0, t:Date.now(), needs:{food:0.35, bath:0.55, sleep:0.7, fun:0.25}}); petFix();
-  persist();
+  persist(); keepSave();   // теперь в сохранении живой малыш: просим браузер беречь его
   nm.classList.add('away'); await wait(0.3); mgClose();
   petSeal.p.name = name; drawSign();
   setMood(petSeal, 'happy'); sfx.hug(); burst(TEX.heart, headTop(petSeal), 20, 2.4, 0.34);
@@ -873,7 +886,7 @@ function petTick(t, dt){
     if(petSeal.zzzT < 0){ petSeal.zzzT = 1.2; floatText('z', worldOf(petSeal, new V3(0.85 + Math.random()*0.2, 0.35, 0.3)), '#8E99C9'); }
   }
   petRefreshT -= dt;
-  if(petRefreshT < 0){ petRefreshT = 2; if(save.pet){ petDecay(); if(!busy) petRefresh(); petMaybeGrow(); } }
+  if(petRefreshT < 0){ petRefreshT = 2; if(save.pet){ if(petMode) save.pet.seen = Date.now(); petDecay(); if(!busy) petRefresh(); petMaybeGrow(); } }
 }
 
 buildPetBar();

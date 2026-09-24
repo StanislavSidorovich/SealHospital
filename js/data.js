@@ -29,34 +29,71 @@ function sanitize(d){
     shifts:Number.isFinite(d.shifts) ? d.shifts : 0,   // сколько смен отработано
     pet:sanitizePet(d.pet)};   // свой тюленёнок (Фаза 3) или null, пока не познакомились
 }
-// pet = {name, f, coat, born, xp, stage, t, needs:{food, bath, sleep, fun}, wear:{head, face}, pat:{d, n}}
+// pet = {name, f, coat, born, xp, stage, t, seen, needs:{food, bath, sleep, fun}, wear:{head, face}, pat:{d, n}}
 // needs — от 0 (очень хочет) до 1 (всё хорошо), тают со временем; t — когда их пересчитали последний раз
+// seen — когда малыша последний раз навещали в уголке: долго не заходили — он встречает радостно («Я скучал!»)
 // stage — стадия роста, которую уже отпраздновали (0 малыш … 4 сияющий); если опыт xp дорос до следующей — будет праздник
 // pat — сколько раз сегодня (d = дата) гладили за сердечки: ласка даёт опыт не больше PAT_MAX раз в день
 function sanitizePet(p){
   if(!p || typeof p !== 'object' || typeof p.name !== 'string' || !p.name.trim()) return null;
   const n = p.needs && typeof p.needs === 'object' ? p.needs : {}, level = v => Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.5;
   const w = p.wear && typeof p.wear === 'object' ? p.wear : {};
+  const t = Number.isFinite(p.t) ? p.t : Date.now();
   return {name:p.name.trim().slice(0, 14), f:!!p.f, coat:typeof p.coat === 'string' ? p.coat : 'snow',
     born:Number.isFinite(p.born) ? p.born : Date.now(), xp:Number.isFinite(p.xp) ? Math.max(0, p.xp) : 0,
     stage:Number.isInteger(p.stage) ? Math.min(4, Math.max(0, p.stage)) : 0,
-    t:Number.isFinite(p.t) ? p.t : Date.now(),
+    t, seen:Number.isFinite(p.seen) ? p.seen : t,
     pat:p.pat && typeof p.pat.d === 'string' && Number.isFinite(p.pat.n) ? {d:p.pat.d, n:p.pat.n} : {d:'', n:0},
     needs:{food:level(n.food), bath:level(n.bath), sleep:level(n.sleep), fun:level(n.fun)},
     wear:Object.fromEntries(['head', 'face'].filter(k => typeof w[k] === 'string').map(k => [k, w[k]]))};
 }
 function strList(a){ return Array.isArray(a) ? a.filter(x => typeof x === 'string') : []; }
-function loadSave(){
-  let d = store.get(SAVE_KEY, null), v = 0;
-  if(d && typeof d === 'object' && Number.isInteger(d.version)) v = d.version; else d = {};
-  const migrated = v < SAVE_VERSION;
+// Доводит сохранение любой версии до текущей (миграции + sanitize). Общая часть для загрузки и для кода сохранения.
+function upgrade(d){
+  let v = d.version;
   while(v < SAVE_VERSION){ d = MIGRATIONS[v](d); v++; }
-  d = sanitize(d);
+  return sanitize(d);
+}
+function loadSave(){
+  let d = store.get(SAVE_KEY, null);
+  if(!(d && typeof d === 'object' && Number.isInteger(d.version))) d = {version:0};
+  const migrated = d.version < SAVE_VERSION;
+  d = upgrade(d);
   if(migrated) store.set(SAVE_KEY, d);
   return d;
 }
 const save = loadSave();
 const persist = () => store.set(SAVE_KEY, save);
+
+// Просим браузер не стирать сохранение, когда ему не хватает места (Chrome решает сам, Firefox спросит, Safari даёт установленным на экран).
+// Зовём после нажатия, а не при загрузке: так браузеру проще согласиться. Ответ нужен только для подсказки в настройках.
+function keepSave(){
+  try{
+    const st = navigator.storage;
+    if(!st || !st.persist) return Promise.resolve(null);
+    return st.persisted().then(p => p || st.persist()).catch(() => null);
+  }catch(e){ return Promise.resolve(null); }
+}
+
+/* ---------------- код сохранения ---------------- */
+// «Код» = SEAL1.<контрольная сумма>.<сохранение в base64>. Нужен, чтобы перенести малыша на другое устройство и хранить копию.
+// Фото альбома в код не входят (они тяжёлые), всё остальное — да. Сумма ловит обрезанную или испорченную вставку.
+const CODE_TAG = 'SEAL1';
+function codeSum(str){ let h = 5381; for(let i = 0; i < str.length; i++) h = ((h*33) ^ str.charCodeAt(i)) >>> 0; return h.toString(36); }
+function makeCode(){
+  const b = btoa(unescape(encodeURIComponent(JSON.stringify({...save, album:[]})))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${CODE_TAG}.${codeSum(b)}.${b}`;
+}
+// возвращает уже проверенное и доведённое до текущей версии сохранение или null
+function readCode(text){
+  try{
+    const [tag, sum, b] = String(text).replace(/[\s"'`«»]+/g, '').split('.');
+    if(tag !== CODE_TAG || !b || codeSum(b) !== sum) return null;
+    const d = JSON.parse(decodeURIComponent(escape(atob(b.replace(/-/g, '+').replace(/_/g, '/')))));
+    if(!d || typeof d !== 'object' || !Number.isInteger(d.version) || d.version < 1) return null;
+    return upgrade(d);
+  }catch(e){ return null; }
+}
 
 /* ---------------- game data ---------------- */
 const TOOLS = {
