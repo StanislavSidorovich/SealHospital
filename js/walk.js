@@ -71,10 +71,20 @@ async function waddleTo(s, to, dur = 1.1){
 }
 
 /* ---------- ⚽ Поиграть: мяч, прогулка или трюки ---------- */
-let funKind = 'ball', trickMsg = '';
+let funKind = 'ball', trickMsg = '', funPre = null;   // funPre — малыш сам попросил (облачко-желание в pet.js): без выбора
 async function petFun(s){
   const p = save.pet, sc = petScale();
   focusCam(worldOf(s, new V3(0, -0.3, 0)), 2.6*petK(), 0.9);
+  let k = funPre; funPre = null;
+  if(!k) k = await funMenu(s);
+  if(k !== 'no'){ s.happyUntil = now + 99; setMood(s, 'happy'); }   // играть с тобой — радость, даже если голоден
+  if(k === 'tricks'){ const t = await pickTrick(s); if(!t){ s.happyUntil = 0; return false; } funKind = 'tricks'; return TRICK_GAMES[t.id](s, t); }
+  if(k === 'no') return false;
+  funKind = k;
+  return k === 'walk' ? petWalk(s) : petPlay(s);
+}
+async function funMenu(s){
+  const p = save.pet;
   const newFind = walkGiftToday(), learned = TRICKS.filter(t => (p.tricks[t.id] || 0) >= 3).length;
   const open = TRICKS.filter(t => p.stage >= t.stage).length;
   mgOpen(L('Во что поиграем?', 'What shall we play?'));
@@ -86,13 +96,9 @@ async function petFun(s){
     </div>
     <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
   if(newFind) panel.querySelector('[data-k="walk"]').classList.add('new');
-  let k = await new Promise(r => panel.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
+  const k = await new Promise(r => panel.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
   panel.classList.add('away'); await wait(0.25); mgClose();
-  if(k !== 'no'){ s.happyUntil = now + 99; setMood(s, 'happy'); }   // играть с тобой — радость, даже если голоден
-  if(k === 'tricks'){ const t = await pickTrick(s); if(!t){ s.happyUntil = 0; return false; } funKind = 'tricks'; return TRICK_GAMES[t.id](s, t); }
-  if(k === 'no') return false;
-  funKind = k;
-  return k === 'walk' ? petWalk(s) : petPlay(s);
+  return k;
 }
 // что меняется после игры: гуляли — проголодался и испачкался сильнее
 const FUN_COST = {ball:{food:0.12, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}};
