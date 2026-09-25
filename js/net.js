@@ -1,7 +1,8 @@
 /* ---------------- Сеть (Фаза 13): папа и Сабрина играют вместе из разных мест ----------------
    Телефоны соединяются напрямую (WebRTC) через библиотеку PeerJS (vendor/peerjs.min.js).
    Бесплатный сервер PeerJS только «знакомит» телефоны, дальше сообщения идут напрямую;
-   если сети не пускают напрямую — через ретранслятор TURN (он тоже есть в PeerJS по умолчанию).
+   если сети не пускают напрямую (разные роутеры, мобильный интернет) — через ретранслятор TURN.
+   Свой TURN у PeerJS пропал (2026, серверы *.turn.peerjs.com больше не отвечают), поэтому TURN берём у Metered — см. NET_TURN.
    Комната — код из трёх картинок (🐟🦀🐙): один создаёт, второй вводит. Чужих нет, текстового чата нет.
    По сети идут только ходы игры (маленькие JSON), сохранения у каждого свои.
    Голос: кнопка 🎤 (микрофон включается только по нажатию, эхо гасит браузер).
@@ -11,7 +12,27 @@ const NET_EMO = ['🐟', '🦀', '🐙', '🐳', '🐧', '⭐', '🍓', '🌈'];
 const NET_PREFIX = 'sealhosp-v1-';
 const netAvail = () => typeof Peer === 'function' && (location.protocol === 'https:' || /^(localhost|127\.)/.test(location.hostname))
   && window.top === window && !/claude|anthropic/.test(location.hostname);   // Artifact живёт во фрейме — там сеть не пускают
-const net = {peer:null, conn:null, host:false, code:'', on:{}, lastIn:0, hb:null, mic:null, call:null, audio:null, lost:false, onLost:null, onBack:null};
+// Ретранслятор TURN от Metered: бесплатно 0,5 ГБ в месяц (ходы игры — крошки, голос — несколько часов).
+// Ключ: dashboard.metered.ca → TURN Server → API key; app — имя приложения из адреса <app>.metered.live.
+// Пусто — только напрямую (STUN): тогда на одном Wi-Fi или за «хорошими» роутерами работает, остальное — нет.
+const NET_TURN = {app:'', key:''};
+const NET_STUN = [{urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'}, {urls:'stun:stun.cloudflare.com:3478'}];
+let netIceP = null;
+function netIce(){
+  if(!netIceP) netIceP = (async () => {
+    if(NET_TURN.key) try{
+      const ctl = new AbortController(); setTimeout(() => ctl.abort(), 5000);
+      const r = await fetch(`https://${NET_TURN.app}.metered.live/api/v1/turn/credentials?apiKey=${NET_TURN.key}`, {signal:ctl.signal});
+      const list = await r.json();
+      if(Array.isArray(list) && list.length) return NET_STUN.concat(list);
+    }catch(e){}
+    if(NET_TURN.key) netIceP = null;   // не вышло — в следующий раз спросим снова
+    return NET_STUN;
+  })();
+  return netIceP;
+}
+const netPeer = id => netIce().then(ice => { const o = {config:{iceServers:ice}}; return id ? new Peer(id, o) : new Peer(o); });
+const net = {gen:0, peer:null, conn:null, host:false, code:'', on:{}, lastIn:0, hb:null, mic:null, call:null, audio:null, lost:false, onLost:null, onBack:null};
 
 function netCodeText(code){ return [...code].map(d => NET_EMO[+d]).join(''); }
 function netRandomCode(){ return [0, 1, 2].map(() => Math.floor(Math.random()*NET_EMO.length)).join(''); }
@@ -35,8 +56,10 @@ function netWire(conn){
 // создать комнату: ждём, пока подключится второй (cb(ok, why))
 function netHost(cb){
   netClose(); net.host = true;
-  const tryCode = left => {
-    const code = netRandomCode(), p = new Peer(NET_PREFIX + code);
+  const gen = net.gen;
+  const tryCode = async left => {
+    const code = netRandomCode(), p = await netPeer(NET_PREFIX + code);
+    if(gen !== net.gen){ p.destroy(); return; }   // пока ждали ретранслятор, ушли с экрана
     net.peer = p; net.code = code;
     p.on('open', () => cb('code', code));
     p.on('connection', c => {
@@ -54,18 +77,23 @@ function netHost(cb){
 // войти по коду
 function netJoin(code, cb){
   netClose(); net.host = false; net.code = code;
-  const p = new Peer(); net.peer = p;
+  const gen = net.gen;
   let done = false;
   const fail = why => { if(done) return; done = true; cb('fail', why); };
-  p.on('open', () => {
-    const c = p.connect(NET_PREFIX + code, {reliable:true});
-    c.on('open', () => { if(done) return; done = true; netWire(c); cb('joined'); });
-    setTimeout(() => fail('timeout'), 15000);
+  netPeer().then(p => {
+    if(gen !== net.gen){ p.destroy(); return; }
+    net.peer = p;
+    p.on('open', () => {
+      const c = p.connect(NET_PREFIX + code, {reliable:true});
+      c.on('open', () => { if(done) return; done = true; netWire(c); cb('joined'); });
+      setTimeout(() => fail('timeout'), 15000);
+    });
+    p.on('call', call => netAnswer(call));
+    p.on('error', e => fail(e.type));   // peer-unavailable — такой комнаты нет
   });
-  p.on('call', call => netAnswer(call));
-  p.on('error', e => fail(e.type));   // peer-unavailable — такой комнаты нет
 }
 function netClose(){
+  net.gen++;
   clearInterval(net.hb); net.hb = null;
   netMicOff(true);
   try{ if(net.conn) net.conn.close(); }catch(e){}
@@ -105,6 +133,9 @@ function netMicOff(all){
   }
 }
 
+// мелкая подпись с причиной — папе, чтобы понять, что сломалось
+const netWhy = why => why ? `<br><small class="net-why">(${String(why).replace(/[^\w-]/g, '')}${NET_TURN.key ? '' : ', no turn'})</small>` : '';
+
 /* ---------- экран «Играем вместе»: создать комнату или войти по коду ----------
    Возвращает 'ok' (соединились), или null (передумали). */
 async function netLobby(){
@@ -127,7 +158,7 @@ async function netLobby(){
         netHost((st, v) => {
           if(st === 'code'){ panel.querySelector('.net-code').textContent = netCodeText(v); panel.querySelector('.net-say').textContent = L('Скажи этот код папе — и ждём его ✨', 'Tell this code to your partner — and wait ✨'); sfx.good(); }
           if(st === 'joined') r(true);
-          if(st === 'fail'){ panel.querySelector('.net-say').textContent = L('Не получилось подключиться. Проверь интернет и попробуй ещё.', 'Could not connect. Check the internet and try again.'); }
+          if(st === 'fail'){ panel.querySelector('.net-say').innerHTML = L('Не получилось подключиться. Проверь интернет и попробуй ещё.', 'Could not connect. Check the internet and try again.') + netWhy(v); }
         });
         panel.querySelector('[data-k="no"]').onclick = () => { sfx.tap(); r(false); };
       });
@@ -146,7 +177,7 @@ async function netLobby(){
           panel.querySelector('.net-say').textContent = L('Стучимся в комнату…', 'Knocking on the room…');
           netJoin(code, (st, why) => {
             if(st === 'joined') return r(true);
-            panel.querySelector('.net-say').textContent = why === 'peer-unavailable' ? L('Такой комнаты нет. Проверь картинки!', 'There is no such room. Check the pictures!') : L('Не получилось подключиться. Попробуй ещё.', 'Could not connect. Try again.');
+            panel.querySelector('.net-say').innerHTML = why === 'peer-unavailable' ? L('Такой комнаты нет. Проверь картинки!', 'There is no such room. Check the pictures!') : L('Не получилось подключиться. Попробуй ещё.', 'Could not connect. Try again.') + netWhy(why);
             sfx.bad(); code = ''; show();
           });
         };
