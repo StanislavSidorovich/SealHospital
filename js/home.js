@@ -257,7 +257,7 @@ const FURN_MAKE = {
     for(const [x, col] of [[-0.2, 0xFF9BB8], [0.1, 0xFFD66B], [0.25, 0x86DDB5]]){ const p = new THREE.Mesh(SMALL, toon(col)); p.scale.set(0.09, 0.06, 0.09); p.position.set(x, c.y - 0.5, x*0.5); g.add(p); }
     // спасённые в забеге рыбки (в круглом помещаются TANK_CAP.tank_bowl), пока их нет — две обычные
     const mine = tankFish('tank_bowl'), n = mine.length || 2;
-    const fish = Array.from({length:n}, (_, i) => { const f = mine[i] ? makeRunFish(mine[i]) : makeFish(); f.scale.setScalar(0.5); g.add(f); f.userData = {a:i*Math.PI*2/n, r:0.24 + (i % 2)*0.06, y:c.y - 0.12 + i*0.1, sp:1 + i*0.25}; return f; });
+    const fish = Array.from({length:n}, (_, i) => { const f = mine[i] ? tankMake(mine[i]) : makeFish(); f.scale.setScalar(0.5); g.add(f); f.userData = {a:i*Math.PI*2/n, r:0.24 + (i % 2)*0.06, y:c.y - 0.12 + i*0.1, sp:1 + i*0.25}; return f; });
     g.userData = {fish, nf:mine.length, bubbleAt:c.clone().add(new V3(0, 0.3, 0))};
     return g;
   },
@@ -278,7 +278,7 @@ const FURN_MAKE = {
     const top = addOutline(new THREE.Mesh(new THREE.BoxGeometry(W + 0.08, 0.07, D + 0.08), fm), 1.04); top.position.y = y0 + H; g.add(top);
     for(const sx of [-1, 1]) for(const sz of [-1, 1]){ const p = new THREE.Mesh(new THREE.BoxGeometry(0.06, H, 0.06), fm); p.position.set(sx*W/2, y0 + H/2, sz*D/2); g.add(p); }
     const mine = tankFish('tank_big'), n = mine.length || 3;
-    const fish = Array.from({length:n}, (_, i) => { const f = mine[i] ? makeRunFish(mine[i]) : makeFish(); f.scale.setScalar(0.48); g.add(f); f.userData = {ph:i*2.1, y:y0 + 0.3 + (i % 4)*0.17, z:-0.24 + (i % 3)*0.2, sp:0.5 + (i % 3)*0.2, w:W/2 - 0.3}; return f; });
+    const fish = Array.from({length:n}, (_, i) => { const f = mine[i] ? tankMake(mine[i]) : makeFish(); f.scale.setScalar(0.48); g.add(f); f.userData = {ph:i*2.1, y:y0 + 0.3 + (i % 4)*0.17, z:-0.24 + (i % 3)*0.2, sp:0.5 + (i % 3)*0.2, w:W/2 - 0.3}; return f; });
     g.userData = {fish, nf:mine.length, weeds, box:true, bubbleAt:new V3(0.3, y0 + 0.2, 0.1)};
     return g;
   },
@@ -685,8 +685,11 @@ async function homeFinds(){
   sfx.tap(); panel.classList.add('away'); await wait(0.25); mgClose();
 }
 // рыбки из приключений: спасённые живут в аквариуме, у каждой имя; ещё не спасённые — «?»
-const TANK_CAP = {tank_bowl:3, tank_big:10};
-const tankFish = id => TANK_CAP[id] ? save.adv.fish.map(fishDef).filter(Boolean).slice(0, TANK_CAP[id]) : [];
+// + южные гостьи с рыбалки (SEA_FISH без food): они первыми занимают аквариум — их меньше и они ярче
+const TANK_CAP = {tank_bowl:3, tank_big:15};
+const seaTank = () => (save.sea ? save.sea.got : []).map(seaDef).filter(f => f && !f.food).map(f => ({...f, sea:true}));
+const tankFish = id => TANK_CAP[id] ? [...seaTank(), ...save.adv.fish.map(fishDef).filter(Boolean)].slice(0, TANK_CAP[id]) : [];
+const tankMake = f => f.sea ? makeSeaFish(f) : makeRunFish(f);
 const fishThumbs = {};
 function fishThumb(fd){
   if(fishThumbs[fd.id]) return fishThumbs[fd.id];
@@ -694,18 +697,23 @@ function fishThumb(fd){
   return fishThumbs[fd.id] = objThumb(o, new V3(0, 0.15, 1));
 }
 async function homeFishPanel(tankId){
-  const got = save.adv.fish, cap = TANK_CAP[tankId] || 0;
+  const got = save.adv.fish, cap = TANK_CAP[tankId] || 0, sea = save.sea ? save.sea.got : [];
   mgOpen(L('Аквариум', 'Fish tank'));
   const where = lv => LEVELS[lv] ? levelName(lv) : '';
   const panel = mgNode('div', 'mg-panel walk-end finds-panel fish-panel', `
-    <p class="ttl display">${L(`Рыбки: ${got.length} из ${FISH_ALL.length}`, `Fish: ${got.length} of ${FISH_ALL.length}`)}</p>
+    <p class="ttl display">${L('Аквариум', 'Fish tank')}</p>
+    <p class="sub">${L(`Из приключений: ${got.length} из ${FISH_ALL.length}`, `From adventures: ${got.length} of ${FISH_ALL.length}`)}</p>
     <div class="finds">${FISH_ALL.map(fd => got.includes(fd.id)
       ? `<i data-n="${fd.name} · ${where(fd.lv)}"><img src="${fishThumb(fd)}" alt="${fd.name}"></i>` : '<i class="no">?</i>').join('')}</div>
     <p class="tip">${!got.length ? L('Спасай рыбок из ледяных пузырей в приключениях — они поселятся здесь! 🫧', 'Free the fish from ice bubbles on adventures — they will move in here! 🫧')
       : got.length > cap ? L(`В этом аквариуме помещаются ${cap} ${plural(cap, 'рыбка', 'рыбки', 'рыбок')} — остальные ждут большой аквариум`, `This tank fits ${cap} ${plural(cap, '', '', '', 'fish', 'fish')} — the others are waiting for the big tank`)
       : got.length < FISH_ALL.length ? L('Нажми на рыбку — узнаешь, как её зовут. Ещё рыбки ждут в приключениях 🫧', 'Tap a fish to see its name. More fish are waiting on adventures 🫧') : L('Все рыбки спасены! ♡', 'All the fish are saved! ♡')}</p>
+    <p class="sub">${L(`Рыбки моря: ${sea.length} из ${SEA_FISH.length}`, `Sea fish: ${sea.length} of ${SEA_FISH.length}`)}</p>
+    <div class="finds sea">${SEA_FISH.map(fd => sea.includes(fd.id)
+      ? `<i data-n="${fd.name}" data-f="${fd.fact}"><img src="${seaThumb(fd)}" alt="${fd.name}"></i>` : '<i class="no">?</i>').join('')}</div>
+    <p class="fact">${sea.length ? L('Нажми на рыбку моря — узнаешь про неё что-то интересное', 'Tap a sea fish to learn something about it') : L('Рыбачь у лунки — там клюют настоящие рыбки 🎣', 'Go fishing at the ice hole — real fish bite there 🎣')}</p>
     <button class="btn" id="fishOk">${L('Закрыть', 'Close')}</button>`);
-  panel.querySelectorAll('.finds i[data-n]').forEach(el => mgOn(el, 'click', () => { sfx.tap(); mgHint(el.dataset.n); wiggle(el); }));
+  panel.querySelectorAll('.finds i[data-n]').forEach(el => mgOn(el, 'click', () => { sfx.tap(); mgHint(el.dataset.n); wiggle(el); if(el.dataset.f) panel.querySelector('.fact').textContent = el.dataset.f; }));
   await new Promise(r => mgOn(panel.querySelector('#fishOk'), 'click', r));
   sfx.tap(); panel.classList.add('away'); await wait(0.25); mgClose();
 }

@@ -42,7 +42,21 @@ const TEX = {
     g.beginPath(); g.moveTo(s/2, 4); g.bezierCurveTo(s*0.1, s*0.55, s*0.2, s-4, s/2, s-4); g.bezierCurveTo(s*0.8, s-4, s*0.9, s*0.55, s/2, 4);
     g.fillStyle = '#8FD3F5'; g.fill(); g.lineWidth = 4; g.strokeStyle = '#3B3A4A'; g.stroke();
   }),
-  bubble: bubbleTex('🐟')
+  bubble: bubbleTex('🐟'),
+  // «урр» в животике голодного: три волнистые линии
+  rumble: canvasTex(128, g => {
+    g.lineCap = 'round'; g.lineWidth = 8; g.strokeStyle = '#6B6A7E';
+    for(const y of [28, 64, 100]){ g.beginPath(); for(let x = 12; x <= 116; x += 4) g.lineTo(x, y + Math.sin(x/9)*9); g.stroke(); }
+  }),
+  // снежинка-иней у замёрзшего
+  flake: canvasTex(128, (g, s) => {
+    g.translate(s/2, s/2); g.lineCap = 'round';
+    for(const [w, c] of [[16, '#3B3A4A'], [8, '#BFE6FF']]){
+      g.lineWidth = w; g.strokeStyle = c;
+      for(let i = 0; i < 6; i++){ g.save(); g.rotate(i*Math.PI/3); g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -50);
+        g.moveTo(0, -30); g.lineTo(-13, -42); g.moveTo(0, -30); g.lineTo(13, -42); g.stroke(); g.restore(); }
+    }
+  })
 };
 // пузырь-мысль над тюленем: «хочу рыбку» (у пациента) и потребности своего малыша (js/pet.js)
 function bubbleTex(emoji){

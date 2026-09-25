@@ -92,6 +92,13 @@ const petCorner = new THREE.Group(); petCorner.position.copy(PET_POS); scene.add
   bowl.position.set(1.2, 0.34, 1.15); petCorner.add(bowl);
   for(const [x, r] of [[-0.08, 0.3], [0.1, -0.4]]){ const f = makeFish(); f.scale.setScalar(0.45); f.position.set(x, 0.1, 0); f.rotation.set(0, r, 0.2); bowl.add(f); }
 }
+// своя лунка: в «Покормить» малыш сначала рыбачит (fishCast в minigames.js)
+const PET_HOLE = PET_POS.clone().add(new V3(1.7, 0.255, -0.35));
+{ const g = new THREE.Group(); g.position.copy(PET_HOLE).sub(PET_POS); g.scale.setScalar(0.85);
+  const pool = new THREE.Mesh(new THREE.CircleGeometry(0.4, 32), toon(0x3E8DB8)); pool.rotation.x = -Math.PI/2; g.add(pool);
+  const rim = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.07, 10, 36), toon(0xF3FAFD)), 1.08);
+  rim.rotation.x = -Math.PI/2; rim.scale.z = 0.6; g.add(rim);
+  petCorner.add(g); }
 // табличка с именем малыша (перерисовывается, когда имя известно и шрифт загрузился)
 const signMat = new THREE.MeshBasicMaterial({transparent:true});
 { const post = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.9, 8), toon(0xE0A36B)), 1.15);
@@ -503,7 +510,18 @@ function petTap(e){
 
 /* ---------- Покормить: неси рыбку ко рту ---------- */
 async function petFeed(s){
-  const p = save.pet, n = Math.max(1, Math.min(3, Math.ceil((1 - p.needs.food)/0.34)));
+  const p = save.pet;
+  let n = Math.max(1, Math.min(3, Math.ceil((1 - p.needs.food)/0.34)));
+  // сначала рыбалка у своей лунки: первая рыбка сразу к малышу, остальные — из миски
+  await turnTo(s, 0.8, 0.3);   // вполоборота к лунке: мордочку всё равно видно
+  const c = await fishCast({hole:PET_HOLE, cam:[PET_HOLE.clone().add(new V3(-0.75, 0.45, 0.35)), 3.3*Math.max(1, petK()*0.75), -0.2], side:1});
+  await turnTo(s, 0, 0.3);
+  if(await fishLand(c, () => worldOf(s, s.mouthLocal))){
+    s.mouthO.visible = true; s.smile.visible = false; sfx.chomp(); floatText(L('Ням!', 'Nom!'), headTop(s));
+    await wait(0.35); s.mouthO.visible = false; s.smile.visible = true;
+    n--;
+  }
+  if(!n){ sfx.good(); hop(s, 0.3, 0.4); return; }
   focusCam(worldOf(s, new V3(0, -0.35, 0)), 2.2*petK(), 0.4);
   await wait(0.4);
   mgOpen(n > 1 ? L('Неси рыбку прямо ко рту', 'Carry the fish right to the mouth') : L('Одну рыбку — неси ко рту', 'One fish — carry it to the mouth'));

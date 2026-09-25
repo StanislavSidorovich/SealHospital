@@ -232,71 +232,158 @@ async function mgBandage(s){
   await tween(0.4, k => s.plaster.scale.setScalar(Math.max(0.01, k)), ease.back);
 }
 
-/* ---------- Рыбалка: жди, пока поплавок нырнёт, и жми ---------- */
-async function mgFishing(s){
-  focusCam(new V3(-0.75, 0.85, 0.95), 2.9, -0.25);
-  s.shake = -0.35;   // тюлень смотрит на лунку
+/* ---------- Рыбалка: полоса с кружком (как в Seally Seal) ----------
+   Поплавок нырнул — рыбка на крючке. Внизу полоса, по ней слева направо бежит кружок.
+   Каждый «рывок» — одно из двух: натапать N раз, пока кружок бежит, или держать палец, пока он в розовой зоне.
+   Рывков 2–4, зависит от рыбки (SEA_FISH в seal.js). Не вышло — рыбка вильнула хвостом, тот же рывок медленнее. */
+if(!save.sea) save.sea = {got:[], n:0, r:0};   // страница могла взять старый data.js из кеша
+// кто клюнул: сначала северные рыбки на обед; южная гостья — редкость, пока не все в коллекции (но не реже раза в 6 уловов)
+function pickCatch(){
+  const sea = save.sea, rare = SEA_FISH.filter(f => !f.food && !sea.got.includes(f.id));
+  if(rare.length && sea.n >= 2 && (Math.random() < 0.25 || sea.n - sea.r >= 6)) return rare[Math.floor(Math.random()*rare.length)];
+  const food = SEA_FISH.filter(f => f.food), pool = sea.n < 3 ? food.slice(0, 2) : food;   // первые уловы — полегче
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+// hole — лунка, cam — [центр, размер, lift] для focusCam, side — с какой стороны лунки удочка (-1 слева, 1 справа)
+async function fishCast({hole, cam, side = -1}){
+  focusCam(...cam);
   const rod = new THREE.Group();
   const stick = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 1.5, 8), toon(0xE0A36B)), 1.15);
   stick.position.y = 0.75; rod.add(stick);
-  rod.position.set(-2.35, 0.25, 2.0); rod.rotation.set(-0.35, 0, -0.55); scene.add(rod);
+  rod.position.copy(hole).add(new V3(0.8*side, 0, 0.65)); rod.rotation.set(-0.35, 0, 0.55*side); scene.add(rod);
+  const bend0 = rod.rotation.z;
   const tip = () => stick.localToWorld(new V3(0, 0.75, 0));
-  const bob = makeBobber(); bob.position.copy(HOLE); bob.position.y = 1.4; scene.add(bob);
+  const bob = makeBobber(); bob.position.copy(hole); bob.position.y = hole.y + 1.15; scene.add(bob);
   const lineGeo = new THREE.BufferGeometry().setFromPoints([new V3(), new V3()]);
   const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({color:INK})); scene.add(line);
   const drawLine = () => { rod.updateMatrixWorld(true); lineGeo.setFromPoints([tip(), bob.position.clone().add(new V3(0, 0.2, 0))]); };
-  const baseY = HOLE.y + 0.02;
-  await tween(0.5, k => { bob.position.y = 1.4 + (baseY - 1.4)*k; drawLine(); }, ease.out);
-  sfx.plop(); emit(TEX.puff, HOLE.clone().add(new V3(0, 0.1, 0)), {v:new V3(0, 0.6, 0), life:0.6, size:0.5, grow:1});
+  const baseY = hole.y + 0.02, splash = (n = 6, sp = 1) => burst(TEX.puff, hole.clone().add(new V3(0, 0.1, 0)), n, sp, 0.4);
+  await tween(0.5, k => { bob.position.y = hole.y + 1.15*(1 - k) + 0.02*k; drawLine(); }, ease.out);
+  sfx.plop(); emit(TEX.puff, hole.clone().add(new V3(0, 0.1, 0)), {v:new V3(0, 0.6, 0), life:0.6, size:0.5, grow:1});
 
-  mgOpen(L('Жди… Когда поплавок нырнёт — жми!', 'Wait… When the float dips — tap!'));
-  const pull = mgNode('button', 'btn pull', L('Тяни! 🎣', 'Pull! 🎣')); pull.hidden = true;
-  // state: wait → bite → (поймал | уплыла → wait)
-  let state = 'wait', until = now + 1.6 + Math.random()*1.8, nibbleAt = now + 0.8 + Math.random(), misses = 0, finish;
-  const caught = new Promise(r => finish = r);
-  const toWait = () => { state = 'wait'; until = now + 1.2 + Math.random()*1.6; nibbleAt = now + 0.6 + Math.random()*0.6; pull.hidden = true; };
-  const tap = e => {
-    e.preventDefault();
-    if(state === 'bite'){ state = 'done'; pull.hidden = true; finish(); }
-    else if(state === 'wait') mgHint(L('Ещё рано! Жди, когда нырнёт', 'Too early! Wait for the dip'));
-  };
-  mgOn(mgRoot, 'pointerdown', tap);
-  mgTick(() => {
-    let y = baseY + Math.sin(now*3)*0.015;
-    if(state === 'wait'){
-      if(now > nibbleAt && now < nibbleAt + 0.18) y -= 0.035;              // клюёт понарошку
-      else if(now >= nibbleAt + 0.18) nibbleAt = now + 0.7 + Math.random()*0.8;
-      if(now > until){
-        state = 'bite'; until = now + 1.8; sfx.plop(); pull.hidden = false;
-        floatText('!', HOLE.clone().add(new V3(0, 0.9, 0)), '#D9364F');
-        burst(TEX.puff, HOLE.clone().add(new V3(0, 0.1, 0)), 5, 0.8, 0.35);
-      }
-    } else if(state === 'bite'){
-      y -= 0.13;
-      if(now > until){
-        misses++; toWait();
-        mgHint(misses > 1 ? L('Жми сразу, как только нырнёт!', 'Tap as soon as it dips!') : L('Уплыла! Сейчас клюнет ещё', 'It got away! Another bite is coming'));
-      }
-    }
-    bob.position.y = y; drawLine();
+  const fd = pickCatch(), first = !save.sea.n;
+  let cur = null;   // текущий рывок: {hold, need, got, a, b, T, k, held, pressing, done}
+  mgOpen(L('Жди поклёвку…', 'Wait for a bite…'));
+  let pull = 0, tension = 0;   // pull — насколько поплавок утянуло под воду, tension — изгиб удочки
+  mgTick(dt => {
+    tension += ((cur && cur.pressing ? 1 : 0) - tension)*Math.min(1, dt*10);
+    rod.rotation.z = bend0 - tension*0.18*side;
+    bob.position.y = baseY + Math.sin(now*3)*0.015 - pull*0.13 + (cur && cur.pressing ? Math.sin(now*40)*0.012 : 0);
+    drawLine();
   });
-  await caught;
-  mgClose();
-  sfx.splash(); burst(TEX.puff, HOLE.clone().add(new V3(0, 0.1, 0)), 10, 1.6, 0.45);
-  const fish = makeFish(); fish.rotation.y = 0.6;
-  scene.remove(bob, line); lineGeo.dispose();
-  const bonus = Math.random() < 0.4;
-  if(bonus){   // вторая рыбка прыгает в ведро и копится там
-    const extra = makeFish(); extra.scale.setScalar(0.7);
-    flyTo(extra, HOLE.clone(), bucket.position.clone().add(new V3(0, 0.25, 0)), 1.0, 1.8, 12).then(() => {
-      scene.remove(extra); save.fish++; persist(); renderBucket(); sfx.pop();
-      toast(L(`И ещё одна — в ведро! Там ${save.fish} ${plural(save.fish, 'рыбка', 'рыбки', 'рыбок')}`, `And one more goes in the bucket! It holds ${save.fish} ${plural(save.fish, '', '', '', 'fish', 'fish')} now`));
+  await wait(1 + Math.random()*0.8);
+  pull = 1; sfx.plop(); splash(5, 0.8);
+  floatText('!', hole.clone().add(new V3(0, 0.9, 0)), '#D9364F');
+  await wait(0.35);
+
+  const ui = mgNode('div', 'reel', `
+    <div class="reel-top"><span class="reel-say display"></span><span class="reel-steps">${fd.steps.map(() => '<i></i>').join('')}</span></div>
+    <div class="reel-bar"><div class="zone"><b></b></div><div class="knob"></div></div>
+    <div class="reel-taps"></div>`);
+  const say = ui.querySelector('.reel-say'), zone = ui.querySelector('.zone'), zfill = zone.firstChild, knob = ui.querySelector('.knob'),
+    taps = ui.querySelector('.reel-taps'), dots = [...ui.querySelectorAll('.reel-steps i')];
+  mgOn(mgRoot, 'pointerdown', e => {
+    e.preventDefault(); if(!cur || cur.done) return;
+    cur.pressing = true; if(cur.hold) return;
+    if(cur.got < cur.need){ const d = taps.children[cur.got++]; d.classList.add('pop'); sfx.tick(); splash(2, 0.6); }
+  });
+  for(const ev of ['pointerup', 'pointercancel']) mgOn(mgRoot, ev, () => { if(cur) cur.pressing = false; });
+  const step = (st, slow) => new Promise(res => {
+    const hold = st === 'hold', need = hold ? 0 : +st.slice(3);
+    const a = hold ? 0.25 + Math.random()*0.2 : 0, b = hold ? a + 0.4 : 1;
+    cur = {hold, need, got:0, a, b, T:(hold ? 2.6 : 1.2 + need*0.5)*slow, k:0, held:0, pressing:cur ? cur.pressing : false, done:false};
+    ui.classList.toggle('is-hold', hold);
+    zone.style.left = a*100 + '%'; zone.style.width = (b - a)*100 + '%'; zfill.style.width = '0';
+    taps.innerHTML = hold ? '' : '<i></i>'.repeat(need);
+    say.textContent = hold ? L('Держи, пока кружок в розовом! 👆', 'Hold while the dot is in the pink! 👆') : L(`Тапай быстро — ${need} раз! 👆`, `Tap fast — ${need} times! 👆`);
+    const c = cur;
+    mgTick(function tick(dt){
+      if(c.done) return;
+      c.k = Math.min(1, c.k + dt/c.T);
+      knob.style.left = c.k*100 + '%';
+      const inZone = c.k >= c.a && c.k <= c.b;
+      knob.classList.toggle('on', c.pressing && (c.hold ? inZone : true));
+      if(c.hold && inZone && c.pressing){ c.held += dt; if(Math.random() < dt*6) sfx.tick(); }
+      if(c.hold) zfill.style.width = Math.min(100, c.held/((c.b - c.a)*c.T*0.7)*100) + '%';
+      const ok = c.hold ? c.k > c.b && c.held >= (c.b - c.a)*c.T*0.7 : c.got >= c.need;
+      if(ok || c.k >= 1 || (c.hold && c.k > c.b)){ c.done = true; mgTicks.delete(tick); res(ok); }
     });
+  });
+  let slow = first ? 1.2 : 1;
+  for(let i = 0; i < fd.steps.length; i++){
+    mgHint(i ? L('Ещё рывок!', 'Another pull!') : L('Клюёт! Тяни!', 'A bite! Reel it in!'));
+    if(await step(fd.steps[i], slow)){
+      dots[i].classList.add('on'); sfx.ding(); splash(8, 1.3);
+      pull = 1 + i*0.25;   // рыбка всё ближе: поплавок прыгает
+      tween(0.3, k => bob.position.y += Math.sin(k*Math.PI)*0.04, ease.lin);
+    } else {
+      i--; slow = Math.min(1.7, slow*1.2); wiggle(ui); sfx.bad();
+      mgHint(L('Рыбка вильнула хвостиком! Ещё разок', 'The fish wiggled away! Try again'));
+      await wait(0.6);
+    }
   }
-  await flyTo(fish, HOLE.clone(), worldOf(s, s.mouthLocal), 0.9, 1.4, 10);
-  await tween(0.12, k => fish.scale.setScalar(1 - k)); scene.remove(fish);
-  scene.remove(rod); s.shake = 0;
-  if(bonus) await wait(0.3);
+  cur = null; mgEnding = true;
+  await wait(0.2);
+  mgClose();
+  sfx.splash(); splash(12, 1.8);
+  const fish = makeSeaFish(fd); fish.position.copy(hole); fish.scale.setScalar(1.4); scene.add(fish);
+  scene.remove(bob, line, rod); lineGeo.dispose();
+  // улов записываем сразу: вдруг вкладку закроют посреди полёта рыбки
+  const sea = save.sea, fresh = !sea.got.includes(fd.id);
+  sea.n++; if(!fd.food) sea.r = sea.n;
+  if(fresh) sea.got.push(fd.id);
+  persist();
+  await tween(0.5, k => { fish.position.y = hole.y + Math.sin(k*Math.PI/2)*1.1; fish.rotation.z = Math.sin(k*Math.PI*4)*0.4; }, ease.out);
+  return {fd, fish, fresh};
+}
+// карточка «новая рыбка»: картинка, имя, короткий факт (первый улов каждого вида)
+const seaThumbs = {};
+function seaThumb(fd){ return seaThumbs[fd.id] || (seaThumbs[fd.id] = objThumb(makeSeaFish(fd), new V3(0, 0.15, 1))); }
+async function seaCard(fd){
+  mgOpen(fd.food ? L('Новая рыбка!', 'A new fish!') : L('Привет из тёплых морей!', 'Hello from the warm seas!'));
+  const panel = mgNode('div', 'mg-panel walk-end sea-card', `
+    <img src="${seaThumb(fd)}" alt="${fd.name}">
+    <p class="ttl display">${fd.name}</p>
+    <p class="fact">${fd.fact}</p>
+    <p class="tip">${fd.food ? L('Тюлени едят её на обед 🐟', 'Seals eat it for lunch 🐟')
+      : L('Эту рыбку принесло тёплое течение. Теперь она будет жить в аквариуме в домике малыша 🏠', 'A warm current brought this fish here. Now it will live in the tank in the pup’s igloo 🏠')}</p>
+    <p class="got">${L(`Рыбки моря: ${save.sea.got.length} из ${SEA_FISH.length}`, `Sea fish: ${save.sea.got.length} of ${SEA_FISH.length}`)}</p>
+    <button class="btn" id="seaOk">${L('Ура!', 'Yay!')}</button>`);
+  sfx.good();
+  await new Promise(r => mgOn(panel.querySelector('#seaOk'), 'click', r));
+  sfx.tap(); panel.classList.add('away'); await wait(0.25); mgClose();
+}
+// после улова: новая рыбка — карточка; южная гостья улетает в ведёрко (оттуда — в аквариум), северная — на обед
+// eatAt() — куда лететь рыбке на обед (рот); возвращает true, если рыбку съели
+async function fishLand(c, eatAt){
+  if(c.fresh) await seaCard(c.fd);
+  else floatText(c.fd.name + '!', c.fish.position.clone().add(new V3(0, 0.5, 0)), '#2F7FB8');
+  if(c.fd.food){
+    await flyTo(c.fish, c.fish.position.clone(), eatAt(), 0.8, 1.2, 10);
+    await tween(0.12, k => c.fish.scale.setScalar(1.4*(1 - k))); scene.remove(c.fish);
+    return true;
+  }
+  if(!c.fresh) toast(L(`${c.fd.name} — опять в гостях! Отпускаем в аквариум`, `${c.fd.name} is visiting again! Off to the tank`));
+  await tween(0.6, k => { c.fish.position.y += 0.02; c.fish.scale.setScalar(1.4*(1 - k)); c.fish.rotation.y = k*Math.PI*4; });
+  sfx.whoosh(); scene.remove(c.fish);
+  return false;
+}
+async function mgFishing(s){
+  s.shake = -0.35;   // тюлень смотрит на лунку
+  const c = await fishCast({hole:HOLE, cam:[new V3(-0.75, 0.85, 0.95), 2.9, -0.25]});
+  if(!await fishLand(c, () => worldOf(s, s.mouthLocal))){   // гостью не едят: обед — из ведёрка
+    const f = makeFish();
+    await flyTo(f, bucket.position.clone().add(new V3(0, 0.3, 0)), worldOf(s, s.mouthLocal), 0.9, 1.2, 10);
+    await tween(0.12, k => f.scale.setScalar(1 - k)); scene.remove(f);
+  }
+  sfx.chomp();
+  if(c.fd.food && Math.random() < 0.35){   // вторая рыбка прыгает в ведро и копится там
+    const extra = makeFish(); extra.scale.setScalar(0.7);
+    await flyTo(extra, HOLE.clone(), bucket.position.clone().add(new V3(0, 0.25, 0)), 1.0, 1.8, 12);
+    scene.remove(extra); save.fish++; persist(); renderBucket(); sfx.pop();
+    toast(L(`И ещё одна — в ведро! Там ${save.fish} ${plural(save.fish, 'рыбка', 'рыбки', 'рыбок')}`, `And one more goes in the bucket! It holds ${save.fish} ${plural(save.fish, '', '', '', 'fish', 'fish')} now`));
+  }
+  s.shake = 0;
 }
 
 /* ---------- Шарфик: выбрать цвет и узор (видно в альбоме) ---------- */
@@ -339,10 +426,12 @@ const HOTSPOT = {
   fever:  s => [worldOf(s, new V3(0, 0.62, 0.45)), wpos(s.sweat), worldOf(s, new V3(0.5, -0.05, 0.7)), worldOf(s, new V3(-0.5, -0.05, 0.7))],
   sneeze: s => s.hat.visible ? [worldOf(s, s.noseLocal), wpos(s.hat)] : [worldOf(s, s.noseLocal)],
   scratch:s => [wpos(s.scratch)],
-  hungry: s => [s.inner.localToWorld(new V3(0.72, 0.5, 0.85)), wpos(s.bubble)],
-  cold:   s => s.flippers.map(f => wpos(f.children[0]))
+  hungry: s => [wpos(s.rumble), s.inner.localToWorld(new V3(0.4, 0.35, 1.05)), wpos(s.bubble)],
+  cold:   s => [...s.flippers.map(f => wpos(f.children[0])), ...s.frost.map(wpos)]
 };
-const HOT_R = 60;   // радиус «попал лупой», px
+// Найти должно быть легко: навела на примету — через ~0,3 с готово, даже если ведёшь лупу не останавливаясь
+// (прогресс тает медленно, так что два-три прохода по месту тоже считаются)
+const HOT_R = 74, HOT_T = 0.3;   // радиус «попал лупой», px, и сколько секунд держать
 // ближайшая к лупе точка симптома (для подсказки — ближайшая к центру тюленя)
 function hotNear(s, a, x, y){
   let best = null, bd = 1e9, bw = null;
@@ -361,7 +450,7 @@ async function mgLupa(s, ailments, onFound, onSecret){
   let lx = innerWidth/2, ly = innerHeight*0.62, touched = false, down = false, finish;
   place(lens, lx, ly);
   const left = new Set(ailments), prog = {}, done = new Promise(r => finish = r);
-  let lastFind = now, lastGiggle = now, lensMouse = false;
+  let lastFind = now, lastGiggle = now, lensMouse = false, lastHot = null, ouchT = 0;
   const secretAt = SECRET_SPOTS[Math.floor(Math.random()*SECRET_SPOTS.length)];
   let secret = onSecret ? 0 : -1, sparkT = 1;   // -1 — уже найден (или не нужен)
   const secretPos = () => s.inner.localToWorld(secretAt.clone());
@@ -378,9 +467,11 @@ async function mgLupa(s, ailments, onFound, onSecret){
     const looking = touched && (down || lensMouse);
     let hot = null, hd = HOT_R;
     for(const a of left){ const d = hotNear(s, a, lx, ly).d; if(d < hd){ hd = d; hot = a; } }
-    for(const a of left) if(a !== hot) prog[a] = Math.max(0, (prog[a] || 0) - dt);
+    for(const a of left) if(a !== hot) prog[a] = Math.max(0, (prog[a] || 0) - dt*0.35);
+    if(hot && looking && hot !== lastHot && now > ouchT){ ouchT = now + 0.8; sfx.tick(); squash(s, 0.05, 0.18); }   // сразу откликается: «тут что-то есть»
+    lastHot = looking ? hot : null;
     if(hot && looking){
-      prog[hot] = (prog[hot] || 0) + dt/0.55;
+      prog[hot] = (prog[hot] || 0) + dt/HOT_T;
       if(prog[hot] >= 1){
         left.delete(hot); lastFind = now; target.hidden = true;
         sfx.ding(); squash(s, 0.12, 0.3);
@@ -407,7 +498,7 @@ async function mgLupa(s, ailments, onFound, onSecret){
     }
     lens.querySelector('.ring').style.setProperty('--p', hot ? Math.min(1, prog[hot]) : secret > 0 ? Math.min(1, secret) : 0);
     // долго ничего не находится — подсвечиваем, где искать
-    if(left.size && now - lastFind > 8){ const c = toScreen(worldOf(s, new V3())), p = hotNear(s, [...left][0], c.x, c.y).p; target.hidden = false; place(target, p.x, p.y); }
+    if(left.size && now - lastFind > 7){ const c = toScreen(worldOf(s, new V3())), p = hotNear(s, [...left][0], c.x, c.y).p; target.hidden = false; place(target, p.x, p.y); }
   });
   await done; mgEnding = true;
   await wait(0.6);

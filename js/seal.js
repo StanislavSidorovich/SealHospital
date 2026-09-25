@@ -63,7 +63,13 @@ function makeSeal(p){
   const sweat = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.drop, transparent:true, depthWrite:false}));
   sweat.scale.set(0.2, 0.26, 1); sweat.position.set(-0.78, 0.35, 0.3); sweat.visible = false; head.add(sweat);
   const bubble = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.bubble, transparent:true, depthWrite:false}));
-  bubble.scale.setScalar(0.85); bubble.position.set(1.2, 2.3, 0.45); bubble.visible = false; inner.add(bubble);   // ниже столбика кнопок справа: на телефоне они его закрывали
+  bubble.scale.setScalar(0.85); bubble.position.set(1.2, 2.3, 0.45); bubble.visible = false; inner.add(bubble);   // у пациента — ближе к голове (spawnPatient), иначе прячется под кнопками
+  bubble.userData.y = 2.3;
+  // приметы под лупу видны сразу: «урчащий» животик у голодного, снежинка-иней у замёрзшего
+  const rumble = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.rumble, transparent:true, depthWrite:false}));
+  rumble.scale.set(0.42, 0.3, 1); rumble.position.set(0.78, 0.45, 1.0); rumble.visible = false; inner.add(rumble);
+  const frostMat = new THREE.SpriteMaterial({map:TEX.flake, transparent:true, depthWrite:false});
+  const frost = flippers.map(piv => { const f = new THREE.Sprite(frostMat); f.scale.setScalar(0.26); f.position.set(0.42*piv.userData.s, 0.2, 0.15); f.visible = false; piv.add(f); return f; });   // иней на ластах
   const scratch = new THREE.Group();
   for(const r of [0.7, -0.7]){ const m = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.026, 0.02), new THREE.MeshBasicMaterial({color:0xE0475B})); m.rotation.z = r; scratch.add(m); }
   onHead(scratch, 0.5, 0.52, 0.69, 0.006); scratch.visible = false; head.add(scratch);
@@ -86,9 +92,9 @@ function makeSeal(p){
   hat.position.set(0, 0.6, -0.02); hat.rotation.set(-0.15, 0, 0.18); hat.userData.base = hat.position.clone();
   hat.visible = false; head.add(hat);
 
-  return {p, root, inner, head, body, nose, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf, scarfMats:[ringMat, tailMat], hat, windup:null, wear:{}, sleeping:false,
+  return {p, root, inner, head, body, nose, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, rumble, frost, scratch, plaster, scarf, scarfMats:[ringMat, tailMat], hat, windup:null, wear:{}, sleeping:false,
     bodyMat, base:new THREE.Color(p.color), coldCol:new THREE.Color(p.color).lerp(new THREE.Color(0x9FC8EE), 0.45),
-    mouthLocal, noseLocal, hits, nod:0, sneezeNod:0, shake:0, wobble:0, flap:0, blinkT:2, sneezeT:2.5, rumbleT:3.5,
+    mouthLocal, noseLocal, hits, nod:0, sneezeNod:0, shake:0, wobble:0, flap:0, blinkT:2, sneezeT:2.5, rumbleT:1.2,
     swimming:false, cold:false, bodyK:new V3(1, 1, 1)};
 }
 /* ---------- пингвин (Фаза 6: самозванец в костюме тюленя) ---------- */
@@ -177,8 +183,10 @@ function applyAilments(s, a){
   s.sweat.visible = !!a.fever;
   s.blushMat.color.set(a.fever ? 0xFF5C77 : 0xFFA3B8);
   s.bubble.visible = !!a.hungry;
+  if(s.rumble) s.rumble.visible = !!a.hungry;
   s.scratch.visible = !!a.scratch;
   s.cold = !!a.cold;
+  if(s.frost) s.frost.forEach(f => f.visible = !!a.cold);
 }
 function updateSeal(s, t, dt){
   s.body.scale.set(1.15*(1 + s.wobble)*s.bodyK.x, 0.8*(1 + Math.sin(t*2.2)*0.025)*s.bodyK.y, 1.3*s.bodyK.z);   // bodyK — пропорции (стадии роста своего малыша)
@@ -190,7 +198,9 @@ function updateSeal(s, t, dt){
   s.blinkT -= dt;
   if(s.blinkT < 0){ const sc = s.blinkT > -0.12 ? 0.15 : 1; s.eyes.forEach(e => e.scale.y = sc); if(s.blinkT <= -0.12) s.blinkT = 2 + Math.random()*3; }
   s.sweat.position.y = 0.35 - ((t*0.6) % 1)*0.12;
-  s.bubble.position.y = 2.3 + Math.sin(t*2)*0.06;
+  s.bubble.position.y = s.bubble.userData.y + Math.sin(t*2)*0.06;
+  if(s.rumble && s.rumble.visible) s.rumble.material.rotation = Math.sin(t*9)*0.12*(Math.sin(t*1.3) > 0.3 ? 1 : 0.2);   // животик то и дело «урчит»
+  if(s.frost && s.frost[0].visible) s.frost[0].material.rotation = t*0.8;
 }
 function worldOf(s, local){ s.root.updateMatrixWorld(true); return s.head.localToWorld(local.clone()); }
 
@@ -248,6 +258,98 @@ function makeRunFish(f){
   if(f.pat === 'star'){ const s = addOutline(new THREE.Mesh(STAR_GEO, pm), 1.1); s.scale.setScalar(0.22); s.position.set(0.02, 0.2, 0); g.add(s); }
   return g;
 }
+/* ---------- настоящие рыбки (рыбалка): северные — на обед, южные гостьи — в аквариум ----------
+   У каждой короткий факт: первый улов вида показывает карточку. steps — как её вытащить (полоса рыбалки):
+   'tapN' — натапать N раз, пока кружок бежит; 'hold' — держать палец, пока кружок в розовой зоне. */
+const SEA_FISH = [
+  {id:'capelin', food:true, name:L('Мойва', 'Capelin'), steps:['tap3', 'hold'],
+    fact:L('Мойва — маленькая серебристая рыбка. Её обожают тюлени, киты и птицы-тупики.', 'Capelin is a small silvery fish. Seals, whales and puffins love it.')},
+  {id:'polarcod', food:true, name:L('Сайка', 'Polar cod'), steps:['hold', 'tap4'],
+    fact:L('Сайка живёт прямо подо льдом — это одна из самых северных рыб на свете.', 'Polar cod lives right under the ice — one of the most northern fish in the world.')},
+  {id:'herring', food:true, name:L('Сельдь', 'Herring'), steps:['tap3', 'hold', 'tap4'],
+    fact:L('Сельдь плавает огромными стаями: тысячи рыбок вместе, как одно серебряное облако.', 'Herring swim in huge schools: thousands of fish together, like one silver cloud.')},
+  {id:'cod', food:true, name:L('Треска', 'Cod'), steps:['hold', 'tap4', 'hold', 'tap5'],
+    fact:L('У трески на подбородке усик: им она нащупывает еду на дне.', 'Cod has a little whisker on its chin to feel for food on the sea floor.')},
+  {id:'clown', name:L('Рыба-клоун', 'Clownfish'), steps:['tap4', 'hold', 'tap4'],
+    fact:L('Рыба-клоун живёт в актинии. Щупальца актинии жгутся, а рыбку-клоуна не трогают!', 'A clownfish lives in a sea anemone. Its tentacles sting, but never the clownfish!')},
+  {id:'tang', name:L('Рыба-хирург', 'Blue tang'), steps:['hold', 'tap5', 'hold'],
+    fact:L('Её зовут хирургом, потому что у хвоста у неё острые шипы, как скальпели.', 'It is also called a surgeonfish: by its tail it has sharp spines, like a surgeon’s scalpels.')},
+  {id:'butterfly', name:L('Рыба-бабочка', 'Butterflyfish'), steps:['tap3', 'hold', 'tap5'],
+    fact:L('У хвоста у неё пятнышко, похожее на глаз: хищник путает, где у рыбки голова.', 'It has an eye-like spot near its tail, so a hunter can’t tell where its head is.')},
+  {id:'puffer', name:L('Рыба-фугу', 'Pufferfish'), steps:['tap6', 'hold'],
+    fact:L('Испугается — и надувается, как колючий шарик! Поэтому её никто не обижает.', 'When scared it puffs up like a spiky ball! So nobody bothers it.')},
+  {id:'seahorse', name:L('Морской конёк', 'Seahorse'), steps:['hold', 'hold', 'tap4'],
+    fact:L('У морских коньков малышей вынашивает папа! Он носит их в сумке на животике.', 'In seahorses, the dad carries the babies! He keeps them in a pouch on his tummy.')}
+];
+const seaDef = id => SEA_FISH.find(f => f.id === id);
+// тельце-эллипсоид с контуром; хвост — сплюснутый конус; глаза с двух сторон (в аквариуме плавают туда-сюда)
+function fishBody(g, col, sx, sy, sz, tail = col){
+  const m = toon(col);
+  const b = addOutline(new THREE.Mesh(SMALL, m), 1.08); b.scale.set(sx, sy, sz); g.add(b);
+  const tl = addOutline(new THREE.Mesh(new THREE.ConeGeometry(sy*0.8, 0.22, 4), toon(tail)), 1.1); tl.rotation.z = Math.PI/2; tl.position.x = -sx - 0.06; tl.scale.z = 0.4; g.add(tl);
+  for(const sd of [-1, 1]){ const e = new THREE.Mesh(SMALL, inkMat); e.scale.setScalar(0.035); e.position.set(sx*0.56, sy*0.22, sd*sz*0.8); g.add(e); }
+  return m;
+}
+// пятно на боку (с обеих сторон) по поверхности эллипсоида
+function fishSpot(g, col, sx, sy, sz, x, y, w, h){
+  for(const sd of [-1, 1]){
+    const k = Math.sqrt(Math.max(0.05, 1 - (x/sx)**2 - (y/sy)**2));
+    const d = new THREE.Mesh(SMALL, toon(col)); d.scale.set(w, h, 0.012); d.position.set(x, y, sd*sz*k); g.add(d);
+  }
+}
+// поперечная полоса (как у рыбы-клоуна): тонкий срез эллипсоида с контуром
+function fishBand(g, col, sx, sy, sz, x, w = 0.035){
+  const k = Math.sqrt(1 - (x/sx)**2), b = addOutline(new THREE.Mesh(SMALL, toon(col)), 1.25);
+  b.scale.set(w, sy*k + 0.008, sz*k + 0.008); b.position.x = x; g.add(b);
+}
+const SEA_MAKE = {
+  capelin(g){ fishBody(g, 0xB4D8CE, 0.3, 0.1, 0.075); const s = new THREE.Mesh(SMALL, toon(0x5E8F8A)); s.scale.set(0.24, 0.035, 0.05); s.position.y = 0.075; g.add(s); },
+  polarcod(g){ fishBody(g, 0xC9D1DE, 0.3, 0.13, 0.1); for(const [x, y] of [[-0.12, 0.05], [0, 0.07], [0.08, 0.02], [-0.05, -0.02]]) fishSpot(g, 0x8E99AD, 0.3, 0.13, 0.1, x, y, 0.022, 0.022); },
+  herring(g){ fishBody(g, 0x7FA8D6, 0.31, 0.14, 0.1); const b = new THREE.Mesh(SMALL, toon(0xF4F8FC)); b.scale.set(0.28, 0.08, 0.095); b.position.y = -0.06; g.add(b); },
+  cod(g){
+    fishBody(g, 0xC9AE74, 0.36, 0.19, 0.14);
+    for(const [x, y] of [[-0.18, 0.06], [-0.06, 0.1], [0.05, 0.06], [-0.12, -0.02], [0.14, 0.1]]) fishSpot(g, 0x9C7E4A, 0.36, 0.19, 0.14, x, y, 0.026, 0.026);
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.008, 0.1, 6), inkMat); w.position.set(0.3, -0.16, 0); w.rotation.z = 0.3; g.add(w);   // усик
+  },
+  clown(g){
+    fishBody(g, 0xFF8A2E, 0.3, 0.17, 0.11);
+    for(const x of [0.17, 0.0, -0.2]) fishBand(g, 0xFFFFFF, 0.3, 0.17, 0.11, x, x === 0 ? 0.045 : 0.035);
+  },
+  tang(g){
+    fishBody(g, 0x3F7FE8, 0.3, 0.22, 0.09, 0xFFD23F);
+    fishSpot(g, INK, 0.3, 0.22, 0.09, -0.07, 0.06, 0.15, 0.06);   // тёмная «палитра» на боку
+    fishSpot(g, 0x3F7FE8, 0.3, 0.22, 0.09, -0.07, 0.09, 0.08, 0.028);
+  },
+  butterfly(g){
+    fishBody(g, 0xFFD84A, 0.26, 0.26, 0.08);
+    fishBand(g, INK, 0.26, 0.26, 0.08, 0.14, 0.03);
+    fishSpot(g, INK, 0.26, 0.26, 0.08, -0.14, 0.07, 0.045, 0.045);
+    const sn = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 8), toon(0xFFD84A)), 1.15); sn.rotation.z = -Math.PI/2; sn.position.x = 0.3; g.add(sn);
+  },
+  puffer(g){
+    fishBody(g, 0xF4D58A, 0.22, 0.2, 0.19);
+    const b = new THREE.Mesh(SMALL, toon(0xFFFDF8)); b.scale.set(0.19, 0.12, 0.17); b.position.y = -0.08; g.add(b);
+    const sp = new THREE.ConeGeometry(0.026, 0.09, 5), sm = toon(0xB9873A);
+    for(let i = 0; i < 16; i++){
+      const a = i*2.4, y = 1 - (i + 0.5)/16*2, r = Math.sqrt(1 - y*y), d = new V3(Math.cos(a)*r, y, Math.sin(a)*r);
+      if(d.x > 0.6) continue;   // на мордочке шипов нет
+      const c = new THREE.Mesh(sp, sm); c.position.set(d.x*0.22, d.y*0.2, d.z*0.19); c.quaternion.setFromUnitVectors(new V3(0, 1, 0), d); g.add(c);
+    }
+    for(const [x, y] of [[-0.05, 0.1], [0.06, 0.08], [-0.1, 0.02]]) fishSpot(g, 0xA67C3E, 0.22, 0.2, 0.19, x, y, 0.025, 0.025);
+  },
+  seahorse(g){   // стоит «вертикально»: голова с трубочкой-мордочкой, животик, хвостик завитком
+    const m = toon(0xF7B24A);
+    const head = addOutline(new THREE.Mesh(SMALL, m), 1.1); head.scale.setScalar(0.09); head.position.set(0.02, 0.2, 0); g.add(head);
+    const snout = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.12, 8), m), 1.15); snout.rotation.z = -Math.PI/2; snout.position.set(0.13, 0.19, 0); g.add(snout);
+    const body = addOutline(new THREE.Mesh(SMALL, m), 1.08); body.scale.set(0.1, 0.15, 0.08); body.position.set(-0.01, 0.02, 0); body.rotation.z = -0.25; g.add(body);
+    const belly = new THREE.Mesh(SMALL, toon(0xFFE0A0)); belly.scale.set(0.06, 0.11, 0.07); belly.position.set(0.04, 0.02, 0); g.add(belly);
+    const tail = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.028, 8, 16, Math.PI*1.4), m), 1.12); tail.position.set(-0.02, -0.16, 0); tail.rotation.z = 1.2; g.add(tail);
+    const fin = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.08, 4), toon(0xFFE0A0)), 1.15); fin.position.set(-0.1, 0.04, 0); fin.rotation.z = Math.PI/2; fin.scale.z = 0.3; g.add(fin);
+    const crown = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.06, 5), m), 1.15); crown.position.set(0, 0.3, 0); g.add(crown);
+    for(const sd of [-1, 1]){ const e = new THREE.Mesh(SMALL, inkMat); e.scale.setScalar(0.022); e.position.set(0.06, 0.22, sd*0.075); g.add(e); }
+  }
+};
+function makeSeaFish(f){ const g = new THREE.Group(); SEA_MAKE[f.id](g); g.userData.sea = f.id; return g; }
 function makeBobber(){
   const g = new THREE.Group();
   const top = addOutline(new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI*2, 0, Math.PI/2), toon(0xFF5C77)), 1.12);

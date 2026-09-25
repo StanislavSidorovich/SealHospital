@@ -124,6 +124,7 @@ async function spawnPatient(){
   const seal = makeSeal(p);
   S = {p, seal, needs:needsFor(p.ail), done:new Set(), found:new Set(), ail:Object.fromEntries(p.ail.map(a => [a, true])), stage:'arriving'};
   applyAilments(seal, S.ail); setMood(seal, 'sad');
+  seal.bubble.position.x = 0.6; seal.bubble.userData.y = 2.2;   // облачко-мысль ближе к голове: справа сверху его закрывали кнопки
   seal.hat.visible = seal.hat.userData.on = p.ail.includes('sneeze');
   $('#card').hidden = false; $('#wardrobe').hidden = true; $('#tools').hidden = false; renderCard();
   setBusy(true); await arrive(seal); setBusy(false);
@@ -392,7 +393,7 @@ function frame(ts){
     if((S.stage === 'treat' && !busy || S.stage === 'diagnose') && !petMode){   // урчит и под лупой: видно, где искать «голодный»
       if(S.ail.hungry){
         s.rumbleT -= dt;
-        if(s.rumbleT < 0){ s.rumbleT = 5 + Math.random()*2; floatText(L('урр...', 'grrr...'), worldOf(s, new V3(0.9, -0.9, 0.3)), '#6B6A7E');
+        if(s.rumbleT < 0){ s.rumbleT = 5 + Math.random()*2; floatText(L('урр...', 'grrr...'), s.rumble.getWorldPosition(new V3()).add(new V3(0, 0.3, 0)), '#6B6A7E');
           tween(0.6, k => s.wobble = Math.sin(k*Math.PI*5)*0.04*(1 - k), ease.lin); }
       }
     }

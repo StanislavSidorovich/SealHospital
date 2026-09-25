@@ -31,7 +31,13 @@ function sanitize(d){
     mail:sanitizeMail(d.mail),   // папина почта (Фаза 7)
     home:sanitizeHome(d.home),   // домик малыша (Фаза 4)
     adv:sanitizeAdv(d.adv),      // приключения (Фаза 9)
-    hol:strList(d.hol)};         // какие праздничные подарки уже получены ('halloween-2026', js/holidays.js)
+    hol:strList(d.hol),          // какие праздничные подарки уже получены ('halloween-2026', js/holidays.js)
+    sea:sanitizeSea(d.sea)};     // рыбки моря с рыбалки (js/minigames.js)
+}
+// sea = {got:[виды из SEA_FISH, пойманные хоть раз — южные живут в аквариуме], n — сколько всего поймали, r — на каком улове была последняя южная гостья}
+function sanitizeSea(a){
+  a = a && typeof a === 'object' ? a : {};
+  return {got:[...new Set(strList(a.got))], n:Number.isFinite(a.n) ? a.n : 0, r:Number.isFinite(a.r) ? a.r : 0};
 }
 // adv = {best:{уровень: звёзды 0…3}, cups:[уровни, где спасли всех рыбок — кубок на полке в домике], runs, day:{d, n} — забегов сегодня,
 //        tips:[какие подсказки забега уже показали: lane, boost, snow, tickle],
