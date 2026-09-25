@@ -273,15 +273,19 @@ function runPickup(i, stars){   // ракушка или (если сегодн�
   const o = makeShell([0xFFC4D6, 0xFFD9A8, 0xD9C8FF][i % 3], false); o.scale.setScalar(1.15); o.rotation.set(0.9, 0, 0); return o;
 }
 let R = null;   // текущий забег
+// Чайка-помощник по сети (js/gull.js): GL.role 'run' — я бегу, напарник летает чайкой; 'fly' — я чайка в чужом забеге.
+// Бегущий — главный: всё, что случилось на дорожке, он рассылает событиями (gEv), чайка только просит (gc) и показывает
+let GL = null;
+const gEv = (t, m = {}) => { if(GL && GL.role === 'run' && !GL.gone){ m.t = t; netSend(m); } };
 const runAt = (z, x = 0, y = 0) => new V3(RUN_POS.x + x, 0.25 + y, RUN_POS.z - z);
-function runBuild(id){
+function runBuild(id, opt = {}){
   if(R && R.grp) runRoot.remove(R.grp);
   const lv = {...LEVELS[id], ...dayLayout(id)}, grp = new THREE.Group(); runRoot.add(grp);
   const r = {id, lv, grp, z:-4, y:0, vy:0, air:false, sp:RUN_SPEED, splash:0, tumble:0, shells:0, fish:0, total:0, fishTotal:0,
     lane:0, x:0, boost:0, ramp:null, bumpT:0,
     pick:[], drifts:[], cracks:[], bubbles:[], boosts:[], ramps:[], snowballs:[], puffT:0, slow:null, newFish:[], secret:false, jumps:0, lanes:0, bonks:0,
     taught:{jump:save.adv.runs > 0, fish:save.adv.runs > 0}, state:'ready',   // подсказки с замедлением про прыжок и рыбок — только в самом первом забеге
-    stars:runsToday() >= RUN_DAILY};   // сегодня уже бегали — на дорожке звёздочки вместо ракушек
+    stars:opt.stars !== undefined ? !!opt.stars : runsToday() >= RUN_DAILY};   // сегодня уже бегали — на дорожке звёздочки вместо ракушек
   const shell = (z, x, y, extra) => {
     const o = runPickup(r.pick.length, r.stars);
     o.position.copy(runAt(z, x, 0.35 + y)); grp.add(o);
@@ -347,7 +351,7 @@ function runBubbleAt(e){
   return best;
 }
 function runFree(b){
-  b.free = true; R.fish++; sfx.pop(); sfx.star();
+  b.free = true; R.fish++; sfx.pop(); sfx.star(); gEv('rb', {i:R.bubbles.indexOf(b)});
   const p = b.o.position.clone(); R.grp.remove(b.o);
   burst(TEX.star, p, 10, 1.8, 0.26); emit(TEX.puff, p, {v:new V3(0, 0.3, 0), life:0.4, size:0.9, grow:1});
   // рыбка ныряет в воду и благодарит
@@ -363,13 +367,19 @@ function runFree(b){
 }
 // ракушки вылетают из точки from и ложатся на дорожку впереди (после падения или из щекотной Тучки)
 function runDrop(n, from, zAhead){
-  for(let i = 0; i < n; i++){
-    const z = R.z + zAhead + i*1.6, x = Math.max(-LANE, Math.min(LANE, R.x + (i - (n - 1)/2)*0.5));
+  const ps = [];
+  for(let i = 0; i < n; i++) ps.push([R.z + zAhead + i*1.6, Math.max(-LANE, Math.min(LANE, R.x + (i - (n - 1)/2)*0.5))]);
+  runDropAt(from, ps);
+}
+// ps — куда лягут [z, x]; чайке рассылаем то же самое, чтобы номера ракушек (R.pick) совпадали на обоих телефонах
+function runDropAt(from, ps){
+  gEv('rdr', {f:[+from.x.toFixed(2), +from.y.toFixed(2), +from.z.toFixed(2)], ps:ps.map(([z, x]) => [+z.toFixed(2), +x.toFixed(2)])});
+  ps.forEach(([z, x], i) => {
     const o = runPickup(i, R.stars), to = new V3(RUN_POS.x + x, 0.6, RUN_POS.z - z);
     o.position.copy(from); R.grp.add(o);
     const p = {o, z, x, y:0.35, extra:true, flying:true}; R.pick.push(p);
     tween(0.5, k => { o.position.lerpVectors(from, to, k); o.position.y += Math.sin(k*Math.PI)*1.2; }, ease.lin).then(() => p.flying = false);
-  }
+  });
 }
 // врезался или упал: пара ракушек рассыпается вперёд по дорожке — их можно подобрать снова
 function runScatter(){
@@ -378,7 +388,7 @@ function runScatter(){
   runHud();
 }
 function runCrash(d){   // сугроб: кувырок через голову, сугроб — «пуф» и приплюснулся
-  const s = petSeal; d.hit = true; R.bonks++; R.tumble = 0.7; R.sp = RUN_SPEED*0.45; R.boost = 0;
+  const s = petSeal; d.hit = true; R.bonks++; R.tumble = 0.7; gEv('rc', {i:R.drifts.indexOf(d)}); R.sp = RUN_SPEED*0.45; R.boost = 0;
   sfx.plop(); sfx.arf(); floatText(L(['Ой!', 'Бух!', 'Упс!'], ['Oops!', 'Bonk!', 'Whoops!'])[Math.floor(Math.random()*3)], headTop(s));
   burst(TEX.puff, d.o.position.clone().add(new V3(0, 0.4, 0)), 10, 1.6, 0.5);
   const s0 = d.o.scale.clone();
@@ -387,18 +397,21 @@ function runCrash(d){   // сугроб: кувырок через голову,
   if(!R.saidOops){ R.saidOops = true; runSayHint(L('Ничего! Ракушки впереди — подбери их снова', 'No problem! The shells are ahead — pick them up again'), 2200); }
 }
 function runSplash(){   // трещина: плюх в воду и сам выпрыгивает
+  const c = R.cracks.find(c => c.buoy && R.z > c.z0 - 0.4 && R.z < c.z1 + 0.4);
+  if(c) return runBuoy(c);   // чайка бросила туда спасательный круг — отскок, без «плюх»
+  gEv('rfx', {k:'spl'});
   R.splash = 0.35; R.bonks++; R.air = false; R.vy = 0; R.sp = RUN_SPEED*0.55; R.boost = 0;
   sfx.splash(); burst(TEX.puff, runPupAt().setY(0.1), 10, 1.6, 0.45);
   floatText(L('Плюх!', 'Splash!'), headTop(petSeal), '#3E8DB8');
   runScatter(); cloudLaugh();
 }
 function runBoost(b){
-  b.used = true; R.boost = BOOST_T; sfx.boost();
+  b.used = true; R.boost = BOOST_T; sfx.boost(); gEv('rfx', {k:'boost'});
   floatText(L('Вжух!', 'Whoosh!'), headTop(petSeal), '#D9527E');
   if(!tipSeen('boost')){ tipDone('boost'); runSayHint(L('Стрелки — ускорение! 🚀', 'Arrows make you zoom! 🚀'), 1800); }
 }
 function runSecret(p){   // золотая секретная ракушка
-  p.got = true; R.secret = true; R.grp.remove(p.o);
+  p.got = true; R.secret = true; R.grp.remove(p.o); gEv('rp', {i:R.pick.indexOf(p)});
   sfx.sparkle(); sfx.star(); burst(TEX.star, p.o.position, 18, 2.4, 0.3);
   floatText(L('Секрет! ✨', 'A secret! ✨'), headTop(petSeal), '#E0A21B');
   runSayHint(L('Золотая секретная ракушка! ✨', 'The golden secret shell! ✨'), 2000);
@@ -429,6 +442,11 @@ function cloudThrow(){
     || r.drifts.some(d => Math.abs(d.z - z) < 3 && (d.ln === undefined || d.ln === ln)) || r.boosts.some(b => Math.abs(b.z - z) < 2.5 && b.ln === ln);
   for(let i = 0; i < 4 && busy(tz); i++) tz += 2.5;
   if(busy(tz) || tz > r.lv.len - 10) return;
+  snowSpawn(tz, ln); gEv('rsb', {tz, ln});
+  if(!tipSeen('snow') && !r.slow){ r.slow = 'snow'; r.slowLn = ln; }
+}
+function snowSpawn(tz, ln){   // снежок летит из Тучки на полосу ln (у чайки — по сообщению бегущего)
+  const r = R;
   const o = addOutline(new THREE.Mesh(SMALL, toon(0xFFFFFF)), 1.1); o.scale.setScalar(0.32);
   const from = r.cloud.position.clone().add(new V3(0, -0.6, 0.6)), to = runAt(tz, ln*LANE, 0.1);
   o.position.copy(from); r.grp.add(o);
@@ -436,10 +454,9 @@ function cloudThrow(){
   sh.rotation.x = -Math.PI/2; sh.position.copy(runAt(tz, ln*LANE, 0.03)); sh.scale.setScalar(0.3); r.grp.add(sh);
   r.snowballs.push({o, sh, from, to, tz, ln, t:0, T:1.05});
   sfx.whoosh();
-  if(!tipSeen('snow') && !r.slow){ r.slow = 'snow'; r.slowLn = ln; }
 }
 function snowLand(sb){
-  const r = R; r.grp.remove(sb.o); r.grp.remove(sb.sh);
+  const r = R; r.grp.remove(sb.o); r.grp.remove(sb.sh); gEv('rsl', {i:r.snowballs.indexOf(sb)});
   sfx.plop(); burst(TEX.puff, sb.to.clone().add(new V3(0, 0.3, 0)), 8, 1.3, 0.4);
   const d = makeDrift(); d.position.copy(runAt(sb.tz, sb.ln*LANE)); r.grp.add(d);
   tween(0.25, k => d.scale.set(0.5*k, 0.72*k, 0.75*k), ease.out);
@@ -450,12 +467,15 @@ function cloudTickleAt(e){
   if(!r.cloud || r.state !== 'go' || r.gap > 10.5 || r.tickleT > 0) return false;
   const q = toScreen(r.cloud.position);
   if(Math.hypot(q.x - e.clientX, q.y - e.clientY) > 110) return false;
+  cloudTickle(); return true;
+}
+function cloudTickle(){   // щекотка — пальцем или клювом чайки
+  const r = R;
   r.tickleT = 2.2; r.tickles++; r.gap += 5;   // ракушки роняет только первые TICKLE_GIFTS раз: забег не должен быть выгоднее смены
   sfx.giggle(); floatText(L('Хи-хи-хи!', 'Hee-hee!'), r.cloud.position.clone().add(new V3(0, 1.1, 0)), '#D9527E');
   tween(0.6, k => r.cloud.rotation.z = Math.sin(k*Math.PI*6)*0.18*(1 - k), ease.lin);
   if(r.tickles <= TICKLE_GIFTS) runDrop(2, r.cloud.position.clone().add(new V3(0, -0.8, 0)), 7);
-  tipDone('tickle'); mgHint('');
-  return true;
+  tipDone('tickle'); mgHint(''); gEv('rtk');
 }
 function cloudStep(d, dt){
   const r = R, c = r.cloud;
@@ -584,7 +604,7 @@ function runStep(dt){
     p.o.rotation.y += dt*3;
     if(p.z > z0 - 0.9 && p.z < r.z + 0.9 && Math.abs(p.y - py) < 1.0 && Math.abs(p.x - r.x) < 0.7){
       if(p.secret){ runSecret(p); continue; }
-      p.got = true; r.shells++; r.grp.remove(p.o); sfx.coin();
+      p.got = true; r.shells++; r.grp.remove(p.o); sfx.coin(); gEv('rp', {i:r.pick.indexOf(p)});
       emit(TEX.star, p.o.position, {v:new V3(0, 1, 0), life:0.45, size:0.22, spin:4}); runHud();
     }
   }
@@ -625,7 +645,7 @@ function runStep(dt){
 }
 function runFinishFx(){
   const s = petSeal, p = R.finish.position.clone().add(new V3(0, 2.6, 0));
-  sfx.good(); sfx.hug();
+  sfx.good(); sfx.hug(); gEv('rfx', {k:'fin'});
   for(let i = 0; i < 3; i++) setTimeout(() => { burst(TEX.star, p, 14, 2.6, 0.32); burst(TEX.heart, p, 6, 2, 0.28); }, i*250);
   floatText(L('Финиш!', 'Finish!'), headTop(s), '#D9527E');
   s.happyUntil = now + 4; setMood(s, 'happy');
@@ -656,11 +676,15 @@ async function advMap(){
     <p class="adv-count">🐟 ${L(`Рыбки: ${save.adv.fish.length} из ${FISH_ALL.length}`, `Fish: ${save.adv.fish.length} of ${FISH_ALL.length}`)} · ✨ ${L(`Секреты: ${save.adv.sec.length} из ${Object.keys(LEVELS).length}`, `Secrets: ${save.adv.sec.length} of ${Object.keys(LEVELS).length}`)}</p>
     <div class="isles">${ISLES.filter(is => !is.soon).map(is => is.levels.map(id => lvBtn(is, id)).join('')).join('')}
       <div class="isle lock soon"><span class="ic" aria-hidden="true">${ISLES.filter(is => is.soon).map(is => is.ic).join('')}</span><span class="t"><b>${L('Новые острова', 'New islands')}</b><small>${ISLES.filter(is => is.soon).map(is => is.name).join(', ')} — ${L('скоро! 🔒', 'coming soon! 🔒')}</small></span></div></div>
+    ${GL && GL.role === 'run' ? `<p class="got gull-on">🐦 ${L('Чайка с тобой! Выбирай, куда бежим', 'The gull is with you! Pick where to dash')}</p>`
+      : typeof netAvail === 'function' && netAvail() ? `<button class="btn ghost small gull-call" data-lv="@gull">🐦 ${L('Позвать чайку-помощника', 'Call the helper gull')}</button>` : ''}
     <button class="btn ghost small" data-lv="">${L('Потом', 'Later')}</button>`);
   document.body.classList.add('map-on');   // кнопки в углу прячем: карта высокая, на телефоне они закрывали бы задания
   const lv = await new Promise(r => panel.querySelectorAll('[data-lv]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.lv || null); })));
   document.body.classList.remove('map-on');
   panel.classList.add('away'); await wait(0.25); mgClose();
+  if(lv === '@gull'){ await gullCall(); return advMap(); }   // по сети: папа (или друг) прилетит чайкой — js/gull.js
+  if(!lv && GL) gullRunEnd();
   return lv;
 }
 
@@ -711,10 +735,11 @@ async function petRun(s, id){
     mgOpen('', {hintBottom:true});
     runHudEl = mgNode('div', 'run-hud', `<span class="pill"><i class="pic">🐚</i> <b class="sh">0</b></span><span class="pill">🐟 <b class="fi">0/0</b></span><span class="bar"><i></i><span class="flag" aria-hidden="true">🏁</span></span>`);
     runHud();
+    if(GL) gullRunStart();   // чайка-помощник по сети (js/gull.js)
     let done;
     const fin = new Promise(r => done = r);
     runControls();
-    mgTick(dt => { if(R) runStep(dt); if(R.state === 'end' && R.sp < 0.15 && R.endK >= 1 && (!R.cloud || R.friendDone) && !R.over){ R.over = true; done(); } });
+    mgTick(dt => { if(R) runStep(dt); if(GL) gullRunTick(dt); if(R.state === 'end' && R.sp < 0.15 && R.endK >= 1 && (!R.cloud || R.friendDone) && !R.over){ R.over = true; done(); } });
     runQuit = () => { R.quit = true; done(); };
     // 3, 2, 1 — поехали! (на паузе отсчёт ждёт)
     const tick = async t => { while(R.paused) await wait(0.1); await wait(t); };
@@ -729,11 +754,13 @@ async function petRun(s, id){
     if(R.quit){ mgClose(); break; }   // ушли домой с паузы: без итогов, забег можно пройти потом
     await wait(0.6);
     result = runResults();
+    if(GL) gullRunRes(result);
     mgHint('');
     again = await runResultPanel(result);
     mgClose();
   }
   // домой: малыш снова в уголке
+  if(GL) gullRunEnd();
   runQuit = null; runBtn(false);
   flash();
   runRoot.visible = false; runCam.on = false; homeLights(false);
@@ -792,7 +819,7 @@ function runResults(){
   const today = new Date().toDateString(); save.adv.day = {d:today, n:runsToday() + 1};
   persist();
   return {stars, shellsOk, fishOk, shells:r.shells, total:r.total, fish:r.fish, fishTotal:r.fishTotal, starRun:r.stars, cup, friend, tickles:r.tickles || 0, id:r.id,
-    secNew, newFish:r.newFish.slice(), quests, questsAll,
+    secNew, newFish:r.newFish.slice(), quests, questsAll, gull:GL && GL.role === 'run' ? GL.helps : 0,
     gift:(r.stars ? 0 : r.shells) + (cup ? CUP_GIFT : 0) + (secNew ? SECRET_GIFT : 0) + quests.length*QUEST_GIFT};
 }
 const CUP_GIFT = 10;
@@ -813,6 +840,7 @@ async function runResultPanel(res){
       ${row(res.shellsOk, res.starRun ? L('Звёздочки', 'Stars') : L('Ракушки', 'Shells'), L(`${res.shells} из ${res.total}`, `${res.shells} of ${res.total}`))}
       ${row(res.fishOk, L('Спасли всех рыбок', 'Saved all the fish'), L(`${res.fish} из ${res.fishTotal}`, `${res.fish} of ${res.fishTotal}`))}
     </ul>
+    ${res.gull ? `<p class="got">🐦 ${L('Чайка помогла', 'The gull helped')}: ${res.gull} ${plural(res.gull, 'раз', 'раза', 'раз', 'time', 'times')}</p>` : ''}
     ${res.tickles ? `<p class="got">${L(`Пощекотали Тучку: ${res.tickles} ☁️`, `Tickled the Cloud: ${res.tickles} ☁️`)}</p>` : ''}
     ${res.friend ? `<p class="got cup">☁️ ${L('Тучка подружилась! Теперь она живёт над твоим уголком', 'The Cloud is your friend now! It lives above your corner')}</p>` : ''}
     ${res.starRun ? `<p class="got">${L('Ракушки на сегодня собраны — прилив принесёт новые завтра 🌊', 'The shells for today are collected — the tide brings new ones tomorrow 🌊')}</p>` : ''}

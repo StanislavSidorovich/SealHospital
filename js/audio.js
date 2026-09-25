@@ -99,6 +99,10 @@ const sfx = {
   boost(){ tone(380, 0.4, {type:'triangle', vol:0.07, to:1400, att:0.03}); noise(0.35, {vol:0.04, freq:1200, to:3200, delay:0.05, att:0.08}); },
   // ворчание Тучки: мягкое «бу-бу», без пилы
   grr(){ tone(147, 0.28, {type:'triangle', vol:0.075, to:131, att:0.03, vib:0.04, vibHz:9}); tone(131, 0.34, {type:'triangle', vol:0.07, to:110, delay:0.3, att:0.03, vib:0.04, vibHz:9}); },
+  // чайка-помощник (Фаза 13): «кьяу-кьяу» — высокое, с переливом, не резкое
+  caw(){ [0, 0.16].forEach((d, i) => { tone(1180 - i*90, 0.12, {type:'triangle', vol:0.055, to:820 - i*60, delay:d, att:0.01, vib:0.04, vibHz:22}); tone(2300 - i*150, 0.08, {vol:0.012, to:1600, delay:d, att:0.01}); }); },
+  // спасательный круг в забеге: «бдынь» вверх
+  boing(){ tone(200, 0.3, {type:'triangle', vol:0.1, to:560, att:0.01, vib:0.06, vibHz:14}); bell(pn(9), {vol:0.03, delay:0.1, d:0.3}); },
   // «кря» пингвина Пинга: гнусавое и смешное, два раза
   quack(){ [0, 0.17].forEach((d, i) => { tone(760 - i*60, 0.13, {type:'triangle', vol:0.08, to:520 - i*40, delay:d, att:0.01, vib:0.05, vibHz:28}); tone(1500 - i*120, 0.1, {vol:0.02, to:1040, delay:d, att:0.01}); }); },
   siren(){ [7, 5, 7, 5, 7, 5].forEach((n, i) => bell(pn(n), {vol:0.04, delay:i*0.26, d:0.3})); },   // «скорая»: ти-ду, ти-ду — колокольчики, не вой

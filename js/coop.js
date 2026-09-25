@@ -533,6 +533,7 @@ async function coopMenu(){
         ${pingOk ? `<button data-k="ping"><span class="ic">🐧</span><b>${L('С Пингом', 'With Ping')}</b><small>${L('он поможет', 'he\'ll help')}</small></button>` : ''}
         <button data-k="solo"${pingOk ? '' : ' class="wide"'}><span class="ic">🦭</span><b>${L('Без напарника', 'Solo')}</b><small>${L('полегче', 'a bit easier')}</small></button>
       </div>
+      ${netAvail() ? `<p class="got small-note">🐦 ${L('Если напарник позвал чайку из забега — выбирай «По сети», и ты прилетишь к нему чайкой', 'If your partner called the gull from a dash, pick “Online” and you will fly in as the gull')}</p>` : ''}
       ${save.coop.wins ? `<p class="got">🏆 ${L(`Побед над Тучей: ${save.coop.wins}`, `Wins against the Cloud: ${save.coop.wins}`)}</p>` : ''}
       <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
     const k = await new Promise(r => panel.querySelectorAll('[data-k]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
@@ -543,13 +544,15 @@ async function coopMenu(){
   }
 }
 // знакомство по сети: обмениваемся малышами, хозяин даёт старт
-function coHello(){
+// want — чем занят: 'fight' (бой с Тучей) или 'run' (забег, напарник прилетит чайкой — js/gull.js); придёт в pal.want
+function coHello(want = 'fight'){
   return new Promise(res => {
     let got = null, t = null;
-    netOn('hi', m => { got = m.pet || {}; netSend({t:'hi2', pet:coPetDesc()}); fin(); });
-    netOn('hi2', m => { got = m.pet || {}; fin(); });
+    const take = m => { got = {...(m.pet || {}), want:m.want || 'fight'}; };
+    netOn('hi', m => { take(m); netSend({t:'hi2', pet:coPetDesc(), want}); fin(); });
+    netOn('hi2', m => { take(m); fin(); });
     const fin = () => { clearTimeout(t); res(got); };
-    netSend({t:'hi', pet:coPetDesc()});
+    netSend({t:'hi', pet:coPetDesc(), want});
     t = setTimeout(() => res(got || {}), 8000);
   });
 }
@@ -560,6 +563,7 @@ async function coopFight(mode){
   if(mode === 'net'){
     mgOpen(L('Здороваемся… 👋', 'Saying hello… 👋'));
     pal0 = await coHello(); mgClose();
+    if(pal0 && pal0.want === 'run' && typeof gullFly === 'function') return gullFly(pal0);   // напарник в забеге — летим к нему чайкой
   }
   coBuild();
   sfx.whoosh(); flash();
@@ -667,11 +671,13 @@ async function coResultPanel(res){
 
 /* ---------- вход: из «Поиграть» у малыша или с первого экрана ---------- */
 FUN_COST.coop = {food:0.2, bath:0.2, sleep:0.2};
-FUN_SAY.coop = () => L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
+let coGull = false;   // последний раз летали чайкой в чужом забеге (js/gull.js), а не бились с Тучей
+FUN_SAY.coop = () => coGull ? L('Хорошо полетали чайкой! 🐦', 'Great flying as the gull! 🐦') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
 async function coopFromPet(s){
   const mode = await coopMenu();
   if(!mode){ s.happyUntil = 0; return false; }
   const res = await coopFight(mode);
+  coGull = !!(res && res.gull);
   s.root.position.copy(PET_SPOT); s.happyUntil = now + 3; setMood(s, 'happy');
   if(!res) return false;
 }

@@ -41,7 +41,9 @@ function sanitize(d){
 function sanitizeCoop(a){
   a = a && typeof a === 'object' ? a : {};
   const n = v => Number.isFinite(v) ? Math.max(0, v) : 0, day = a.day && typeof a.day === 'object' ? a.day : {};
-  return {wins:n(a.wins), tries:n(a.tries), net:n(a.net), day:{d:typeof day.d === 'string' ? day.d : '', n:n(day.n)}};
+  const gl = a.gull && typeof a.gull === 'object' ? a.gull : {};   // gull — сколько раз сегодня летал чайкой в чужом забеге (js/gull.js)
+  return {wins:n(a.wins), tries:n(a.tries), net:n(a.net), day:{d:typeof day.d === 'string' ? day.d : '', n:n(day.n)},
+    gull:{d:typeof gl.d === 'string' ? gl.d : '', n:n(gl.n)}};
 }
 // nb = {ping:{in — Пинг живёт по соседству с малышом, xp — дружба 💙 (сколько просьб выполнено),
 //        q:{d — день, id — просьба дня из PING_ASKS, ok — выполнена, got — подарок забран}}}
