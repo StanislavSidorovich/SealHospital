@@ -2,7 +2,7 @@
    Телефоны соединяются напрямую (WebRTC) через библиотеку PeerJS (vendor/peerjs.min.js).
    Бесплатный сервер PeerJS только «знакомит» телефоны, дальше сообщения идут напрямую;
    если сети не пускают напрямую (разные роутеры, мобильный интернет) — через ретранслятор TURN.
-   Свой TURN у PeerJS пропал (2026, серверы *.turn.peerjs.com больше не отвечают), поэтому TURN берём у Metered — см. NET_TURN.
+   Свой TURN у PeerJS пропал (2026, серверы *.turn.peerjs.com больше не отвечают), поэтому TURN берём у Metered (аккаунт папы) — см. NET_TURN.
    Комната — код из трёх картинок (🐟🦀🐙): один создаёт, второй вводит. Чужих нет, текстового чата нет.
    По сети идут только ходы игры (маленькие JSON), сохранения у каждого свои.
    Голос: кнопка 🎤 (микрофон включается только по нажатию, эхо гасит браузер).
@@ -12,26 +12,15 @@ const NET_EMO = ['🐟', '🦀', '🐙', '🐳', '🐧', '⭐', '🍓', '🌈'];
 const NET_PREFIX = 'sealhosp-v1-';
 const netAvail = () => typeof Peer === 'function' && (location.protocol === 'https:' || /^(localhost|127\.)/.test(location.hostname))
   && window.top === window && !/claude|anthropic/.test(location.hostname);   // Artifact живёт во фрейме — там сеть не пускают
-// Ретранслятор TURN от Metered: бесплатно 0,5 ГБ в месяц (ходы игры — крошки, голос — несколько часов).
-// Ключ: dashboard.metered.ca → TURN Server → API key; app — имя приложения из адреса <app>.metered.live.
-// Пусто — только напрямую (STUN): тогда на одном Wi-Fi или за «хорошими» роутерами работает, остальное — нет.
-const NET_TURN = {app:'', key:''};
-const NET_STUN = [{urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun1.l.google.com:19302'}, {urls:'stun:stun.cloudflare.com:3478'}];
-let netIceP = null;
-function netIce(){
-  if(!netIceP) netIceP = (async () => {
-    if(NET_TURN.key) try{
-      const ctl = new AbortController(); setTimeout(() => ctl.abort(), 5000);
-      const r = await fetch(`https://${NET_TURN.app}.metered.live/api/v1/turn/credentials?apiKey=${NET_TURN.key}`, {signal:ctl.signal});
-      const list = await r.json();
-      if(Array.isArray(list) && list.length) return NET_STUN.concat(list);
-    }catch(e){}
-    if(NET_TURN.key) netIceP = null;   // не вышло — в следующий раз спросим снова
-    return NET_STUN;
-  })();
-  return netIceP;
-}
-const netPeer = id => netIce().then(ice => { const o = {config:{iceServers:ice}}; return id ? new Peer(id, o) : new Peer(o); });
+// Ретранслятор TURN от Metered (аккаунт папы, бесплатно 0,5 ГБ в месяц: ходы игры — крошки, голос — несколько часов).
+// Логин и пароль — dashboard.metered.ca → TURN Server → TURN Credentials (папа решил держать их открыто, 25.09.2026).
+// Пустой логин — только напрямую (STUN).
+const NET_TURN = {user:'28869e4dbdec027198bc8687', pass:'i99j8h8y2lNNxuVq'};
+const NET_STUN = [{urls:'stun:stun.l.google.com:19302'}, {urls:'stun:stun.cloudflare.com:3478'}, {urls:'stun:stun.relay.metered.ca:80'}];
+const NET_ICE = NET_STUN.concat(NET_TURN.user ? [{
+  urls:['turn:global.relay.metered.ca:80', 'turn:global.relay.metered.ca:80?transport=tcp', 'turn:global.relay.metered.ca:443', 'turns:global.relay.metered.ca:443?transport=tcp'],
+  username:NET_TURN.user, credential:NET_TURN.pass}] : []);
+const netPeer = id => Promise.resolve().then(() => { const o = {config:{iceServers:NET_ICE}}; return id ? new Peer(id, o) : new Peer(o); });
 const net = {gen:0, peer:null, conn:null, host:false, code:'', on:{}, lastIn:0, hb:null, mic:null, call:null, audio:null, lost:false, onLost:null, onBack:null};
 
 function netCodeText(code){ return [...code].map(d => NET_EMO[+d]).join(''); }
@@ -134,7 +123,7 @@ function netMicOff(all){
 }
 
 // мелкая подпись с причиной — папе, чтобы понять, что сломалось
-const netWhy = why => why ? `<br><small class="net-why">(${String(why).replace(/[^\w-]/g, '')}${NET_TURN.key ? '' : ', no turn'})</small>` : '';
+const netWhy = why => why ? `<br><small class="net-why">(${String(why).replace(/[^\w-]/g, '')}${NET_TURN.user ? '' : ', no turn'})</small>` : '';
 
 /* ---------- экран «Играем вместе»: создать комнату или войти по коду ----------
    Возвращает 'ok' (соединились), или null (передумали). */
