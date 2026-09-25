@@ -38,20 +38,90 @@ const ISLES = [
   {id:'cave', ic:'🌌', name:L('Пещера северного сияния', 'Northern Lights Cave'), soon:true},
   {id:'village', ic:'🏘️', name:L('Деревня айсбергов', 'Iceberg Village'), soon:true}
 ];
+// Трек дня: уровень собирается из кусков (pool) в случайном по дате порядке — весь день дорожка одна и та же
+// (можно выучить), завтра другая. intro — всегда в начале (там учимся прыгать), finale — в конце, keep — кусок
+// с секретом: он есть каждый день и не отражается (подсказка «влево/вправо» остаётся верной). z в кусках — от его начала,
+// len — где он кончается (с приземлением после трамплина). Остальные куски иногда зеркалятся (полосы меняются местами).
+// Рыбки в пузырях висят над водой и с дорожкой не спорят: их FISH_N штук на равных расстояниях.
 const LEVELS = {
-  bay1: {name:L('Забег по льдинам', 'Ice floe dash'), len:318, items:[
-    ['line', 12, 3], ['drift', 30, 1], ['line', 40, 3, -1], ['fish', 50, -1], ['crack', 62, 1.6, 1], ['boost', 72, 0], ['drift', 80],
-    ['line', 88, 3, 1], ['crack', 102, 2.0], ['fish', 112, 1], ['drift', 126, 1], ['drift', 138], ['line', 146, 2, -1],
-    ['fish', 160, -1], ['boost', 166, 1], ['crack', 174, 2.2, 1], ['line', 184, 3, 1], ['drift', 200], ['fish', 210, 1], ['crack', 222, 1.8],
-    ['drift', 234], ['boost', 242, 0], ['ramp', 250], ['secret', 253.2, -1, 3.4], ['crack', 252.8, 1.4], ['fish', 270, -1], ['drift', 284, 1], ['line', 292, 4]]},
-  bay2: {name:L('Догони Тучку', 'Catch the Cloud'), len:300, chase:{every:[3.4, 5]}, after:'bay1', items:[
-    ['line', 14, 2], ['line', 25, 3, -1], ['drift', 28, 0, 0], ['boost', 40, 1], ['line', 44, 2, 1], ['fish', 55, 1],
-    ['drift', 66, 1], ['line', 77, 3, 0], ['drift', 80, 0, -1], ['drift', 80, 0, 1], ['crack', 94, 1.8, 1], ['fish', 104, -1],
-    ['boost', 114, 0], ['ramp', 122], ['crack', 124.8, 1.4], ['line', 136, 2, -1], ['drift', 140, 0, 1], ['secret', 140, 1, 1.2],
-    ['line', 149, 2, 1], ['drift', 152, 0, 0], ['fish', 162, 1], ['drift', 174, 1], ['boost', 186, -1], ['line', 190, 3, -1],
-    ['crack', 204, 2.0], ['line', 212, 2, 1], ['drift', 216, 0, -1], ['drift', 216, 0, 0], ['fish', 228, -1],
-    ['boost', 238, 1], ['line', 242, 2, 1], ['drift', 254], ['fish', 260, 1], ['line', 264, 2, 0], ['crack', 278, 2.2, 1], ['line', 286, 3]]}
+  bay1: {name:L('Забег по льдинам', 'Ice floe dash'), pick:9,
+    intro:{len:44, it:[['line', 12, 3], ['drift', 30, 1], ['line', 40, 3, -1]]},
+    pool:[
+      {len:22, it:[['crack', 2, 1.6, 1], ['boost', 12, 0], ['drift', 20]]},
+      {len:18, it:[['line', 0, 3, 1], ['crack', 14, 2.0]]},
+      {len:22, it:[['drift', 0, 1], ['drift', 12], ['line', 20, 2, -1]]},
+      {len:21, it:[['boost', 0, 1], ['crack', 8, 2.2, 1], ['line', 18, 3, 1]]},
+      {len:14, it:[['drift', 0], ['crack', 12, 1.8]]},
+      {len:15, it:[['line', 0, 3, 1], ['drift', 2, 0, 0], ['drift', 2, 0, -1], ['line', 10, 3, -1], ['drift', 13, 0, 0], ['drift', 13, 0, 1]]},   // змейка
+      {len:15, it:[['line', 0, 3, -1], ['line', 6, 3, 0], ['line', 12, 3, 1]]},   // лесенка ракушек
+      {len:16, it:[['boost', 0, 0], ['drift', 10, 1], ['line', 14, 2]]},
+      {len:15, it:[['crack', 0, 1.6], ['line', 6, 3, -1], ['drift', 13, 0, -1], ['line', 12, 3, 1]]},
+      {keep:true, len:30, it:[['drift', 0], ['boost', 8, 0], ['ramp', 16], ['secret', 19.2, -1, 3.4], ['crack', 18.8, 1.4]]}],
+    finale:{len:14, it:[['drift', 0, 1], ['line', 8, 4]]}},
+  bay2: {name:L('Догони Тучку', 'Catch the Cloud'), chase:{every:[3.4, 5]}, after:'bay1', pick:8,
+    intro:{len:34, it:[['line', 14, 2], ['line', 25, 3, -1], ['drift', 28, 0, 0]]},
+    pool:[
+      {len:16, it:[['boost', 0, 1], ['line', 4, 2, 1], ['drift', 16]]},
+      {len:14, it:[['drift', 0, 1], ['line', 11, 3, 0], ['drift', 14, 0, -1], ['drift', 14, 0, 1]]},
+      {len:30, it:[['crack', 0, 1.8, 1], ['boost', 10, 0], ['ramp', 18], ['crack', 20.8, 1.4]]},
+      {len:14, it:[['drift', 0, 0, 0], ['boost', 8, 1], ['line', 12, 2, 1]]},
+      {len:19, it:[['drift', 0, 1], ['boost', 12, -1], ['line', 16, 3, -1]]},
+      {len:12, it:[['crack', 0, 2.0], ['line', 8, 2, 1], ['drift', 12, 0, -1], ['drift', 12, 0, 0]]},
+      {len:14, it:[['line', 0, 3, -1], ['drift', 8, 0, 1], ['drift', 8, 0, 0], ['line', 12, 2, 0]]},
+      {keep:true, len:18, it:[['line', 0, 2, -1], ['drift', 4, 0, 1], ['secret', 4, 1, 1.2], ['line', 13, 2, 1], ['drift', 16, 0, 0]]}],
+    finale:{len:26, it:[['line', 0, 2, 0], ['crack', 14, 2.2, 1], ['line', 22, 3]]}}
 };
+const CHUNK_GAP = 7, FISH_N = 5;
+// Задания дня (как миссии в Subway Surfers): каждый день три из списка, каждое — за один забег на любом уровне.
+// За задание QUEST_GIFT ракушек, за все три — малышу сердечки. need — задание есть, только если уровень уже открыт
+const QUESTS = [
+  {id:'shells20', t:L('Собери 20 ракушек за забег', 'Collect 20 shells in one dash'), ok:r => r.shells >= 20},
+  {id:'boost3',   t:L('Прокатись по 3 ускорителям 🚀', 'Ride over 3 boost arrows 🚀'), ok:r => r.boosts.filter(b => b.used).length >= 3},
+  {id:'fishall',  t:L('Спаси всех рыбок за один забег 🫧', 'Free all the fish in one dash 🫧'), ok:r => r.fish >= r.fishTotal},
+  {id:'nobonk',   t:L('Пробеги без «Бух!» и «Плюх!»', 'Finish without a “Bonk!” or “Splash!”'), ok:r => !r.bonks},
+  {id:'jumps12',  t:L('Прыгни 12 раз за забег', 'Jump 12 times in one dash'), ok:r => r.jumps >= 12},
+  {id:'lanes10',  t:L('Смени полосу 10 раз ⬅️➡️', 'Change lanes 10 times ⬅️➡️'), ok:r => r.lanes >= 10},
+  {id:'secret',   t:L('Найди золотую ракушку ✨', 'Find the golden shell ✨'), ok:r => r.secret},
+  {id:'tickle2',  t:L('Пощекочи Тучку 2 раза ☁️', 'Tickle the Cloud twice ☁️'), ok:r => (r.tickles || 0) >= 2, need:'bay2'}
+];
+const QUEST_GIFT = 5, QUEST_HEARTS = 10;
+const lvOpen = id => !LEVELS[id].after || (save.adv.best[LEVELS[id].after] || 0) > 0;
+function advQuests(){   // задания на сегодня (новый день — новые задания)
+  const q = save.adv.quest, day = advDayKey();
+  if(q.d !== day || q.ids.length !== 3){
+    const rnd = seeded(day + 'quest');
+    const ids = QUESTS.filter(x => !x.need || lvOpen(x.need)).map(x => [rnd(), x.id]).sort((a, b) => a[0] - b[0]).slice(0, 3).map(x => x[1]);
+    save.adv.quest = {d:day, ids, done:[]}; persist();
+  }
+  return save.adv.quest;
+}
+const questDef = id => QUESTS.find(x => x.id === id);
+let advDayKey = () => new Date().toDateString();   // «какой сегодня день» для трека и заданий (в проверках можно подменить)
+function seeded(str){   // одинаковая строка — одинаковая цепочка случайных чисел (FNV-1a + mulberry32)
+  let h = 2166136261; for(const c of str){ h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return () => { h = h + 0x6D2B79F5 | 0; let t = Math.imul(h ^ h >>> 15, 1 | h); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0)/4294967296; };
+}
+// где в предмете номер полосы (для зеркала): line/drift — 4-й, boost/secret — 3-й
+const LN_AT = {line:3, drift:3, boost:2, secret:2};
+function dayLayout(id){
+  const lv = LEVELS[id], rnd = seeded(advDayKey() + id);
+  const pool = lv.pool.filter(c => !c.keep).map(c => [rnd(), c]).sort((a, b) => a[0] - b[0]).map(x => x[1]).slice(0, lv.pick - 1);
+  lv.pool.filter(c => c.keep).forEach(c => pool.splice(1 + Math.floor(rnd()*(pool.length - 1)), 0, c));   // секрет — не первым и не последним
+  const items = lv.intro.it.map(it => it.slice()); let z = lv.intro.len + CHUNK_GAP;
+  for(const c of [...pool, lv.finale]){
+    const mir = !c.keep && c !== lv.finale && rnd() < 0.5;
+    for(const it of c.it){
+      const o = it.slice(); o[1] += z;
+      const k = LN_AT[o[0]]; if(mir && k !== undefined && o[k] !== undefined) o[k] = -o[k];
+      items.push(o);
+    }
+    z += c.len + CHUNK_GAP;
+  }
+  const len = z - CHUNK_GAP + 4, side = rnd() < 0.5 ? -1 : 1;
+  for(let i = 0; i < FISH_N; i++) items.push(['fish', 50 + i*(len - 84)/(FISH_N - 1), i % 2 ? side : -side]);
+  items.sort((a, b) => a[1] - b[1]);   // по порядку: первый сугроб, первый пузырь — для подсказок
+  return {items, len};
+}
 const levelName = id => LEVELS[id].name;
 // где искать секрет — подсказка в итогах, пока не нашли
 const SECRET_TIP = {bay1:L('В полёте с трамплина сверни влево ⬅️', 'While flying off the ramp, swipe left ⬅️'),
@@ -203,10 +273,10 @@ let R = null;   // текущий забег
 const runAt = (z, x = 0, y = 0) => new V3(RUN_POS.x + x, 0.25 + y, RUN_POS.z - z);
 function runBuild(id){
   if(R && R.grp) runRoot.remove(R.grp);
-  const lv = LEVELS[id], grp = new THREE.Group(); runRoot.add(grp);
+  const lv = {...LEVELS[id], ...dayLayout(id)}, grp = new THREE.Group(); runRoot.add(grp);
   const r = {id, lv, grp, z:-4, y:0, vy:0, air:false, sp:RUN_SPEED, splash:0, tumble:0, shells:0, fish:0, total:0, fishTotal:0,
     lane:0, x:0, boost:0, ramp:null, bumpT:0,
-    pick:[], drifts:[], cracks:[], bubbles:[], boosts:[], ramps:[], snowballs:[], puffT:0, slow:null, newFish:[], secret:false,
+    pick:[], drifts:[], cracks:[], bubbles:[], boosts:[], ramps:[], snowballs:[], puffT:0, slow:null, newFish:[], secret:false, jumps:0, lanes:0, bonks:0,
     taught:{jump:save.adv.runs > 0, fish:save.adv.runs > 0}, state:'ready',   // подсказки с замедлением про прыжок и рыбок — только в самом первом забеге
     stars:runsToday() >= RUN_DAILY};   // сегодня уже бегали — на дорожке звёздочки вместо ракушек
   const shell = (z, x, y, extra) => {
@@ -253,7 +323,7 @@ const inCrack = z => R.cracks.some(c => z > c.z0 + 0.15 && z < c.z1 - 0.15);
 /* ---------- касания и события забега ---------- */
 function runJump(){
   if(R.air || R.splash > 0 || R.tumble > 0.25 || R.ramp) return;
-  R.air = true; R.vy = RUN_VY; sfx.whoosh();
+  R.air = true; R.vy = RUN_VY; R.jumps++; sfx.whoosh();
   if(R.slow === 'jump'){ R.slow = null; R.taught.jump = true; runSayHint(L('Ура! Так и прыгай 👍', 'Yay! Jump just like that 👍'), 1600); }
 }
 function runSayHint(t, ms){ mgHint(t); setTimeout(() => { if(R && R.state === 'go' && !R.slow && mgHintEl.textContent === t) mgHint(''); }, ms); }
@@ -261,7 +331,7 @@ function runLane(dir){   // на соседнюю полосу; у края — 
   if(R.splash > 0) return;
   const to = R.lane + dir;
   if(to < -1 || to > 1){ R.bumpT = 0.25; sfx.plop(); return; }
-  R.lane = to; sfx.rub(); sfx.tap();
+  R.lane = to; R.lanes++; sfx.rub(); sfx.tap();
   if(R.slow === 'lane' && R.lane === R.slowLn){ R.slow = null; tipDone('lane'); runSayHint(L('Отлично! Вот так и рули 👍', 'Great! That\'s how you steer 👍'), 1600); }
 }
 function runBubbleAt(e){
@@ -305,7 +375,7 @@ function runScatter(){
   runHud();
 }
 function runCrash(d){   // сугроб: кувырок через голову, сугроб — «пуф» и приплюснулся
-  const s = petSeal; d.hit = true; R.tumble = 0.7; R.sp = RUN_SPEED*0.45; R.boost = 0;
+  const s = petSeal; d.hit = true; R.bonks++; R.tumble = 0.7; R.sp = RUN_SPEED*0.45; R.boost = 0;
   sfx.plop(); sfx.arf(); floatText(L(['Ой!', 'Бух!', 'Упс!'], ['Oops!', 'Bonk!', 'Whoops!'])[Math.floor(Math.random()*3)], headTop(s));
   burst(TEX.puff, d.o.position.clone().add(new V3(0, 0.4, 0)), 10, 1.6, 0.5);
   const s0 = d.o.scale.clone();
@@ -314,7 +384,7 @@ function runCrash(d){   // сугроб: кувырок через голову,
   if(!R.saidOops){ R.saidOops = true; runSayHint(L('Ничего! Ракушки впереди — подбери их снова', 'No problem! The shells are ahead — pick them up again'), 2200); }
 }
 function runSplash(){   // трещина: плюх в воду и сам выпрыгивает
-  R.splash = 0.35; R.air = false; R.vy = 0; R.sp = RUN_SPEED*0.55; R.boost = 0;
+  R.splash = 0.35; R.bonks++; R.air = false; R.vy = 0; R.sp = RUN_SPEED*0.55; R.boost = 0;
   sfx.splash(); burst(TEX.puff, runPupAt().setY(0.1), 10, 1.6, 0.45);
   floatText(L('Плюх!', 'Splash!'), headTop(petSeal), '#3E8DB8');
   runScatter(); cloudLaugh();
@@ -560,6 +630,12 @@ function runFinishFx(){
 }
 
 /* ---------- карта островков ---------- */
+function questBox(){
+  const q = advQuests(), all = q.done.length >= q.ids.length;
+  return `<div class="quests"><p class="qt">${L('Задания дня', 'Today\'s tasks')} <small>${L('дорожки сегодня новые!', 'new tracks today!')}</small></p>
+    <ul>${q.ids.map(id => `<li class="${q.done.includes(id) ? 'ok' : ''}"><span class="ck" aria-hidden="true">${q.done.includes(id) ? '✓' : ''}</span>${questDef(id).t}<b>+${QUEST_GIFT} 🐚</b></li>`).join('')}</ul>
+    <p class="qall">${all ? L(`Все задания выполнены! Завтра будут новые ♡`, `All tasks done! New ones tomorrow ♡`) : L(`Все три — ${save.pet.name} получит +${QUEST_HEARTS} 💗`, `All three — ${save.pet.name} gets +${QUEST_HEARTS} 💗`)}</p></div>`;
+}
 function advStars(id){ return save.adv.best[id] || 0; }
 async function advMap(){
   mgOpen(L('Куда отправимся?', 'Where shall we go?'));
@@ -573,12 +649,14 @@ async function advMap(){
   };
   const panel = mgNode('div', 'mg-panel adv-map', `
     <p class="ttl display">${L('Карта приключений', 'Adventure map')}</p>
+    ${questBox()}
     <p class="adv-count">🐟 ${L(`Рыбки: ${save.adv.fish.length} из ${FISH_ALL.length}`, `Fish: ${save.adv.fish.length} of ${FISH_ALL.length}`)} · ✨ ${L(`Секреты: ${save.adv.sec.length} из ${Object.keys(LEVELS).length}`, `Secrets: ${save.adv.sec.length} of ${Object.keys(LEVELS).length}`)}</p>
-    <div class="isles">${ISLES.map(is => is.soon
-      ? `<div class="isle lock"><span class="ic" aria-hidden="true">${is.ic}</span><span class="t"><b>${is.name}</b><small>${L('Скоро! 🔒', 'Coming soon! 🔒')}</small></span></div>`
-      : is.levels.map(id => lvBtn(is, id)).join('')).join('')}</div>
+    <div class="isles">${ISLES.filter(is => !is.soon).map(is => is.levels.map(id => lvBtn(is, id)).join('')).join('')}
+      <div class="isle lock soon"><span class="ic" aria-hidden="true">${ISLES.filter(is => is.soon).map(is => is.ic).join('')}</span><span class="t"><b>${L('Новые острова', 'New islands')}</b><small>${ISLES.filter(is => is.soon).map(is => is.name).join(', ')} — ${L('скоро! 🔒', 'coming soon! 🔒')}</small></span></div></div>
     <button class="btn ghost small" data-lv="">${L('Потом', 'Later')}</button>`);
+  document.body.classList.add('map-on');   // кнопки в углу прячем: карта высокая, на телефоне они закрывали бы задания
   const lv = await new Promise(r => panel.querySelectorAll('[data-lv]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.lv || null); })));
+  document.body.classList.remove('map-on');
   panel.classList.add('away'); await wait(0.25); mgClose();
   return lv;
 }
@@ -705,12 +783,14 @@ function runResults(){
   save.adv.best[r.id] = Math.max(best, stars);
   if(cup) save.adv.cups.push(r.id);
   const secNew = r.secret && !save.adv.sec.includes(r.id); if(secNew) save.adv.sec.push(r.id);
+  const q = advQuests(), quests = q.ids.filter(id => !q.done.includes(id) && questDef(id).ok(r));
+  q.done.push(...quests); const questsAll = quests.length > 0 && q.done.length >= q.ids.length;
   save.adv.runs++;
   const today = new Date().toDateString(); save.adv.day = {d:today, n:runsToday() + 1};
   persist();
   return {stars, shellsOk, fishOk, shells:r.shells, total:r.total, fish:r.fish, fishTotal:r.fishTotal, starRun:r.stars, cup, friend, tickles:r.tickles || 0, id:r.id,
-    secNew, newFish:r.newFish.slice(),
-    gift:(r.stars ? 0 : r.shells) + (cup ? CUP_GIFT : 0) + (secNew ? SECRET_GIFT : 0)};
+    secNew, newFish:r.newFish.slice(), quests, questsAll,
+    gift:(r.stars ? 0 : r.shells) + (cup ? CUP_GIFT : 0) + (secNew ? SECRET_GIFT : 0) + quests.length*QUEST_GIFT};
 }
 const CUP_GIFT = 10;
 // «Пузырик и Мятка переехали в твой аквариум!» — или ждут, пока аквариум появится в домике
@@ -733,6 +813,8 @@ async function runResultPanel(res){
     ${res.tickles ? `<p class="got">${L(`Пощекотали Тучку: ${res.tickles} ☁️`, `Tickled the Cloud: ${res.tickles} ☁️`)}</p>` : ''}
     ${res.friend ? `<p class="got cup">☁️ ${L('Тучка подружилась! Теперь она живёт над твоим уголком', 'The Cloud is your friend now! It lives above your corner')}</p>` : ''}
     ${res.starRun ? `<p class="got">${L('Ракушки на сегодня собраны — прилив принесёт новые завтра 🌊', 'The shells for today are collected — the tide brings new ones tomorrow 🌊')}</p>` : ''}
+    ${res.quests.map(id => `<p class="got quest">✅ ${questDef(id).t} <b>+${QUEST_GIFT} 🐚</b></p>`).join('')}
+    ${res.questsAll ? `<p class="got cup">🎉 ${L(`Все задания дня! ${save.pet.name}: +${QUEST_HEARTS} 💗`, `All of today's tasks! ${save.pet.name}: +${QUEST_HEARTS} 💗`)}</p>` : ''}
     ${res.newFish.length ? `<p class="got fishy">🐟 ${fishMoved(res.newFish)}</p>` : ''}
     ${res.secNew ? `<p class="got cup">✨ ${L(`Золотая секретная ракушка! +${SECRET_GIFT} 🐚`, `The golden secret shell! +${SECRET_GIFT} 🐚`)}</p>`
       : !save.adv.sec.includes(res.id) && save.adv.runs > 1 ? `<p class="tip">✨ ${L('Тут спрятана золотая ракушка.', 'A golden shell is hidden here.')} ${SECRET_TIP[res.id] || ''}</p>` : ''}
@@ -741,6 +823,7 @@ async function runResultPanel(res){
     <div class="row"><button class="btn" data-k="home">${L('Домой 🏠', 'Home 🏠')}</button><button class="btn ghost" data-k="again">${L('Ещё раз ↻', 'Again ↻')}</button></div>`);
   panel.querySelectorAll('.res-stars li').forEach((li, i) => setTimeout(() => { li.classList.add('in'); if(li.classList.contains('ok')) sfx.star(); }, 250 + i*380));
   if(res.gift) setTimeout(() => addShells(res.gift, toScreen(headTop(petSeal))), 1400);
+  if(res.questsAll) setTimeout(() => petGive(QUEST_HEARTS), 2000);
   if(res.stars === 3) setTimeout(() => { sfx.hug(); burst(TEX.heart, headTop(petSeal), 16, 2.2, 0.3); }, 1500);
   const k = await new Promise(r => panel.querySelectorAll('[data-k]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
   panel.classList.add('away'); await wait(0.25);

@@ -34,13 +34,15 @@ function sanitize(d){
 }
 // adv = {best:{уровень: звёзды 0…3}, cups:[уровни, где спасли всех рыбок — кубок на полке в домике], runs, day:{d, n} — забегов сегодня,
 //        tips:[какие подсказки забега уже показали: lane, boost, snow, tickle],
-//        fish:[спасённые рыбки RUN_FISH — живут в аквариуме в домике], sec:[уровни, где нашли секретную ракушку]} (js/adventure.js)
+//        fish:[спасённые рыбки RUN_FISH — живут в аквариуме в домике], sec:[уровни, где нашли секретную ракушку],
+//        quest:{d — день, ids — три задания дня, done — какие выполнены}} (js/adventure.js)
 function sanitizeAdv(a){
   a = a && typeof a === 'object' ? a : {};
   const best = a.best && typeof a.best === 'object' ? Object.fromEntries(Object.entries(a.best).filter(([, v]) => Number.isInteger(v)).map(([k, v]) => [k, Math.min(3, Math.max(0, v))])) : {};
   const day = a.day && typeof a.day.d === 'string' && Number.isFinite(a.day.n) ? {d:a.day.d, n:a.day.n} : {d:'', n:0};
   return {best, cups:[...new Set(strList(a.cups))], runs:Number.isFinite(a.runs) ? a.runs : 0, day, tips:[...new Set(strList(a.tips))],
-    fish:[...new Set(strList(a.fish))], sec:[...new Set(strList(a.sec))]};
+    fish:[...new Set(strList(a.fish))], sec:[...new Set(strList(a.sec))],
+    quest:a.quest && typeof a.quest.d === 'string' ? {d:a.quest.d, ids:strList(a.quest.ids), done:strList(a.quest.done)} : {d:'', ids:[], done:[]}};
 }
 // home = {s:{слот: id вещи}, v} — мебель в иглу малыша (js/home.js) и заходили ли туда. Нет поля — стартовая мебель.
 // Купленная мебель, как и всё из лавки, лежит в owned; пустой слот — просто нет ключа.

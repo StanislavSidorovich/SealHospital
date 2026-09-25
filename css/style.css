@@ -481,6 +481,18 @@ body.mg-on #homeCard,body.mg-on #homeBar{display:none!important}
 .home-pick .row .btn.ghost{flex:1}
 .finds-panel .finds i[data-n]{cursor:pointer}
 .fish-panel .finds i img{width:100%;height:100%;object-fit:contain}
+.quests{margin:0 0 8px;padding:6px 10px;border:2.5px solid var(--ink);border-radius:16px;background:#F3FBF7;text-align:left}
+.quests .qt{margin:0 0 4px;font-family:"Pangolin","Comic Sans MS",cursive;font-size:18px}
+.quests .qt small{font-family:"Nunito",sans-serif;font-size:12px;font-weight:800;color:var(--soft)}
+.quests ul{list-style:none;margin:0;padding:0}
+.quests li{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:800;line-height:1.25;padding:2px 0}
+.quests li b{margin-left:auto;white-space:nowrap;font-size:12.5px;color:var(--soft)}
+.quests .ck{flex:none;width:18px;height:18px;border-radius:6px;border:2px solid var(--ink);background:#fff;display:grid;place-items:center;font-size:12px;color:#2F9E72}
+.quests li.ok{color:#2F9E72}
+.quests li.ok .ck{background:var(--mint,#DDF5EA)}
+.quests .qall{margin:4px 0 0;font-size:12px;font-weight:800;color:var(--soft)}
+.run-end .got.quest{color:#2F9E72;font-size:14px}
+.run-end .got.quest b{color:var(--soft)}
 .adv-count{margin:-4px 0 8px;font-weight:800;font-size:14px;color:var(--soft);text-align:center}
 .isle .sec{font-style:normal;display:inline-grid;place-items:center;width:22px;height:22px;margin-left:4px;border-radius:50%;border:2px dashed #C9C4D6;color:#B9B6C6;font-size:12px;font-weight:800;vertical-align:middle}
 .isle .sec.on{border:2px solid #E0A21B;background:#FFF1BF;font-size:12px}
@@ -516,6 +528,10 @@ body.mg-on #homeCard,body.mg-on #homeBar{display:none!important}
 .run-end .earned{text-align:center;margin:0 0 10px!important}
 /* пауза в забеге: в углу только звук и 🏠 */
 body.run-on #corner>:not(#btnSound):not(#btnRunHome){display:none!important}
+body.map-on #corner>:not(#btnSound){display:none!important}
+.isle.soon{min-height:52px}
+.isle.soon .ic{width:auto;padding:0 8px;border-radius:22px;font-size:22px;letter-spacing:2px}
+.isle.soon b{font-size:17px}
 .run-pause .ttl{font-size:28px;margin:2px 0 6px;text-align:center}
 .run-pause .got{font-size:16px;font-weight:700;margin:0 0 12px;text-align:center}
 @media (prefers-reduced-motion:reduce){ .isle.on{animation:none} }
