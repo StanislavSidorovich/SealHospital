@@ -409,6 +409,7 @@ function frame(ts){
   petTick(t, dt); walkTick(t); homeTick(t, dt); mailTick(t, dt); advTick(t, dt);
   if(typeof holTick === 'function') holTick(t, dt);
   if(typeof nbTick === 'function') nbTick(t, dt);   // сосед Пинг (js/neighbors.js)   // старый index.html из кеша может ещё не знать про holidays.js
+  if(typeof gullIsleTick === 'function') gullIsleTick(t, dt);   // чайка напарника порхает над уголком (js/gull.js)
   updateParts(dt);
   renderer.render(scene, camera);
 }

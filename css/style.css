@@ -598,3 +598,34 @@ body.map-on #corner>:not(#btnSound){display:none!important}
 .adv-map .gull-call{display:block;margin:0 auto 8px}
 .adv-map .gull-on{text-align:center;background:#DDF5EA;border:2px solid var(--ink);border-radius:14px;padding:6px 10px}
 .co-pick .small-note{font-size:13px;opacity:.85}
+/* выбор парной игры (js/coop.js) */
+.co-games{display:flex;gap:6px;margin:0 0 8px;background:#EAF4FF;border:2.5px solid var(--ink);border-radius:18px;padding:4px}
+.co-games button{flex:1;min-height:52px;border:0;border-radius:14px;background:transparent;font-family:"Pangolin","Comic Sans MS",cursive;font-size:18px;line-height:1.1;color:var(--ink);white-space:nowrap}
+.co-games button[aria-selected="true"]{background:var(--pink);box-shadow:inset 0 0 0 2px var(--ink)}
+.co-pick .co-wins:empty{display:none}
+/* «Спасаем потеряшку» (js/rescue.js): ◀ ▶ слева, ⬆️ и действие справа */
+.rs-pad{position:absolute;left:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;gap:12px}
+.rs-pad button,.rs-act{width:74px;height:74px;border-radius:50%;border:2.5px solid var(--ink);background:var(--paper);box-shadow:0 5px 0 var(--ink);
+  font-size:30px;line-height:1;color:var(--ink);touch-action:none;-webkit-user-select:none;user-select:none}
+.rs-pad button.on,.rs-act.on{transform:translateY(3px);box-shadow:0 2px 0 var(--ink);background:#EAF4FF}
+.rs-right{position:absolute;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;flex-direction:column;align-items:center;gap:12px}
+.rs-act{background:#DDF5EA;font-size:34px}
+.rs-act[hidden]{display:none}
+.rs-side{position:absolute;right:14px;top:calc(env(safe-area-inset-top,0px) + 126px);display:flex;flex-direction:column;gap:10px}
+.rs-side .round{font-size:22px;line-height:1}
+.rs-side .co-mic.on{background:#DDF5EA}
+.rs-arrow{position:absolute;margin-top:-18px;background:var(--paper);border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);
+  padding:4px 10px;font-weight:800;font-size:18px;pointer-events:none}
+.rs-roles .ttl{font-size:26px;margin:2px 0 8px;text-align:center}
+.rs-roles .got{font-size:15px;font-weight:800;margin:0 0 10px;text-align:center}
+.rs-roles .picks{grid-template-columns:repeat(2,1fr)}
+.rs-roles .picks:empty{display:none}
+.rs-roles .picks small{font-size:12px}
+.rs-roles .btn{display:block;margin:0 auto 6px}
+/* чайка напарника над уголком (js/gull.js) */
+.gull-chip{position:fixed;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 132px);z-index:5;display:flex;align-items:center;gap:8px;
+  background:#F4FAFE;border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);padding:4px 6px 4px 10px}
+.gull-chip .ic{font-size:24px}
+.gull-chip .round{font-size:20px;line-height:1;width:44px;height:44px}
+.gull-chip .co-mic.on{background:#DDF5EA}
+body:not(.pet-mode) .gull-chip,body.mg-on .gull-chip,body.home-mode .gull-chip{display:none}

@@ -20,6 +20,16 @@
         "8767"
       ],
       "port": 8767
+    },
+    {
+      "name": "seal-hospital-3",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8768"
+      ],
+      "port": 8768
     }
   ]
 }

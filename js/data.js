@@ -37,13 +37,16 @@ function sanitize(d){
     nb:sanitizeNb(d.nb),         // соседи (js/neighbors.js)
     coop:sanitizeCoop(d.coop)};  // играем вместе: бой с Большой Тучей (js/coop.js)
 }
-// coop = {wins — побед над Большой Тучей, tries — боёв, net — побед по сети, day:{d, n} — сколько побед сегодня (ракушки за первые две)}
+// coop = {wins — побед над Большой Тучей, tries — боёв, net — побед по сети, day:{d, n} — сколько побед сегодня (ракушки за первые две),
+//         gull:{d, n} — полёты чайкой, resc:{wins, day:{d, n}} — спасённые потеряшки}
 function sanitizeCoop(a){
   a = a && typeof a === 'object' ? a : {};
   const n = v => Number.isFinite(v) ? Math.max(0, v) : 0, day = a.day && typeof a.day === 'object' ? a.day : {};
   const gl = a.gull && typeof a.gull === 'object' ? a.gull : {};   // gull — сколько раз сегодня летал чайкой в чужом забеге (js/gull.js)
+  const rs = a.resc && typeof a.resc === 'object' ? a.resc : {}, rd = rs.day && typeof rs.day === 'object' ? rs.day : {};   // resc — «Спасаем потеряшку» (js/rescue.js): победы и сколько сегодня
   return {wins:n(a.wins), tries:n(a.tries), net:n(a.net), day:{d:typeof day.d === 'string' ? day.d : '', n:n(day.n)},
-    gull:{d:typeof gl.d === 'string' ? gl.d : '', n:n(gl.n)}};
+    gull:{d:typeof gl.d === 'string' ? gl.d : '', n:n(gl.n)},
+    resc:{wins:n(rs.wins), day:{d:typeof rd.d === 'string' ? rd.d : '', n:n(rd.n)}}};
 }
 // nb = {ping:{in — Пинг живёт по соседству с малышом, xp — дружба 💙 (сколько просьб выполнено),
 //        q:{d — день, id — просьба дня из PING_ASKS, ok — выполнена, got — подарок забран}}}

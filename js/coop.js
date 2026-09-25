@@ -520,29 +520,67 @@ function coControls(){
   mgOn(window, 'keyup', e => { keys[e.key] = false; CO.keyDir = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0); });
 }
 
-/* ---------- с кем играем ---------- */
+/* ---------- во что и с кем играем ----------
+   Две игры: ☁️ бой с Большой Тучей (тут) и 🦭 «Спасаем потеряшку» (js/rescue.js). Возвращает {game, mode} или null. */
+let coGame = 'fight';
+const CO_GAMES = {
+  fight:{ic:'☁️', name:() => L('Большая Туча', 'The Big Cloud'),
+    say:() => L('Туча засыпает льдину снегом. Щекочите её снежками вдвоём! Упал — напарник спасёт из пузыря.', 'The Cloud is burying the ice in snow. Tickle it with snowballs, two of you! Fall down — your partner saves you from the bubble.')},
+  rescue:{ic:'🦭', name:() => L('Потеряшка', 'Lost pup'),
+    say:() => L('Малыш потерялся и застрял во льду. Один прыгает высоко, другой сильный и ныряет — дойдите до него вместе!', 'A pup is lost and stuck in the ice. One of you jumps high, the other is strong and dives — reach it together!')}
+};
 async function coopMenu(){
   for(;;){
     mgOpen(L('Играем вместе!', 'Let\'s play together!'));
     const pingOk = typeof pengMet === 'function' && pengMet();
+    const games = typeof rescueGame === 'function' ? ['fight', 'rescue'] : ['fight'];
+    if(!games.includes(coGame)) coGame = 'fight';
     const panel = mgNode('div', 'mg-panel fun-pick co-pick', `
-      <p class="ttl display">☁️ ${L('Большая Туча', 'The Big Cloud')}</p>
-      <p class="got">${L('Туча засыпает льдину снегом. Щекочите её снежками вдвоём! Упал — напарник спасёт из пузыря.', 'The Cloud is burying the ice in snow. Tickle it with snowballs, two of you! Fall down — your partner saves you from the bubble.')}</p>
+      ${games.length > 1 ? `<div class="co-games" role="tablist">${games.map(g => `<button role="tab" data-g="${g}"><span aria-hidden="true">${CO_GAMES[g].ic}</span> ${CO_GAMES[g].name()}</button>`).join('')}</div>` : ''}
+      <p class="ttl display"${games.length > 1 ? ' hidden' : ''}></p>
+      <p class="got co-say"></p>
       <div class="picks">
         ${netAvail() ? `<button data-k="net" class="wide"><span class="ic">🌐</span><b>${L('По сети', 'Online')}</b><small>${L('с папой или другом', 'with Dad or a friend')}</small></button>` : ''}
         ${pingOk ? `<button data-k="ping"><span class="ic">🐧</span><b>${L('С Пингом', 'With Ping')}</b><small>${L('он поможет', 'he\'ll help')}</small></button>` : ''}
         <button data-k="solo"${pingOk ? '' : ' class="wide"'}><span class="ic">🦭</span><b>${L('Без напарника', 'Solo')}</b><small>${L('полегче', 'a bit easier')}</small></button>
       </div>
       ${netAvail() ? `<p class="got small-note">🐦 ${L('Если напарник позвал чайку из забега — выбирай «По сети», и ты прилетишь к нему чайкой', 'If your partner called the gull from a dash, pick “Online” and you will fly in as the gull')}</p>` : ''}
-      ${save.coop.wins ? `<p class="got">🏆 ${L(`Побед над Тучей: ${save.coop.wins}`, `Wins against the Cloud: ${save.coop.wins}`)}</p>` : ''}
+      <p class="got co-wins"></p>
       <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
+    const show = () => {
+      const G = CO_GAMES[coGame], rw = save.coop.resc ? save.coop.resc.wins : 0;
+      panel.querySelector('.ttl').textContent = `${G.ic} ${G.name()}`;
+      panel.querySelector('.co-say').textContent = G.say();
+      const w = coGame === 'fight' ? (save.coop.wins ? `🏆 ${L(`Побед над Тучей: ${save.coop.wins}`, `Wins against the Cloud: ${save.coop.wins}`)}` : '')
+        : rw ? `💗 ${L(`Спасено потеряшек: ${rw}`, `Lost pups rescued: ${rw}`)}` : '';
+      const we = panel.querySelector('.co-wins'); we.textContent = w; we.hidden = !w;
+      panel.querySelectorAll('[data-g]').forEach(b => b.setAttribute('aria-selected', b.dataset.g === coGame));
+      const pb = panel.querySelector('[data-k="ping"] small'); if(pb) pb.textContent = coGame === 'rescue' ? L('он Силач', 'he\'s strong') : L('он поможет', 'he\'ll help');
+      const sb = panel.querySelector('[data-k="solo"] small'); if(sb) sb.textContent = coGame === 'rescue' ? L('ведёшь обоих', 'lead both') : L('полегче', 'a bit easier');
+    };
+    panel.querySelectorAll('[data-g]').forEach(b => mgOn(b, 'click', () => { if(coGame !== b.dataset.g){ sfx.tap(); coGame = b.dataset.g; show(); } }));
+    show();
     const k = await new Promise(r => panel.querySelectorAll('[data-k]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
     panel.classList.add('away'); await wait(0.2); mgClose();
     if(k === 'no') return null;
-    if(k !== 'net') return k;
-    if(await netLobby() === 'ok') return 'net';
+    if(k !== 'net') return {game:coGame, mode:k};
+    if(await netLobby() === 'ok') return {game:coGame, mode:'net'};
   }
 }
+// соединились по сети: здороваемся и решаем, во что играем. Напарник в забеге — летим к нему чайкой (js/gull.js);
+// выбрали разное — играем в то, что выбрал хозяин комнаты
+async function coopNet(game){
+  mgOpen(L('Здороваемся… 👋', 'Saying hello… 👋'));
+  const pal = await coHello(game); mgClose();
+  if(pal && pal.want === 'run' && typeof gullFly === 'function') return gullFly(pal);
+  let g = game;
+  if(!net.host && pal && CO_GAMES[pal.want] && pal.want !== game && (pal.want !== 'rescue' || typeof rescueGame === 'function')){
+    g = pal.want; coGame = g;
+    toast(L(`Напарник выбрал «${CO_GAMES[g].name()}» — играем в неё!`, `Your partner picked “${CO_GAMES[g].name()}” — let's play that!`), 3200);
+  }
+  return g === 'rescue' ? rescueGame('net', pal) : coopFight('net', pal);
+}
+function coopPlay(pick){ return pick.mode === 'net' ? coopNet(pick.game) : pick.game === 'rescue' ? rescueGame(pick.mode) : coopFight(pick.mode); }
 // знакомство по сети: обмениваемся малышами, хозяин даёт старт
 // want — чем занят: 'fight' (бой с Тучей) или 'run' (забег, напарник прилетит чайкой — js/gull.js); придёт в pal.want
 function coHello(want = 'fight'){
@@ -558,13 +596,7 @@ function coHello(want = 'fight'){
 }
 
 /* ---------- сам бой ---------- */
-async function coopFight(mode){
-  let pal0 = null;
-  if(mode === 'net'){
-    mgOpen(L('Здороваемся… 👋', 'Saying hello… 👋'));
-    pal0 = await coHello(); mgClose();
-    if(pal0 && pal0.want === 'run' && typeof gullFly === 'function') return gullFly(pal0);   // напарник в забеге — летим к нему чайкой
-  }
+async function coopFight(mode, pal0 = null){   // по сети зовёт coopNet — там уже поздоровались
   coBuild();
   sfx.whoosh(); flash();
   const fog = scene.fog; scene.fog = null;
@@ -672,11 +704,13 @@ async function coResultPanel(res){
 /* ---------- вход: из «Поиграть» у малыша или с первого экрана ---------- */
 FUN_COST.coop = {food:0.2, bath:0.2, sleep:0.2};
 let coGull = false;   // последний раз летали чайкой в чужом забеге (js/gull.js), а не бились с Тучей
-FUN_SAY.coop = () => coGull ? L('Хорошо полетали чайкой! 🐦', 'Great flying as the gull! 🐦') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
+FUN_SAY.coop = () => coGull ? L('Хорошо полетали чайкой! 🐦', 'Great flying as the gull! 🐦')
+  : coGame === 'rescue' ? L('Потеряшка нашла маму — мы молодцы! 💗', 'The lost pup found mum — well done us! 💗') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
 async function coopFromPet(s){
-  const mode = await coopMenu();
-  if(!mode){ s.happyUntil = 0; return false; }
-  const res = await coopFight(mode);
+  if(typeof GL !== 'undefined' && GL && GL.home) gullRunEnd(true);   // чайка порхала над уголком — отпускаем: новая игра соединяется заново
+  const pick = await coopMenu();
+  if(!pick){ s.happyUntil = 0; return false; }
+  const res = await coopPlay(pick);
   coGull = !!(res && res.gull);
   s.root.position.copy(PET_SPOT); s.happyUntil = now + 3; setMood(s, 'happy');
   if(!res) return false;
@@ -684,7 +718,7 @@ async function coopFromPet(s){
 async function coopFromIntro(){
   ac(); sfx.good(); $('#intro').hidden = true;
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
-  const mode = await coopMenu();
-  if(mode) await coopFight(mode);
+  const pick = await coopMenu();
+  if(pick) await coopPlay(pick);
   $('#intro').hidden = false;
 }

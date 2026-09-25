@@ -13,7 +13,10 @@
    'rgo' — старт, 'rres' — итоги, 'bye' — ушёл домой. Чайка строит у себя тот же трек дня (runBuild с днём бегущего)
    и только просит: 'gc' — команда, 'gp' — где летит. Номера ракушек и сугробов совпадают, потому что новые появляются
    только по событиям бегущего.
-   Вход: бегущий — «🐦 Позвать чайку-помощника» на карте приключений; чайка — «Вместе» → «По сети» (coopFight видит want:'run').
+   Вход: бегущий — «🐦 Позвать чайку-помощника» на карте приключений; чайка — «Вместе» → «По сети» (coopNet видит want:'run').
+   Забег кончился — чайку не выгоняем: она перелетает на остров бегущего и порхает над уголком малыша (gullIsle,
+   'gisle'), пока тот не побежит снова ('rgo') или не отпустит её (👋). У чайки на экране — тот же уголок с малышом
+   бегущего ('ip' — где он), касание — полететь туда ('gip'), касание по малышу — погладить ('gc' pat).
    Подключается после coop.js и до game.js. */
 const GULL_SHELLS = 5;                     // ракушек чайка может уронить за забег
 const GULL_PECK_GIFT = 3;                  // столько клевков по снегу дают ракушку
@@ -111,11 +114,13 @@ async function gullCall(){   // с карты приключений: позва
 }
 function gullRunWire(){
   netOn('gp', m => { if(GL) GL.tgt = new V3(m.x, m.y, m.z); });
-  netOn('gc', m => gullCmd(m));
-  netOn('emo', () => { if(GL && GL.g && R){ burst(TEX.heart, GL.g.position, 8, 1.6, 0.3); sfx.purr(); } });
+  netOn('gip', m => { if(GL) GL.itgt = new V3(m.x, m.y, m.z); });
+  netOn('gc', m => { if(GL && GL.home) gullIsleCmd(m); else gullCmd(m); });
+  netOn('emo', () => { if(GL && GL.g && (R || GL.home)){ burst(TEX.heart, GL.g.position, 8, 1.6, 0.3); sfx.purr(); } });
   netOn('gbye', () => {
     if(!GL) return;
     toast(L('Чайка улетела домой 👋', 'The gull flew home 👋'));
+    if(GL.home && GL.g){ GL.gone = true; GL.goneT = 0; gullIsleUi(false); return; }
     if(!R || !GL.g){ netClose(); GL = null; return; }
     GL.gone = true; floatText(L('Пока-пока!', 'Bye-bye!'), GL.g.position.clone().add(new V3(0, 0.7, 0)), '#3E8DB8');
   });
@@ -124,7 +129,9 @@ function gullRunWire(){
 }
 function gullRunStart(){   // новый забег (и «Ещё раз»): чайке — тот же трек дня
   if(GL.gone) return;
-  if(!GL.g){ GL.g = makeGull(); runRoot.add(GL.g); }
+  if(GL.home){ GL.home = false; GL.itgt = null; gullIsleUi(false); }
+  if(!GL.g) GL.g = makeGull();
+  runRoot.add(GL.g); GL.g.scale.setScalar(0.95);
   GL.pos.set(GULL_IDLE.x, GULL_IDLE.y + 1.5, R.z + GULL_IDLE.z); GL.tgt = null; GL.g.visible = true;
   GL.left = GULL_SHELLS; GL.helps = 0; GL.pecks = 0; GL.hl.clear(); GL.secT = 0; GL.z0 = R.z; GL.acc = 0;
   netSend({t:'rgo', id:R.id, day:advDayKey(), stars:R.stars, pet:coPetDesc(), left:GULL_SHELLS});
@@ -216,11 +223,78 @@ function gullRunRes(res){
   if(GL.gone) return;
   netSend({t:'rres', stars:res.stars, shells:res.shells, total:res.total, fish:res.fish, fishTotal:res.fishTotal, helps:GL.helps, starRun:res.starRun, friend:res.friend});
 }
-function gullRunEnd(){   // бегущий ушёл домой: прощаемся
+function gullRunEnd(release){   // бегущий ушёл с дорожки: чайка остаётся над уголком (gullIsle); release — отпустить совсем
   if(!GL) return;
+  if(!release && GL.role === 'run' && !GL.gone && netLive()) return gullIsle();
   if(!GL.gone) netSend({t:'bye'});
-  if(GL.g) runRoot.remove(GL.g);
+  if(GL.g && GL.g.parent) GL.g.parent.remove(GL.g);
+  gullIsleUi(false);
   netClose(); GL = null;
+}
+
+/* ---------- чайка на острове бегущего: порхает над уголком малыша ---------- */
+function gullIsle(){
+  if(GL.home) return;
+  GL.home = true; GL.itgt = null; GL.ipT = 0; GL.goneT = 0;
+  if(!GL.g) GL.g = makeGull();
+  scene.add(GL.g); GL.g.visible = true; GL.g.rotation.set(0, 0, 0); GL.g.scale.setScalar(0.6);   // в уголке камера ближе — чайка поменьше
+  GL.ipos = PET_SPOT.clone().add(new V3(1.3, 2.3, 0.4)); GL.g.position.copy(GL.ipos);
+  netSend({t:'gisle'});
+  gullIsleUi(true);
+  toast(L('Чайка полетела с тобой домой 🐦', 'The gull flew home with you 🐦'));
+}
+function gullIsleUi(on){   // плашка «чайка рядом»: 💗, 🎤 и 👋 «отпустить»
+  let el = $('#gullChip');
+  if(!on){ if(el) el.remove(); return; }
+  if(el) return;
+  el = document.createElement('div'); el.id = 'gullChip'; el.className = 'gull-chip';
+  el.innerHTML = `<span class="ic" aria-hidden="true">🐦</span>
+    <button class="round co-heart" aria-label="${L('Сердечко чайке', 'A heart for the gull')}">💗</button>
+    <button class="round co-mic${net.mic ? ' on' : ''}" aria-label="${L('Микрофон', 'Microphone')}">${net.mic ? '🎙️' : '🎤'}</button>
+    <button class="round gull-bye" aria-label="${L('Отпустить чайку', 'Let the gull go')}">👋</button>`;
+  document.body.appendChild(el);
+  el.querySelector('.co-heart').onclick = () => { if(!GL || !GL.g) return; burst(TEX.heart, GL.g.position, 8, 1.6, 0.3); sfx.purr(); netSend({t:'emo'}); };
+  const mic = el.querySelector('.co-mic');
+  mic.onclick = async () => {
+    sfx.tap();
+    if(net.mic){ netMicOff(false); mic.classList.remove('on'); mic.textContent = '🎤'; return; }
+    const ok = await netMicOn();
+    if(ok){ mic.classList.add('on'); mic.textContent = '🎙️'; toast(L('Микрофон включён — вас слышно 🎙️', 'Microphone on — you can be heard 🎙️')); }
+    else toast(L('Микрофон не разрешён. Можно созвониться по телефону 📞', 'The microphone is not allowed. You can call each other on the phone 📞'));
+  };
+  el.querySelector('.gull-bye').onclick = () => {
+    if(!GL) return; sfx.tap();
+    floatText(L('Пока-пока!', 'Bye-bye!'), GL.g.position.clone().add(new V3(0, 0.7, 0)), '#3E8DB8');
+    netSend({t:'bye'}); GL.gone = true; GL.goneT = 0; GL.release = true; gullIsleUi(false);
+  };
+}
+function gullIsleCmd(m){   // чайка просит с острова: погладить малыша
+  if(m.k !== 'pat' || !petSeal || !GL) return;
+  const top = headTop(petSeal);
+  burst(TEX.heart, top, 8, 1.6, 0.3); sfx.purr(); sfx.caw();
+  floatText(L('Чайка гладит!', 'The gull pats!'), top.clone().add(new V3(0, 0.4, 0)), '#3E8DB8');
+  petSeal.happyUntil = now + 2.5; setMood(petSeal, 'happy'); squash(petSeal, 0.12, 0.3);
+}
+// кадр у бегущего (зовёт frame() в game.js): чайка кружит над малышом или летит, куда показал напарник
+function gullIsleTick(t, dt){
+  if(!GL || GL.role !== 'run' || !GL.home || !GL.g) return;
+  const orbit = PET_SPOT.clone().add(new V3(Math.sin(t*0.6)*1.5, 2.1 + Math.sin(t*1.3)*0.2, 0.3 + Math.cos(t*0.6)*0.7));
+  const want = GL.gone ? GL.ipos.clone().add(new V3(3, 6, -6)) : GL.itgt && !GL.lost ? GL.itgt : orbit;
+  const p0 = GL.ipos.clone();
+  GL.ipos.lerp(want, Math.min(1, dt*(GL.gone ? 1.5 : GL.itgt ? 4 : 1.6)));
+  const v = GL.ipos.clone().sub(p0);
+  if(v.lengthSq() > 1e-6) GL.g.rotation.y += (Math.atan2(v.x, v.z) - GL.g.rotation.y)*Math.min(1, dt*6);
+  GL.g.position.copy(GL.ipos); gullAnim(GL.g, t, GL.gone);
+  GL.g.visible = !GL.lost;
+  if(GL.gone){
+    if((GL.goneT += dt) > 1.6){ scene.remove(GL.g); gullIsleUi(false); if(!GL.release) netSend({t:'bye'}); netClose(); GL = null; }
+    return;
+  }
+  // где малыш — напарнику, 5 раз в секунду
+  if((GL.ipT -= dt) <= 0 && petSeal){
+    GL.ipT = 0.2; const q = petSeal.root.position;
+    netSend({t:'ip', x:+q.x.toFixed(2), y:+q.y.toFixed(2), z:+q.z.toFixed(2), r:+petSeal.root.rotation.y.toFixed(2), v:petSeal.root.visible && petMode});
+  }
 }
 
 /* =================== у чайки (папа) =================== */
@@ -245,7 +319,7 @@ async function gullFly(pal){
   const how = await fin;
   if(how === 'quit') netSend({t:'gbye'});
   // домой
-  mgClose(); netClose();
+  mgClose(); netClose(); gullFlyIsleOff();
   if(R){ runRoot.remove(R.grp); R = null; }
   runRoot.remove(GL.g); runRoot.remove(GL.pup.root); runHudEl = null;
   const flights = GL.flights; GL = null;
@@ -311,6 +385,8 @@ function gullFlyWire(){
   netOn('gl', m => { if(GL){ GL.left = m.left; gullLeftPill(); } });
   netOn('emo', () => { if(GL && GL.pup.root.visible){ burst(TEX.heart, gullPupTop(), 8, 1.6, 0.3); sfx.purr(); } });
   netOn('rres', m => gullFlyRes(m));
+  netOn('gisle', () => gullFlyIsle());
+  netOn('ip', m => { if(GL) GL.ip = m; });
   netOn('bye', () => gullFlyBye());
   net.onLost = () => { if(GL){ GL.lost = true; mgHint(L('Связь пропала… подождём 🌊', 'Lost the connection… let\'s wait 🌊')); } };
   net.onBack = () => { if(GL){ GL.lost = false; mgHint(''); toast(L('Снова вместе! 💗', 'Together again! 💗')); } };
@@ -318,6 +394,7 @@ function gullFlyWire(){
 const gullPupTop = () => GL.pup.root.position.clone().add(new V3(0, 1.1*GL.pup.root.scale.x + 0.3, 0));
 function gullFlyGo(m){   // бегущий стартует — строим тот же трек дня
   if(!GL) return;
+  gullFlyIsleOff();
   const d0 = advDayKey; advDayKey = () => m.day;
   try{ runBuild(m.id, {stars:m.stars}); } finally { advDayKey = d0; }
   const r = R;
@@ -477,15 +554,84 @@ function gullFlyRes(m){   // итоги бегущего — и спасибо �
 }
 function gullFlyBye(){   // бегущий ушёл домой
   if(!GL) return;
-  GL.P = null;
+  GL.P = null; gullFlyIsleOff();
   const w = document.querySelector('.gull-end .co-wait');
   if(w){ w.textContent = L(`${GL.name} ${GL.went} домой. Спасибо, чайка! 👋`, `${GL.name} went home. Thank you, gull! 👋`); return; }
   mgClose(); mgOpen(''); mgTick(gullFlyTick);
   if(R){ runRoot.remove(R.grp); R = null; }
   GL.pup.root.visible = false;
   const panel = mgNode('div', 'mg-panel gull-wait', `
-    <p class="ttl display">👋 ${L('Забег окончен', 'The dash is over')}</p>
+    <p class="ttl display">👋 ${L('Пора домой', 'Time to go home')}</p>
     <p class="got">${L(`${GL.name} ${GL.went} домой. Спасибо, чайка! 🐦`, `${GL.name} went home. Thank you, gull! 🐦`)}</p>
     <button class="btn" data-k="home">${L('Домой 🏠', 'Home 🏠')}</button>`);
   mgOn(panel.querySelector('[data-k="home"]'), 'click', () => { sfx.tap(); if(GL) GL.done('bye'); });
+}
+
+/* ---------- чайка на острове напарника (у чайки): уголок с его малышом ---------- */
+function gullFlyIsle(){
+  if(!GL || GL.role !== 'fly' || GL.isle) return;
+  GL.isle = true; GL.P = null; GL.fin = false; GL.ip = null;
+  mgClose();
+  if(R){ runRoot.remove(R.grp); R = null; } runHudEl = null;
+  runRoot.visible = false; homeLights(false);
+  scene.add(GL.g); scene.add(GL.pup.root); GL.g.scale.setScalar(0.6);
+  const s = GL.pup; s.root.visible = true; s.root.position.copy(PET_SPOT); s.root.rotation.set(0, 0, 0); s.inner.rotation.set(0, 0, 0); s.inner.position.set(0, 0, 0); s.flap = 0; s.wobble = 0;
+  GL.hid = []; if(typeof petSeal !== 'undefined' && petSeal && petSeal.root.visible){ petSeal.root.visible = false; GL.hid.push(petSeal.root); }   // свой малыш уступает место
+  GL.ipos = PET_SPOT.clone().add(new V3(1.3, 2.3, 0.4)); GL.iwant = null; GL.iwantT = 0; GL.cd = 0; GL.sendT = 0;
+  const off = PET_POS.clone().add(petView()); runCam.pos.copy(camBase).add(off); runCam.look.copy(camTarget).add(off);
+  mgOpen(L(`🐦 Ты на острове: ${GL.name} дома. Нажми — полетишь туда, на малыша — погладишь 💗`, `🐦 You're on the island: ${GL.name} is home. Tap to fly there, tap the pup to pat it 💗`), {hintBottom:false});
+  const btns = mgNode('div', 'co-btns gull-btns', `<button class="round co-mic" aria-label="${L('Микрофон', 'Microphone')}">🎤</button>
+    <button class="round co-heart" aria-label="${L('Сердечко', 'A heart')}">💗</button>`);
+  const mic = btns.querySelector('.co-mic'); gullMic(mic); if(net.mic){ mic.classList.add('on'); mic.textContent = '🎙️'; }
+  const hb = btns.querySelector('.co-heart');
+  mgOn(hb, 'pointerdown', e => e.stopPropagation());
+  mgOn(hb, 'click', e => { e.stopPropagation(); if(GL && GL.g){ burst(TEX.heart, GL.g.position, 8, 1.6, 0.3); sfx.purr(); netSend({t:'emo'}); } });
+  mgOn(mgRoot, 'pointerdown', e => { if(e.target.closest('button, .mg-panel')) return; e.preventDefault(); gullIsleTap(e.clientX, e.clientY); });
+  mgTick(gullIsleFly);
+  setTimeout(() => { if(GL && GL.isle && mgHintEl.textContent.startsWith('🐦')) mgHint(''); }, 6000);
+  sfx.caw();
+}
+function gullFlyIsleOff(){   // обратно в забег (или домой): малыш и чайка — снова на дорожке
+  if(!GL || !GL.isle) return;
+  GL.isle = false;
+  runRoot.add(GL.g); runRoot.add(GL.pup.root); GL.pup.root.visible = false; GL.g.scale.setScalar(0.95);
+  for(const o of GL.hid || []) o.visible = true; GL.hid = [];
+  runRoot.visible = true; HEMI.intensity = 0.62; sun.intensity = 0.58;
+}
+function gullIsleFly(dt){
+  if(!GL || !GL.isle) return;
+  const s = GL.pup, t = now, m = GL.ip;
+  if(m){
+    s.root.visible = m.v !== false;
+    s.root.position.lerp(new V3(m.x, m.y, m.z), Math.min(1, dt*8));
+    s.root.rotation.y += (m.r - s.root.rotation.y)*Math.min(1, dt*8);
+  }
+  updateSeal(s, t, dt);
+  const top = s.root.position.clone().add(new V3(0, 1.1*s.root.scale.x + 0.3, 0));
+  const orbit = top.clone().add(new V3(Math.sin(t*0.6)*1.5, 1.2 + Math.sin(t*1.3)*0.2, 0.3 + Math.cos(t*0.6)*0.7));
+  const want = GL.iwant && GL.iwantT > t ? GL.iwant : orbit;
+  const p0 = GL.ipos.clone();
+  GL.ipos.lerp(want, Math.min(1, dt*(GL.iwantT > t ? 4 : 1.6)));
+  const v = GL.ipos.clone().sub(p0);
+  if(v.lengthSq() > 1e-6) GL.g.rotation.y += (Math.atan2(v.x, v.z) - GL.g.rotation.y)*Math.min(1, dt*6);
+  GL.g.position.copy(GL.ipos); gullAnim(GL.g, t, GL.iwantT > t);
+  GL.cd -= dt;
+  if((GL.sendT -= dt) <= 0){ GL.sendT = 0.1; netSend({t:'gip', x:+GL.ipos.x.toFixed(2), y:+GL.ipos.y.toFixed(2), z:+GL.ipos.z.toFixed(2)}); }
+}
+const gIsle = new THREE.Plane(new V3(0, 0, 1), -PET_SPOT.z);
+function gullIsleTap(cx, cy){
+  if(!GL || !GL.isle || GL.lost) return;
+  const s = GL.pup, top = s.root.position.clone().add(new V3(0, 0.7*s.root.scale.x + 0.2, 0)), q = toScreen(top);
+  if(s.root.visible && Math.hypot(q.x - cx, q.y - cy) < 85){
+    if(GL.cd > 0) return;
+    GL.cd = 1; netSend({t:'gc', k:'pat'}); sfx.caw(); sfx.purr();
+    burst(TEX.heart, top.clone().add(new V3(0, 0.4, 0)), 8, 1.6, 0.3);
+    GL.iwant = top.clone().add(new V3(0.5, 0.9, 0.3)); GL.iwantT = now + 1.4;
+    return;
+  }
+  gNdc.set(cx/innerWidth*2 - 1, -(cy/innerHeight)*2 + 1); gRay.setFromCamera(gNdc, camera);
+  if(gRay.ray.intersectPlane(gIsle, gHit)){
+    GL.iwant = new V3(Math.max(PET_POS.x - 4, Math.min(PET_POS.x + 4, gHit.x)), Math.max(0.9, Math.min(3.6, gHit.y)), PET_SPOT.z + 0.3);
+    GL.iwantT = now + 2.2; sfx.whoosh();
+  }
 }
