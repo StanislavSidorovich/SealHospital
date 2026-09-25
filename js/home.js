@@ -255,8 +255,10 @@ const FURN_MAKE = {
     glass.position.copy(c); glass.renderOrder = 2; g.add(glass);
     const rim = addOutline(new THREE.Mesh(new THREE.TorusGeometry(Math.sin(0.55)*0.64, 0.035, 8, 28), toon(0xFFFFFF)), 1.15); rim.rotation.x = Math.PI/2; rim.position.set(0, c.y + Math.cos(0.55)*0.64, 0); g.add(rim);
     for(const [x, col] of [[-0.2, 0xFF9BB8], [0.1, 0xFFD66B], [0.25, 0x86DDB5]]){ const p = new THREE.Mesh(SMALL, toon(col)); p.scale.set(0.09, 0.06, 0.09); p.position.set(x, c.y - 0.5, x*0.5); g.add(p); }
-    const fish = [0, 1].map(i => { const f = makeFish(); f.scale.setScalar(0.5); g.add(f); f.userData = {a:i*Math.PI, r:0.28, y:c.y - 0.08 + i*0.14, sp:1 + i*0.3}; return f; });
-    g.userData = {fish, bubbleAt:c.clone().add(new V3(0, 0.3, 0))};
+    // спасённые в забеге рыбки (в круглом помещаются TANK_CAP.tank_bowl), пока их нет — две обычные
+    const mine = tankFish('tank_bowl'), n = mine.length || 2;
+    const fish = Array.from({length:n}, (_, i) => { const f = mine[i] ? makeRunFish(mine[i]) : makeFish(); f.scale.setScalar(0.5); g.add(f); f.userData = {a:i*Math.PI*2/n, r:0.24 + (i % 2)*0.06, y:c.y - 0.12 + i*0.1, sp:1 + i*0.25}; return f; });
+    g.userData = {fish, nf:mine.length, bubbleAt:c.clone().add(new V3(0, 0.3, 0))};
     return g;
   },
   tank_big(){   // большой аквариум: песок, водоросли, три рыбки туда-сюда, пузырьки
@@ -275,8 +277,9 @@ const FURN_MAKE = {
     const fm = toon(WOOD_L);   // рамка: верх и уголки
     const top = addOutline(new THREE.Mesh(new THREE.BoxGeometry(W + 0.08, 0.07, D + 0.08), fm), 1.04); top.position.y = y0 + H; g.add(top);
     for(const sx of [-1, 1]) for(const sz of [-1, 1]){ const p = new THREE.Mesh(new THREE.BoxGeometry(0.06, H, 0.06), fm); p.position.set(sx*W/2, y0 + H/2, sz*D/2); g.add(p); }
-    const fish = [0, 1, 2].map(i => { const f = makeFish(); f.scale.setScalar(0.48); g.add(f); f.userData = {ph:i*2.1, y:y0 + 0.35 + i*0.2, z:-0.2 + i*0.18, sp:0.6 + i*0.2, w:W/2 - 0.3}; return f; });
-    g.userData = {fish, weeds, box:true, bubbleAt:new V3(0.3, y0 + 0.2, 0.1)};
+    const mine = tankFish('tank_big'), n = mine.length || 3;
+    const fish = Array.from({length:n}, (_, i) => { const f = mine[i] ? makeRunFish(mine[i]) : makeFish(); f.scale.setScalar(0.48); g.add(f); f.userData = {ph:i*2.1, y:y0 + 0.3 + (i % 4)*0.17, z:-0.24 + (i % 3)*0.2, sp:0.5 + (i % 3)*0.2, w:W/2 - 0.3}; return f; });
+    g.userData = {fish, nf:mine.length, weeds, box:true, bubbleAt:new V3(0.3, y0 + 0.2, 0.1)};
     return g;
   },
   win_basic(){ return roundWindow(); },
@@ -345,7 +348,8 @@ function homeSet(k, id){
 function homeBuild(){
   for(const k of SLOT_KEYS){
     const id = save.home.s[k], o = homeItems[k];
-    if(o && (o.userData.id !== id || /^pic_/.test(id))){ homeRoot.remove(o); homeItems[k] = null; }   // картину — заново: вдруг в альбоме новое фото
+    const newFish = o && o.userData.nf !== undefined && o.userData.nf !== tankFish(id).length;   // в забеге спасли новых рыбок — аквариум заново
+    if(o && (o.userData.id !== id || /^pic_/.test(id) || newFish)){ homeRoot.remove(o); homeItems[k] = null; }   // картину — заново: вдруг в альбоме новое фото
     homeSet(k, homeHas(id) ? id : null);
     if(homeItems[k] && homeItems[k].userData.shelf) homeShelf(homeItems[k]);
   }
@@ -645,6 +649,7 @@ const HOME_PLAY = {
     sfx.chomp(); homeSay(s, 'Можно одну?..', 'Can I have one?..');
     await wait(1.1); sfx.arf(); homeSay(s, 'Шучу! ♡', 'Just kidding! ♡', '#D9527E'); burst(TEX.heart, headTop(s), 6, 1.4, 0.24);
     await wait(0.5);
+    await homeFishPanel(o.userData.id);
   },
   async window(s, o){   // смотрит в окно, снег идёт сильнее
     homeSnowK = 3; homeSay(s, 'Снежок идёт!', 'It is snowing!');
@@ -677,6 +682,31 @@ async function homeFinds(){
     <button class="btn" id="findsOk">${L('Закрыть', 'Close')}</button>`);
   panel.querySelectorAll('.finds i[data-n]').forEach(el => mgOn(el, 'click', () => { sfx.tap(); mgHint(el.dataset.n); wiggle(el); }));
   await new Promise(r => mgOn(panel.querySelector('#findsOk'), 'click', r));
+  sfx.tap(); panel.classList.add('away'); await wait(0.25); mgClose();
+}
+// рыбки из приключений: спасённые живут в аквариуме, у каждой имя; ещё не спасённые — «?»
+const TANK_CAP = {tank_bowl:3, tank_big:10};
+const tankFish = id => TANK_CAP[id] ? save.adv.fish.map(fishDef).filter(Boolean).slice(0, TANK_CAP[id]) : [];
+const fishThumbs = {};
+function fishThumb(fd){
+  if(fishThumbs[fd.id]) return fishThumbs[fd.id];
+  const o = makeRunFish(fd); o.rotation.y = -0.35;
+  return fishThumbs[fd.id] = objThumb(o, new V3(0, 0.15, 1));
+}
+async function homeFishPanel(tankId){
+  const got = save.adv.fish, cap = TANK_CAP[tankId] || 0;
+  mgOpen(L('Аквариум', 'Fish tank'));
+  const where = lv => LEVELS[lv] ? levelName(lv) : '';
+  const panel = mgNode('div', 'mg-panel walk-end finds-panel fish-panel', `
+    <p class="ttl display">${L(`Рыбки: ${got.length} из ${FISH_ALL.length}`, `Fish: ${got.length} of ${FISH_ALL.length}`)}</p>
+    <div class="finds">${FISH_ALL.map(fd => got.includes(fd.id)
+      ? `<i data-n="${fd.name} · ${where(fd.lv)}"><img src="${fishThumb(fd)}" alt="${fd.name}"></i>` : '<i class="no">?</i>').join('')}</div>
+    <p class="tip">${!got.length ? L('Спасай рыбок из ледяных пузырей в приключениях — они поселятся здесь! 🫧', 'Free the fish from ice bubbles on adventures — they will move in here! 🫧')
+      : got.length > cap ? L(`В этом аквариуме помещаются ${cap} ${plural(cap, 'рыбка', 'рыбки', 'рыбок')} — остальные ждут большой аквариум`, `This tank fits ${cap} ${plural(cap, '', '', '', 'fish', 'fish')} — the others are waiting for the big tank`)
+      : got.length < FISH_ALL.length ? L('Нажми на рыбку — узнаешь, как её зовут. Ещё рыбки ждут в приключениях 🫧', 'Tap a fish to see its name. More fish are waiting on adventures 🫧') : L('Все рыбки спасены! ♡', 'All the fish are saved! ♡')}</p>
+    <button class="btn" id="fishOk">${L('Закрыть', 'Close')}</button>`);
+  panel.querySelectorAll('.finds i[data-n]').forEach(el => mgOn(el, 'click', () => { sfx.tap(); mgHint(el.dataset.n); wiggle(el); }));
+  await new Promise(r => mgOn(panel.querySelector('#fishOk'), 'click', r));
   sfx.tap(); panel.classList.add('away'); await wait(0.25); mgClose();
 }
 // сам по себе: время от времени малыш подходит к вещам (тихо, без окошек)

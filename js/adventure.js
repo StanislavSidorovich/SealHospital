@@ -31,6 +31,7 @@ const tipDone = k => { if(!tipSeen(k)){ save.adv.tips.push(k); persist(); } };
 // crack [z, w, arc] — трещина шириной w; arc — над препятствием дуга из трёх ракушек;
 // fish [z, сторона −1/1] — ледяной пузырь с рыбкой над водой; boost [z, ln] — стрелки-ускоритель;
 // ramp [z] — трамплин (z — его верхний край), за ним дуга ракушек по полёту.
+// secret [z, ln, y] — золотая секретная ракушка (Mario Odyssey): одна на уровень, висит там, куда не попадёшь «просто так».
 // chase — Ворчливая Тучка летит впереди и кидает снежки раз в every[0]…every[1] секунд.
 const ISLES = [
   {id:'bay', ic:'🏝️', name:L('Снежная бухта', 'Snowy Bay'), levels:['bay1', 'bay2']},
@@ -42,16 +43,20 @@ const LEVELS = {
     ['line', 12, 3], ['drift', 30, 1], ['line', 40, 3, -1], ['fish', 50, -1], ['crack', 62, 1.6, 1], ['boost', 72, 0], ['drift', 80],
     ['line', 88, 3, 1], ['crack', 102, 2.0], ['fish', 112, 1], ['drift', 126, 1], ['drift', 138], ['line', 146, 2, -1],
     ['fish', 160, -1], ['boost', 166, 1], ['crack', 174, 2.2, 1], ['line', 184, 3, 1], ['drift', 200], ['fish', 210, 1], ['crack', 222, 1.8],
-    ['drift', 234], ['boost', 242, 0], ['ramp', 250], ['crack', 252.8, 1.4], ['fish', 270, -1], ['drift', 284, 1], ['line', 292, 4]]},
+    ['drift', 234], ['boost', 242, 0], ['ramp', 250], ['secret', 253.2, -1, 3.4], ['crack', 252.8, 1.4], ['fish', 270, -1], ['drift', 284, 1], ['line', 292, 4]]},
   bay2: {name:L('Догони Тучку', 'Catch the Cloud'), len:300, chase:{every:[3.4, 5]}, after:'bay1', items:[
     ['line', 14, 2], ['line', 25, 3, -1], ['drift', 28, 0, 0], ['boost', 40, 1], ['line', 44, 2, 1], ['fish', 55, 1],
     ['drift', 66, 1], ['line', 77, 3, 0], ['drift', 80, 0, -1], ['drift', 80, 0, 1], ['crack', 94, 1.8, 1], ['fish', 104, -1],
-    ['boost', 114, 0], ['ramp', 122], ['crack', 124.8, 1.4], ['line', 136, 2, -1], ['drift', 140, 0, 1],
+    ['boost', 114, 0], ['ramp', 122], ['crack', 124.8, 1.4], ['line', 136, 2, -1], ['drift', 140, 0, 1], ['secret', 140, 1, 1.2],
     ['line', 149, 2, 1], ['drift', 152, 0, 0], ['fish', 162, 1], ['drift', 174, 1], ['boost', 186, -1], ['line', 190, 3, -1],
     ['crack', 204, 2.0], ['line', 212, 2, 1], ['drift', 216, 0, -1], ['drift', 216, 0, 0], ['fish', 228, -1],
-    ['boost', 238, 1], ['line', 242, 2, 1], ['drift', 254], ['line', 264, 2, 0], ['crack', 278, 2.2, 1], ['line', 286, 3]]}
+    ['boost', 238, 1], ['line', 242, 2, 1], ['drift', 254], ['fish', 260, 1], ['line', 264, 2, 0], ['crack', 278, 2.2, 1], ['line', 286, 3]]}
 };
 const levelName = id => LEVELS[id].name;
+// где искать секрет — подсказка в итогах, пока не нашли
+const SECRET_TIP = {bay1:L('В полёте с трамплина сверни влево ⬅️', 'While flying off the ramp, swipe left ⬅️'),
+  bay2:L('Перепрыгни маленький сугроб справа ➡️', 'Jump over the little snowdrift on the right ➡️')};
+const SECRET_GIFT = 15;   // за первую находку секрета на уровне
 const SHELL_GOAL = 0.8;   // звезда за ракушки — если собрано 80% и больше
 // Ракушки с дорожки идут в копилку только в первых RUN_DAILY забегах за день, дальше на дорожке звёздочки
 // (звезду за них дают так же): иначе забег за минуту приносил бы больше, чем смена в больнице
@@ -96,9 +101,9 @@ function makeDrift(){   // сугроб: пухлая снежная горка
   for(const [x, s] of [[-0.75, 0.45], [0.8, 0.38]]){ const k = addOutline(new THREE.Mesh(SMALL, toon(0xFFFFFF)), 1.08); k.scale.set(s, s*0.8, s); k.position.set(x, 0.05, 0.1); g.add(k); }
   return g;
 }
-function makeBubble(){   // ледяной пузырь, внутри рыбка
+function makeBubble(fd){   // ледяной пузырь, внутри рыбка (своя, с именем — RUN_FISH в seal.js)
   const g = new THREE.Group();
-  const f = makeFish(); f.scale.setScalar(0.62); f.rotation.y = -0.6; g.add(f);
+  const f = fd ? makeRunFish(fd) : makeFish(); f.scale.setScalar(0.7); f.rotation.y = -0.6; g.add(f);
   const glass = new THREE.Sprite(new THREE.SpriteMaterial({map:BUBBLE_TEX, transparent:true, depthWrite:false}));
   glass.scale.setScalar(1.15); glass.renderOrder = 2; g.add(glass);
   return g;
@@ -114,6 +119,11 @@ const RAMP_GEO = (() => {
   const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(RAMP_L, 0); sh.lineTo(0, RAMP_H); sh.lineTo(0, 0);
   const g = new THREE.ExtrudeGeometry(sh, {depth:RUN_W - 0.3, bevelEnabled:false}); g.rotateY(-Math.PI/2); g.translate((RUN_W - 0.3)/2, 0, 0); return g;
 })();
+function makeSecret(){   // золотая ракушка крупнее обычной, вокруг — мерцание
+  const o = makeShell(0xFFD66B, true); o.rotation.set(0.9, 0, 0);
+  const gl = glow(0xFFE9A0, 1.6); gl.position.z = -0.05; o.add(gl);
+  return o;
+}
 function makeRamp(){
   const g = new THREE.Group();
   g.add(addOutline(new THREE.Mesh(RAMP_GEO, toon(0xE3F4FC)), 1.03));
@@ -196,7 +206,7 @@ function runBuild(id){
   const lv = LEVELS[id], grp = new THREE.Group(); runRoot.add(grp);
   const r = {id, lv, grp, z:-4, y:0, vy:0, air:false, sp:RUN_SPEED, splash:0, tumble:0, shells:0, fish:0, total:0, fishTotal:0,
     lane:0, x:0, boost:0, ramp:null, bumpT:0,
-    pick:[], drifts:[], cracks:[], bubbles:[], boosts:[], ramps:[], snowballs:[], puffT:0, slow:null,
+    pick:[], drifts:[], cracks:[], bubbles:[], boosts:[], ramps:[], snowballs:[], puffT:0, slow:null, newFish:[], secret:false,
     taught:{jump:save.adv.runs > 0, fish:save.adv.runs > 0}, state:'ready',   // подсказки с замедлением про прыжок и рыбок — только в самом первом забеге
     stars:runsToday() >= RUN_DAILY};   // сегодня уже бегали — на дорожке звёздочки вместо ракушек
   const shell = (z, x, y, extra) => {
@@ -221,7 +231,8 @@ function runBuild(id){
       grp.add(d); r.drifts.push({o:d, z, hit:false, ln});
     }
     if((k === 'drift' && it[2]) || (k === 'crack' && it[3])){ const x = k === 'drift' && it[3] !== undefined ? it[3]*LANE : 0; for(const dz of [-1.3, 0, 1.3]) shell(z + dz, x, 1.45*(1 - (dz/2.1)**2)); }   // дуга по прыжку
-    if(k === 'fish'){ const b = makeBubble(), x = Math.sign(it[2])*(RUN_W/2 + 0.75); b.position.copy(runAt(z, x, BUB_Y)); grp.add(b); r.bubbles.push({o:b, z, x, ph:Math.random()*6, free:false}); r.fishTotal++; }
+    if(k === 'fish'){ const fd = (RUN_FISH[id] || [])[r.fishTotal], b = makeBubble(fd), x = Math.sign(it[2])*(RUN_W/2 + 0.75); b.position.copy(runAt(z, x, BUB_Y)); grp.add(b); r.bubbles.push({o:b, z, x, ph:Math.random()*6, free:false, fd}); r.fishTotal++; }
+    if(k === 'secret'){ const o = makeSecret(), y = it[3] || 0; o.position.copy(runAt(z, it[2]*LANE, 0.35 + y)); grp.add(o); r.pick.push({o, z, x:it[2]*LANE, y:0.35 + y, extra:true, secret:true}); }
     if(k === 'boost'){ const b = makeBoost(); b.position.copy(runAt(z, it[2]*LANE, 0.02)); grp.add(b); r.boosts.push({o:b, z, ln:it[2]}); }
     if(k === 'ramp'){
       const m = makeRamp(); m.position.copy(runAt(z)); grp.add(m); r.ramps.push({z});
@@ -267,10 +278,13 @@ function runFree(b){
   const p = b.o.position.clone(); R.grp.remove(b.o);
   burst(TEX.star, p, 10, 1.8, 0.26); emit(TEX.puff, p, {v:new V3(0, 0.3, 0), life:0.4, size:0.9, grow:1});
   // рыбка ныряет в воду и благодарит
-  const f = makeFish(); f.scale.setScalar(0.62); f.position.copy(p); scene.add(f);
+  const fd = b.fd, f = fd ? makeRunFish(fd) : makeFish(); f.scale.setScalar(0.7); f.position.copy(p); scene.add(f);
   const to = p.clone().add(new V3(b.x > 0 ? 2.2 : -2.2, -1.8, 0.5));
   tween(0.7, k => { f.position.lerpVectors(p, to, k); f.position.y += Math.sin(k*Math.PI)*1.2; f.rotation.z = -k*2; }, ease.lin).then(() => { scene.remove(f); sfx.plop(); burst(TEX.puff, to.clone().setY(0.1), 5, 0.8, 0.35); });
-  floatText(L('Спасибо!', 'Thank you!'), p.clone().add(new V3(0, 0.6, 0)), '#2F9E72');
+  // своя рыбка: в первый раз называет имя и переезжает в аквариум домика (сохраняем сразу — даже если уйдём с паузы)
+  const fresh = fd && !save.adv.fish.includes(fd.id);
+  if(fresh){ save.adv.fish.push(fd.id); R.newFish.push(fd.id); persist(); }
+  floatText(fd ? (fresh ? L(`Я ${fd.name}! Спасибо!`, `I'm ${fd.name}! Thanks!`) : L(`${fd.name}: «Спасибо!»`, `${fd.name}: “Thanks!”`)) : L('Спасибо!', 'Thank you!'), p.clone().add(new V3(0, 0.6, 0)), '#2F9E72');
   if(R.slow === 'fish'){ R.slow = null; R.taught.fish = true; runSayHint(L('Рыбка спасена! Ищи ещё пузыри 🫧', 'The fish is free! Look for more bubbles 🫧'), 1800); }
   runHud();
 }
@@ -309,6 +323,12 @@ function runBoost(b){
   b.used = true; R.boost = BOOST_T; sfx.boost();
   floatText(L('Вжух!', 'Whoosh!'), headTop(petSeal), '#D9527E');
   if(!tipSeen('boost')){ tipDone('boost'); runSayHint(L('Стрелки — ускорение! 🚀', 'Arrows make you zoom! 🚀'), 1800); }
+}
+function runSecret(p){   // золотая секретная ракушка
+  p.got = true; R.secret = true; R.grp.remove(p.o);
+  sfx.sparkle(); sfx.star(); burst(TEX.star, p.o.position, 18, 2.4, 0.3);
+  floatText(L('Секрет! ✨', 'A secret! ✨'), headTop(petSeal), '#E0A21B');
+  runSayHint(L('Золотая секретная ракушка! ✨', 'The golden secret shell! ✨'), 2000);
 }
 let runHudEl = null;
 function runHud(){
@@ -490,10 +510,12 @@ function runStep(dt){
     if(p.got || p.flying) continue;
     p.o.rotation.y += dt*3;
     if(p.z > z0 - 0.9 && p.z < r.z + 0.9 && Math.abs(p.y - py) < 1.0 && Math.abs(p.x - r.x) < 0.7){
+      if(p.secret){ runSecret(p); continue; }
       p.got = true; r.shells++; r.grp.remove(p.o); sfx.coin();
       emit(TEX.star, p.o.position, {v:new V3(0, 1, 0), life:0.45, size:0.22, spin:4}); runHud();
     }
   }
+  for(const p of r.pick) if(p.secret && !p.got) p.o.rotation.y -= dt*1.5;   // золотая крутится медленнее обычных
   for(const b of r.bubbles) if(!b.free) b.o.position.y = 0.25 + BUB_Y + Math.sin(now*2 + b.ph)*0.12;
   if(r.cloud) cloudStep(d, dt);
   // малыш: едет на пузике, в прыжке задирает нос, в кувырке крутится, на повороте наклоняется
@@ -541,15 +563,17 @@ function runFinishFx(){
 function advStars(id){ return save.adv.best[id] || 0; }
 async function advMap(){
   mgOpen(L('Куда отправимся?', 'Where shall we go?'));
+  const secOf = id => save.adv.sec.includes(id) ? `<i class="sec on" title="${L('Секрет найден', 'Secret found')}">✨</i>` : `<i class="sec" title="${L('Где-то спрятан секрет', 'A secret is hidden somewhere')}">?</i>`;
   const starsOf = n => '★'.repeat(n) + '☆'.repeat(3 - n);
   const lvBtn = (is, id) => {
     const lv = LEVELS[id], open = !lv.after || advStars(lv.after) > 0;
     return open
-      ? `<button class="isle on" data-lv="${id}"><span class="ic" aria-hidden="true">${lv.chase ? '☁️' : is.ic}</span><span class="t"><b>${levelName(id)}</b><small>${is.name}</small></span><span class="st" aria-label="${L('звёзды', 'stars')}">${starsOf(advStars(id))}</span></button>`
+      ? `<button class="isle on" data-lv="${id}"><span class="ic" aria-hidden="true">${lv.chase ? '☁️' : is.ic}</span><span class="t"><b>${levelName(id)}</b><small>${is.name}</small></span><span class="st" aria-label="${L('звёзды', 'stars')}">${starsOf(advStars(id))}${secOf(id)}</span></button>`
       : `<div class="isle lock"><span class="ic" aria-hidden="true">${lv.chase ? '☁️' : is.ic}</span><span class="t"><b>${levelName(id)}</b><small>${L(`Сначала пробеги «${levelName(lv.after)}» 🔒`, `First finish “${levelName(lv.after)}” 🔒`)}</small></span></div>`;
   };
   const panel = mgNode('div', 'mg-panel adv-map', `
     <p class="ttl display">${L('Карта приключений', 'Adventure map')}</p>
+    <p class="adv-count">🐟 ${L(`Рыбки: ${save.adv.fish.length} из ${FISH_ALL.length}`, `Fish: ${save.adv.fish.length} of ${FISH_ALL.length}`)} · ✨ ${L(`Секреты: ${save.adv.sec.length} из ${Object.keys(LEVELS).length}`, `Secrets: ${save.adv.sec.length} of ${Object.keys(LEVELS).length}`)}</p>
     <div class="isles">${ISLES.map(is => is.soon
       ? `<div class="isle lock"><span class="ic" aria-hidden="true">${is.ic}</span><span class="t"><b>${is.name}</b><small>${L('Скоро! 🔒', 'Coming soon! 🔒')}</small></span></div>`
       : is.levels.map(id => lvBtn(is, id)).join('')).join('')}</div>
@@ -680,13 +704,23 @@ function runResults(){
   const friend = !!r.cloud && best === 0;   // Тучку догнали в первый раз — она переезжает к малышу
   save.adv.best[r.id] = Math.max(best, stars);
   if(cup) save.adv.cups.push(r.id);
+  const secNew = r.secret && !save.adv.sec.includes(r.id); if(secNew) save.adv.sec.push(r.id);
   save.adv.runs++;
   const today = new Date().toDateString(); save.adv.day = {d:today, n:runsToday() + 1};
   persist();
   return {stars, shellsOk, fishOk, shells:r.shells, total:r.total, fish:r.fish, fishTotal:r.fishTotal, starRun:r.stars, cup, friend, tickles:r.tickles || 0, id:r.id,
-    gift:(r.stars ? 0 : r.shells) + (cup ? CUP_GIFT : 0)};
+    secNew, newFish:r.newFish.slice(),
+    gift:(r.stars ? 0 : r.shells) + (cup ? CUP_GIFT : 0) + (secNew ? SECRET_GIFT : 0)};
 }
 const CUP_GIFT = 10;
+// «Пузырик и Мятка переехали в твой аквариум!» — или ждут, пока аквариум появится в домике
+function fishMoved(ids){
+  const names = ids.map(id => fishDef(id).name), list = names.length > 1 ? names.slice(0, -1).join(', ') + L(' и ', ' and ') + names[names.length - 1] : names[0];
+  const many = ids.length > 1, tank = !!save.home.s.tank;
+  if(tank) return many ? L(`${list} переехали в твой аквариум!`, `${list} moved into your fish tank!`) : L(`${list} теперь живёт в твоём аквариуме!`, `${list} now lives in your fish tank!`);
+  return many ? L(`${list} спасены! Поселятся в домике, когда там будет аквариум 🏠`, `${list} are saved! They'll move in once your home has a fish tank 🏠`)
+    : L(`${list} спасена! Поселится в домике, когда там будет аквариум 🏠`, `${list} is saved! It will move in once your home has a fish tank 🏠`);
+}
 async function runResultPanel(res){
   const row = (ok, t, sm) => `<li class="${ok ? 'ok' : ''}"><span class="st">★</span><span>${t}<small>${sm}</small></span></li>`;
   const panel = mgNode('div', 'mg-panel run-end', `
@@ -699,6 +733,9 @@ async function runResultPanel(res){
     ${res.tickles ? `<p class="got">${L(`Пощекотали Тучку: ${res.tickles} ☁️`, `Tickled the Cloud: ${res.tickles} ☁️`)}</p>` : ''}
     ${res.friend ? `<p class="got cup">☁️ ${L('Тучка подружилась! Теперь она живёт над твоим уголком', 'The Cloud is your friend now! It lives above your corner')}</p>` : ''}
     ${res.starRun ? `<p class="got">${L('Ракушки на сегодня собраны — прилив принесёт новые завтра 🌊', 'The shells for today are collected — the tide brings new ones tomorrow 🌊')}</p>` : ''}
+    ${res.newFish.length ? `<p class="got fishy">🐟 ${fishMoved(res.newFish)}</p>` : ''}
+    ${res.secNew ? `<p class="got cup">✨ ${L(`Золотая секретная ракушка! +${SECRET_GIFT} 🐚`, `The golden secret shell! +${SECRET_GIFT} 🐚`)}</p>`
+      : !save.adv.sec.includes(res.id) && save.adv.runs > 1 ? `<p class="tip">✨ ${L('Тут спрятана золотая ракушка.', 'A golden shell is hidden here.')} ${SECRET_TIP[res.id] || ''}</p>` : ''}
     ${res.cup ? `<p class="got cup">🏆 ${L(`Кубок «${levelName(res.id)}» — теперь на полке в домике!`, `The “${levelName(res.id)}” cup is now on the shelf at home!`)}</p>` : ''}
     <p class="earned display">${res.gift ? `+${res.gift} 🐚` : ''}</p>
     <div class="row"><button class="btn" data-k="home">${L('Домой 🏠', 'Home 🏠')}</button><button class="btn ghost" data-k="again">${L('Ещё раз ↻', 'Again ↻')}</button></div>`);

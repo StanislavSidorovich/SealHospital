@@ -204,11 +204,48 @@ function makeThermo(){
   const bulb = addOutline(new THREE.Mesh(SMALL, toon(0xFF5C77)), 1.15); bulb.scale.setScalar(0.065); bulb.position.y = -0.31; g.add(bulb);
   return g;
 }
-function makeFish(){
-  const g = new THREE.Group(), m = toon(0xFFA552);
+function makeFish(col = 0xFFA552){
+  const g = new THREE.Group(), m = toon(col);
   const b = addOutline(new THREE.Mesh(SMALL, m), 1.08); b.scale.set(0.32, 0.18, 0.12); g.add(b);
   const tl = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.22, 4), m), 1.1); tl.rotation.z = Math.PI/2; tl.position.x = -0.38; tl.scale.z = 0.4; g.add(tl);
   const e = new THREE.Mesh(SMALL, inkMat); e.scale.setScalar(0.035); e.position.set(0.18, 0.04, 0.1); g.add(e);
+  return g;
+}
+// Рыбки из ледяных пузырей (Фаза 9): у каждой имя, цвет и узор — по ним их узнаёшь потом в аквариуме домика.
+// По 5 на уровень, в порядке пузырей на дорожке. pat: stripes | dots | bow | crown | star, pc — цвет узора
+const RUN_FISH = {
+  bay1: [
+    {id:'bubbles', name:L('Пузырик', 'Bubbles'),   col:0xFF8A5B, pat:'stripes', pc:0xFFFFFF},
+    {id:'sparky',  name:L('Искорка', 'Sparky'),    col:0xFFD66B, pat:'star',    pc:0xFF9BB8},
+    {id:'minty',   name:L('Мятка', 'Minty'),       col:0x86DDB5, pat:'dots',    pc:0xFFFFFF},
+    {id:'peachy',  name:L('Персик', 'Peachy'),     col:0xFFB3C7, pat:'bow',     pc:0xD9527E},
+    {id:'droplet', name:L('Капелька', 'Droplet'),  col:0x8CC8F0, pat:'dots',    pc:0x3E8DB8}],
+  bay2: [
+    {id:'snowy',   name:L('Снежинка', 'Snowflake'), col:0xF4FAFF, pat:'star',   pc:0x8CC8F0},
+    {id:'berry',   name:L('Черничка', 'Blueberry'), col:0xB69CF2, pat:'dots',   pc:0xFFFFFF},
+    {id:'lemon',   name:L('Лимончик', 'Lemon'),     col:0xFFE27A, pat:'stripes', pc:0x7FD1A8},
+    {id:'marsh',   name:L('Зефирка', 'Marshmallow'), col:0xFFD0E2, pat:'crown', pc:0xFFD66B},
+    {id:'misty',   name:L('Туманчик', 'Misty'),     col:0xAFC3D8, pat:'bow',    pc:0xFFFFFF}]
+};
+const FISH_ALL = Object.entries(RUN_FISH).flatMap(([lv, l]) => l.map(f => ({...f, lv})));
+const fishDef = id => FISH_ALL.find(f => f.id === id);
+function makeRunFish(f){
+  const g = makeFish(f.col), pm = toon(f.pc);
+  const e = new THREE.Mesh(SMALL, inkMat); e.scale.setScalar(0.035); e.position.set(0.18, 0.04, -0.1); g.add(e);   // второй глаз: в аквариуме рыбка плавает в обе стороны
+  const zOn = (x, y) => 0.12*Math.sqrt(Math.max(0, 1 - (x/0.32)**2 - (y/0.18)**2));   // поверхность тельца-эллипсоида
+  if(f.pat === 'stripes') for(const x of [-0.1, 0.04]){
+    const k = Math.sqrt(1 - (x/0.32)**2), b = new THREE.Mesh(SMALL, pm); b.scale.set(0.035, 0.18*k + 0.007, 0.12*k + 0.007); b.position.x = x; g.add(b);
+  }
+  if(f.pat === 'dots') for(const sd of [-1, 1]) for(const [x, y] of [[-0.12, 0.05], [0.0, -0.06], [0.06, 0.08], [-0.02, 0.1]]){
+    const d = new THREE.Mesh(SMALL, pm); d.scale.set(0.03, 0.03, 0.012); d.position.set(x, y, sd*zOn(x, y)); g.add(d);
+  }
+  if(f.pat === 'bow') for(const sd of [-1, 1]){
+    const c = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.11, 8), pm), 1.15); c.rotation.z = sd*Math.PI/2; c.position.set(0.05 + sd*0.055, 0.2, 0); g.add(c);
+  }
+  if(f.pat === 'crown') for(const x of [-0.04, 0.04, 0.12]){
+    const c = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.1, 6), pm), 1.15); c.position.set(x, 0.205 - Math.abs(x - 0.04)*0.4, 0); g.add(c);
+  }
+  if(f.pat === 'star'){ const s = addOutline(new THREE.Mesh(STAR_GEO, pm), 1.1); s.scale.setScalar(0.22); s.position.set(0.02, 0.2, 0); g.add(s); }
   return g;
 }
 function makeBobber(){
