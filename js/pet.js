@@ -214,6 +214,7 @@ function wishPick(){
   if(walkGiftToday()) c.push('walk');
   if(TRICKS.some(t => p.stage >= t.stage && (p.tricks[t.id] || 0) < 3)) c.push('tricks');
   c.push('ball');
+  if(typeof nbHere === 'function' && nbHere()) c.push('ping', 'ping');   // сосед Пинг (js/neighbors.js): позвать его в мяч — почаще
   const pool = c.filter(k => k !== lastWish);
   return pool.length ? pool[Math.floor(Math.random()*pool.length)] : 'ball';
 }
@@ -479,6 +480,7 @@ async function petDo(k){
   petGive(4 + Math.round(6*(1 - before)));
   persist(); renderPetCard(); renderPetBar();
   if(k === 'fun') toast(FUN_SAY[funKind](), 3000);
+  if(typeof nbEvent === 'function') nbEvent(k === 'fun' ? funKind : k);   // вдруг сосед Пинг просил именно это
   if(!wasGood && allGood()){   // все потребности закрыты — маленький праздник
     await wait(0.8);
     burst(TEX.heart, headTop(s), 20, 2.4, 0.34);
@@ -501,8 +503,9 @@ async function petNope(msg){
 // касание малыша: гладить (petStroke) или просто «ар!» (petStrokeEnd), спящего — разбудить
 function petTap(e){
   if(!petSeal || busy || !mgRoot.hidden) return;
+  if(typeof nbTap === 'function' && nbTap(e, true)) return;   // точно по соседу Пингу (js/neighbors.js)
   if(!petSeal.sleeping && bubbleHit(e)){ const low = petLow(); if(low){ sfx.tap(); return petDo(low); } return wishGo(); }
-  if(!petPart(e)){ if(homeHouseHit(e)) homeEnter(); return; }   // мимо малыша, но по иглу — заходим в домик
+  if(!petPart(e)){ if(typeof nbTap === 'function' && nbTap(e)) return; if(homeHouseHit(e)) homeEnter(); return; }   // по соседу Пингу (js/neighbors.js)   // мимо малыша, но по иглу — заходим в домик
   if(petLetterTap()) return;   // в зубах письмо от папы (js/mail.js)
   if(petSeal.sleeping){ setBusy(true); petWake().then(() => { setBusy(false); petRefresh(); }); return; }
   stroke = {id:e.pointerId, x:e.clientX, y:e.clientY, d:0, fx:0, done:false};
@@ -846,6 +849,7 @@ async function petDress(){
   mgClose(); unfocusCam();
   sfx.arf(); s.happyUntil = now + 3; setMood(s, 'happy'); floatText(L('Красиво!', 'Pretty!'), headTop(s), '#D9527E');
   setBusy(false); petRefresh();
+  if(typeof nbEvent === 'function' && Object.keys(save.pet.wear).length) nbEvent('dress');
 }
 
 /* ---------- рост: праздник на новой стадии ---------- */

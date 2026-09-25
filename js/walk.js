@@ -82,6 +82,7 @@ async function petFun(s){
   if(k === 'run'){ const lv = await advMap(); if(!lv){ s.happyUntil = 0; return false; } funKind = 'run'; return petRun(s, lv); }   // js/adventure.js
   if(k === 'no') return false;
   funKind = k;
+  if(k === 'ping') return nbBall(s);   // мяч втроём с соседом Пингом (js/neighbors.js)
   return k === 'walk' ? petWalk(s) : petPlay(s);
 }
 async function funMenu(s){
@@ -95,17 +96,20 @@ async function funMenu(s){
       <button data-k="walk"><span class="ic">🐾</span><b>${L('Гулять', 'Walk')}</b><small>${newFind ? L('✨ Что-то блестит!', '✨ Something shines!') : L(`Находки ${p.finds.length} из ${TREASURES.length}`, `Finds ${p.finds.length} of ${TREASURES.length}`)}</small></button>
       <button data-k="tricks"><span class="ic">🎓</span><b>${L('Трюки', 'Tricks')}</b><small>${L(`выучено ${learned} из ${open}`, `learned ${learned} of ${open}`)}</small></button>
       <button data-k="run"><span class="ic">🏔️</span><b>${L('Приключение', 'Adventure')}</b><small>${L('забег по льдинам', 'ice floe dash')}</small></button>
+      ${typeof nbHere === 'function' && nbHere() ? `<button data-k="ping" class="wide"><span class="ic">🐧</span><b>${L('Мяч с Пингом', 'Ball with Ping')}</b><small>${L('втроём', 'all three')}</small></button>` : ''}
     </div>
     <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
   if(newFind) panel.querySelector('[data-k="walk"]').classList.add('new');
+  const pb = panel.querySelector('[data-k="ping"]'); if(pb && nbQuest().id === 'ball' && !nbQuest().ok) pb.classList.add('new');   // Пинг сегодня просил
   const k = await new Promise(r => panel.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
   panel.classList.add('away'); await wait(0.25); mgClose();
   return k;
 }
 // что меняется после игры: гуляли — проголодался и испачкался сильнее
-const FUN_COST = {ball:{food:0.12, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}, run:{food:0.2, bath:0.3, sleep:0.2}};
+const FUN_COST = {ball:{food:0.12, bath:0.25}, ping:{food:0.15, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}, run:{food:0.2, bath:0.3, sleep:0.2}};
 const FUN_SAY = {
   ball: () => L(`${gg('Наигрался', 'Наигралась')}! И немножко ${gg('испачкался', 'испачкалась')} 🛁`, 'All played out! And a little bit dirty 🛁'),
+  ping: () => L(`Вот это игра! ${save.pet.name} и Пинг — лучшие друзья 🐧`, `What a game! ${save.pet.name} and Ping are best friends 🐧`),
   walk: () => L(`${gg('Нагулялся', 'Нагулялась')}! Лапки в снегу — пора купаться 🛁`, 'What a walk! Paws full of snow — bath time 🛁'),
   run: () => runSay || L(`${gg('Набегался', 'Набегалась')}! Лапки в снегу — пора купаться 🛁`, 'What a run! Snowy flippers — bath time 🛁'),
   tricks: () => trickMsg || L(`Умница! ${save.pet.name} любит учиться с тобой ♡`, `Well done! ${save.pet.name} loves learning with you ♡`)

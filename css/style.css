@@ -505,6 +505,8 @@ body.mg-on #homeCard,body.mg-on #homeBar{display:none!important}
 /* ---------------- Фаза 9: приключения (js/adventure.js) ---------------- */
 .fun-pick .picks{grid-template-columns:repeat(2,1fr)}
 .fun-pick .picks button{min-height:96px}
+.fun-pick .picks .wide{grid-column:span 2;min-height:64px;flex-direction:row;gap:10px}
+.fun-pick .picks .wide .ic{font-size:30px}
 .run-hud{position:absolute;left:12px;right:74px;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;align-items:center;gap:6px;pointer-events:none;max-width:420px}
 .run-hud .pill{background:var(--paper);border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);padding:4px 10px;font-weight:800;font-size:17px;white-space:nowrap}
 .run-hud .bar{position:relative;flex:1;min-width:60px;height:14px;border:2.5px solid var(--ink);border-radius:9px;background:#fff;box-shadow:0 3px 0 var(--ink)}

@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -33,7 +33,16 @@ function sanitize(d){
     home:sanitizeHome(d.home),   // домик малыша (Фаза 4)
     adv:sanitizeAdv(d.adv),      // приключения (Фаза 9)
     hol:strList(d.hol),          // какие праздничные подарки уже получены ('halloween-2026', js/holidays.js)
-    sea:sanitizeSea(d.sea)};     // рыбки моря с рыбалки (js/minigames.js)
+    sea:sanitizeSea(d.sea),      // рыбки моря с рыбалки (js/minigames.js)
+    nb:sanitizeNb(d.nb)};        // соседи (js/neighbors.js)
+}
+// nb = {ping:{in — Пинг живёт по соседству с малышом, xp — дружба 💙 (сколько просьб выполнено),
+//        q:{d — день, id — просьба дня из PING_ASKS, ok — выполнена, got — подарок забран}}}
+function sanitizeNb(a){
+  a = a && typeof a === 'object' ? a : {};
+  const p = a.ping && typeof a.ping === 'object' ? a.ping : {}, q = p.q && typeof p.q === 'object' ? p.q : {};
+  return {ping:{in:!!p.in, xp:Number.isFinite(p.xp) ? Math.max(0, p.xp) : 0,
+    q:{d:typeof q.d === 'string' ? q.d : '', id:typeof q.id === 'string' ? q.id : '', ok:!!q.ok, got:!!q.got}}};
 }
 // sea = {got:[виды из SEA_FISH, пойманные хоть раз — южные живут в аквариуме], n — сколько всего поймали, r — на каком улове была последняя южная гостья}
 function sanitizeSea(a){
