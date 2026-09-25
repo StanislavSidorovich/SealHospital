@@ -83,6 +83,7 @@ async function petFun(s){
   if(k === 'no') return false;
   funKind = k;
   if(k === 'ping') return nbBall(s);   // мяч втроём с соседом Пингом (js/neighbors.js)
+  if(k === 'coop') return coopFromPet(s);   // бой с Большой Тучей вдвоём (js/coop.js)
   return k === 'walk' ? petWalk(s) : petPlay(s);
 }
 async function funMenu(s){
@@ -97,6 +98,7 @@ async function funMenu(s){
       <button data-k="tricks"><span class="ic">🎓</span><b>${L('Трюки', 'Tricks')}</b><small>${L(`выучено ${learned} из ${open}`, `learned ${learned} of ${open}`)}</small></button>
       <button data-k="run"><span class="ic">🏔️</span><b>${L('Приключение', 'Adventure')}</b><small>${L('забег по льдинам', 'ice floe dash')}</small></button>
       ${typeof nbHere === 'function' && nbHere() ? `<button data-k="ping" class="wide"><span class="ic">🐧</span><b>${L('Мяч с Пингом', 'Ball with Ping')}</b><small>${L('втроём', 'all three')}</small></button>` : ''}
+      ${typeof coopFromPet === 'function' ? `<button data-k="coop" class="wide"><span class="ic">☁️</span><b>${L('Вместе', 'Together')}</b><small>${L('бой с Большой Тучей', 'fight the Big Cloud')}</small></button>` : ''}
     </div>
     <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
   if(newFind) panel.querySelector('[data-k="walk"]').classList.add('new');

@@ -308,6 +308,7 @@ function applyCode(){
 }
 $('#btnSettings').addEventListener('click', openSettings);
 $('#btnIntroSet').addEventListener('click', openSettings);
+$('#btnIntroCoop').addEventListener('click', () => { if(typeof coopFromIntro === 'function') coopFromIntro(); });   // бой вдвоём с первого экрана (js/coop.js)
 $('#btnSetClose').addEventListener('click', () => { sfx.tap(); $('#settings').hidden = true; });
 $('#btnCodeCopy').addEventListener('click', copyCode);
 $('#btnCodePaste').addEventListener('click', pasteCode);

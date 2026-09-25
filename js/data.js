@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -34,7 +34,14 @@ function sanitize(d){
     adv:sanitizeAdv(d.adv),      // приключения (Фаза 9)
     hol:strList(d.hol),          // какие праздничные подарки уже получены ('halloween-2026', js/holidays.js)
     sea:sanitizeSea(d.sea),      // рыбки моря с рыбалки (js/minigames.js)
-    nb:sanitizeNb(d.nb)};        // соседи (js/neighbors.js)
+    nb:sanitizeNb(d.nb),         // соседи (js/neighbors.js)
+    coop:sanitizeCoop(d.coop)};  // играем вместе: бой с Большой Тучей (js/coop.js)
+}
+// coop = {wins — побед над Большой Тучей, tries — боёв, net — побед по сети, day:{d, n} — сколько побед сегодня (ракушки за первые две)}
+function sanitizeCoop(a){
+  a = a && typeof a === 'object' ? a : {};
+  const n = v => Number.isFinite(v) ? Math.max(0, v) : 0, day = a.day && typeof a.day === 'object' ? a.day : {};
+  return {wins:n(a.wins), tries:n(a.tries), net:n(a.net), day:{d:typeof day.d === 'string' ? day.d : '', n:n(day.n)}};
 }
 // nb = {ping:{in — Пинг живёт по соседству с малышом, xp — дружба 💙 (сколько просьб выполнено),
 //        q:{d — день, id — просьба дня из PING_ASKS, ok — выполнена, got — подарок забран}}}

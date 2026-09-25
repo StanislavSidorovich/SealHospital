@@ -561,3 +561,30 @@ body.map-on #corner>:not(#btnSound){display:none!important}
 .sea-card .fact{font-size:16px;font-weight:700;line-height:1.35;margin:0 0 8px}
 .fish-panel .sub{font-size:15px;font-weight:800;margin:6px 0 0}
 .fish-panel .fact{font-size:14px;font-weight:700;line-height:1.3;margin:4px 0 6px;min-height:1.3em}
+
+/* ---------- Играем вместе (js/net.js, js/coop.js) ---------- */
+.small-row{margin-top:6px}
+.row.col{flex-direction:column;align-items:stretch;max-width:280px;margin:0 auto 10px}
+.net-lobby .ttl,.co-pick .ttl{font-size:26px;margin:2px 0 8px;text-align:center}
+.net-lobby .got,.co-pick .got{font-size:15px;font-weight:800;margin:0 0 10px;text-align:center}
+.net-code{font-size:52px;text-align:center;letter-spacing:8px;margin:4px 0 10px;min-height:64px}
+.net-code i{display:inline-block;width:52px;height:56px;line-height:56px;font-style:normal;color:var(--soft);border:2.5px dashed var(--soft);border-radius:14px;font-size:28px;margin:0 3px;letter-spacing:0}
+.net-emo{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 10px}
+.net-emo button{height:60px;font-size:34px;border:2.5px solid var(--ink);border-radius:16px;background:#fff;box-shadow:0 4px 0 var(--ink)}
+.net-emo button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.co-hud{position:absolute;left:12px;right:74px;top:calc(env(safe-area-inset-top,0px) + 12px);pointer-events:none;max-width:440px}
+.co-boss{display:flex;align-items:center;gap:6px}
+.co-boss .ic{font-size:26px;line-height:1}
+.co-boss .bar{position:relative;flex:1;height:16px;border:2.5px solid var(--ink);border-radius:9px;background:#fff;box-shadow:0 3px 0 var(--ink);overflow:hidden}
+.co-boss .bar i{display:block;height:100%;width:100%;background:#9AA3B8;transition:width .15s}
+.co-boss .ph{font-size:13px;letter-spacing:2px;color:var(--ink)}
+.co-pl{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.co-pl .pill{background:var(--paper);border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);padding:3px 10px;font-weight:800;font-size:14px;white-space:nowrap}
+.co-pl .pal{background:#EAF4FF}
+.co-btns{position:absolute;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;align-items:center;gap:12px}
+.co-btns .round{font-size:24px;line-height:1}
+.co-btns .co-mic.on{background:#DDF5EA}
+.co-jump{width:84px;height:84px;border-radius:50%;border:2.5px solid var(--ink);background:var(--pink);box-shadow:0 5px 0 var(--ink);font-size:38px;line-height:1;touch-action:none}
+.co-jump:active{transform:translateY(3px);box-shadow:0 2px 0 var(--ink)}
+.co-photo{display:block;width:120px;height:120px;border-radius:50%;border:2.5px solid var(--ink);margin:0 auto 6px;object-fit:cover}
+.co-end .ttl{font-size:28px;margin:2px 0 10px;text-align:center}
