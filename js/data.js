@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, fish, shells, owned, decor, shifts, pet, mail, home, adv}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -22,6 +22,7 @@ function sanitize(d){
     album:Array.isArray(d.album) ? d.album : [],
     progress:Number.isFinite(d.progress) ? d.progress : 0,
     muted:!!d.muted,
+    music:d.music !== false,   // фоновая музыка (js/audio.js); 🔇 в углу выключает и её
     fish:Number.isFinite(d.fish) ? d.fish : 0,     // рыбки в ведре (Фаза 1, рыбалка)
     shells:Number.isFinite(d.shells) ? Math.max(0, d.shells) : 0,   // ракушки — валюта (Фаза 2)
     owned:strList(d.owned),    // купленное в лавке (id из SHOP)

@@ -261,6 +261,12 @@ canvas.addEventListener('pointerdown', e => {
   }
 });
 $('#btnSound').addEventListener('click', () => { save.muted = !save.muted; persist(); renderMute(); if(!save.muted) sfx.tap(); });
+// музыка — отдельно от звуков (⚙️); включили музыку при выключенном звуке — включаем и звук, иначе её не услышать
+for(const b of document.querySelectorAll('#musicSeg button')) b.addEventListener('click', () => {
+  save.music = b.dataset.m === '1';
+  if(save.music && save.muted){ save.muted = false; renderMute(); }
+  persist(); renderMusic(); sfx.tap();
+});
 /* ---------------- код сохранения (настройки) ---------------- */
 const codeBox = $('#codeBox'), codeMsg = $('#codeMsg');
 let codeNew = null;   // прочитанный код, который ждёт «Да, загрузить»
@@ -405,7 +411,7 @@ function frame(ts){
   renderer.render(scene, camera);
 }
 
-buildTools(); renderMute(); renderAlbumCount(); renderBucket();
+buildTools(); renderMute(); renderMusic(); renderAlbumCount(); renderBucket();
 if(save.progress){ const st = $('#introStat'); st.textContent = L(`Ты уже вылечила пациентов: ${save.progress} · ракушек: ${save.shells} 🐚`, `Patients healed: ${save.progress} · shells: ${save.shells} 🐚`); st.hidden = false; $('#btnStart').textContent = L('Начать смену', 'Start a shift'); }
 if(save.pet){ $('#introStat').textContent += ` · ${save.pet.name} ${petMissed() ? L(gg('соскучился', 'соскучилась'), 'misses you') : L('ждёт тебя', 'is waiting for you')} 🦭`; $('#btnIntroPet').hidden = false; }
 else if(adoptPending()){ $('#introStat').textContent += L(' · Кто-то ждёт тебя у льдины…', ' · Someone is waiting for you by the ice…'); $('#btnStart').textContent = L('Открыть больницу', 'Open the hospital'); }

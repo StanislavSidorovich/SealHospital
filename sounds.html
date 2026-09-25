@@ -25,6 +25,8 @@
   .row{ display:flex; gap:8px; flex-wrap:wrap; }
   .row .old{ background:#EEE; }
   .row .new{ background:var(--pink); }
+  h2{ font-family:Pangolin, cursive; font-size:24px; margin:6px 0 8px; }
+  #tunes button.on{ background:var(--pink); }
   .vote.on{ background:var(--ink); color:var(--paper); }
   .new-tag{ font-size:12px; background:var(--pink2); color:#fff; border-radius:8px; padding:1px 6px; vertical-align:middle; }
   textarea{ width:100%; max-width:720px; height:120px; margin-top:12px; border:2.5px solid var(--ink); border-radius:16px; padding:10px; font:inherit; }
@@ -38,6 +40,8 @@
   <button id="btnCopy"></button>
   <button id="btnClear"></button>
 </div>
+<h2 id="t3"></h2>
+<div class="top" id="tunes"></div>
 <div class="list" id="list"></div>
 <textarea id="out" hidden readonly></textarea>
 
@@ -45,7 +49,8 @@
 <script>
   // заглушки из data.js, чтобы подключить настоящий js/audio.js без всей игры
   const $ = s => document.querySelector(s);
-  const save = {muted:false};
+  const save = {muted:false, music:false};
+  let petMode = false, petSeal = null, homeMode = false, R = null; const HOL = null;   // музыка спрашивает, где мы
 </script>
 <script src="js/audio.js"></script>
 <script>
@@ -152,6 +157,16 @@ $('#btnAll').textContent = L('▶ Все новые подряд', '▶ All new 
 $('#btnCopy').textContent = L('📋 Итоги для папы', '📋 Results for Dad');
 $('#btnClear').textContent = L('↺ Заново', '↺ Reset');
 
+// фоновая музыка: у каждой мелодии своя кнопка, ⏹ — тишина
+const TLIST = [['hosp', L('🏥 Больница', '🏥 Hospital')], ['pet', L('🦭 Уголок малыша', '🦭 Pup corner')], ['home', L('🏠 Иглу', '🏠 Igloo')],
+  ['run', L('🏃 Забег', '🏃 Run')], ['map', L('🗺️ Карта островов', '🗺️ Island map')], ['night', L('🌙 Колыбельная', '🌙 Lullaby')]];
+$('#t3').textContent = L('🎵 Музыка', '🎵 Music');
+$('#tunes').innerHTML = TLIST.map(([k, n]) => `<button data-t="${k}">${n}</button>`).join('') + `<button data-t="">⏹</button>`;
+$('#tunes').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  ac(); musForce = b.dataset.t || null; save.music = !!musForce;
+  for(const x of $('#tunes').children) x.classList.toggle('on', x === b && !!musForce);
+});
 function render(){
   $('#list').innerHTML = LIST.map(([k, name, where, fresh]) => `
     <div class="card ${votes[k] || ''}" data-k="${k}">

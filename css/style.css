@@ -450,11 +450,11 @@ body:not(.pet-mode) .night{opacity:0}
 @media (prefers-reduced-motion:reduce){ .envelope,.gift-box,.intro-mail{animation:none} }
 
 /* ---------------- язык: переключатель RU | EN (js/i18n.js) ---------------- */
-.lang{display:inline-flex;margin:0 auto 10px;border:2.5px solid var(--ink);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 3px 0 var(--ink)}
-.lang button{font-family:"Pangolin","Comic Sans MS",cursive;font-size:18px;min-width:64px;min-height:48px;padding:6px 16px;border:0;background:#fff;color:var(--ink);cursor:pointer}
-.lang button+button{border-left:2.5px solid var(--ink)}
-.lang button.on{background:var(--pink)}
-.panel.settings .lang{margin:0 auto 14px}
+.lang,.seg{display:inline-flex;margin:0 auto 10px;border:2.5px solid var(--ink);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 3px 0 var(--ink)}
+.lang button,.seg button{font-family:"Pangolin","Comic Sans MS",cursive;font-size:18px;min-width:64px;min-height:48px;padding:6px 16px;border:0;background:#fff;color:var(--ink);cursor:pointer}
+.lang button+button,.seg button+button{border-left:2.5px solid var(--ink)}
+.lang button.on,.seg button.on{background:var(--pink)}
+.panel.settings .lang,.panel.settings .seg{margin:0 auto 14px}
 .set-lbl{font-size:22px!important;color:var(--pink-d);margin:6px 0 6px!important;line-height:1.1!important}
 
 /* ---------------- Фаза 4: мой иглу (js/home.js) ---------------- */

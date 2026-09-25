@@ -110,16 +110,141 @@ const sfx = {
   star(){ [5, 7, 8].forEach((n,i) => bell(pn(n), {vol:0.045, delay:i*0.07, d:0.5})); },
   buy(){ [3, 5, 6, 8, 10].forEach((n,i) => bell(pn(n), {vol:0.04, delay:i*0.06, d:0.45})); },
   yawn(){ tone(520, 0.7, {vol:0.06, to:260, att:0.08, vib:0.02, vibHz:5}); },
-  grow(){ for(let i = 0; i < 10; i++) bell(pn(i), {vol:0.03 + i*0.002, delay:i*0.15, d:0.6}); },
+  grow(){ musDuck(1.6); for(let i = 0; i < 10; i++) bell(pn(i), {vol:0.03 + i*0.002, delay:i*0.15, d:0.6}); },
   sparkle(){ bell(pick([pn(10), pn(11), pn(12)]), {vol:0.025, d:0.3}); bell(pick([pn(12), pn(13), pn(14)]), {vol:0.02, delay:0.06, d:0.35}); },
   // мурчание: низкий треугольник с быстрым дрожанием
   purr(){ tone(jit(170, 0.08), 0.4, {type:'triangle', vol:0.06, to:140, att:0.06, vib:0.08, vibHz:24}); },
   paper(){ noise(0.22, {vol:0.13, freq:3200, att:0.03}); noise(0.16, {vol:0.1, freq:2400, delay:0.14, att:0.03}); },
-  letter(){ [3, 5, 6, 5, 7].forEach((n,i) => bell(pn(n), {vol:0.04, delay:i*0.12, d:0.8})); },
-  lullaby(){ [3, 2, 1, -1, 0].forEach((n,i) => bell(pn(n), {vol:0.035, delay:i*0.34, d:1.1})); }
+  letter(){ musDuck(1.2); [3, 5, 6, 5, 7].forEach((n,i) => bell(pn(n), {vol:0.04, delay:i*0.12, d:0.8})); },
+  lullaby(){ musDuck(1.8); [3, 2, 1, -1, 0].forEach((n,i) => bell(pn(n), {vol:0.035, delay:i*0.34, d:1.1})); }
 };
 function renderMute(){
   $('#waves').toggleAttribute('hidden', save.muted);
   $('#cross').toggleAttribute('hidden', !save.muted);
   $('#btnSound').setAttribute('aria-label', save.muted ? L('Включить звук', 'Sound on') : L('Выключить звук', 'Sound off'));
+}
+
+/* ---------------- фоновая музыка ---------------- */
+// Тихая «шкатулка» под игрой. Свой регулятор MUS (стоит перед BUS, поэтому проходит через тот же компрессор),
+// свой переключатель save.music (⚙️), а 🔇 в углу выключает всё. Ноты ставит планировщик на setInterval
+// с запасом 0,4 с — музыка не зависит от кадров и не спотыкается, когда телефон тормозит.
+// Где мы — там и мелодия (musicMood): больница, уголок малыша, иглу, забег, карта островов, ночь — колыбельная.
+// Мелодии в той же пентатонике pn(n), что и звуки: совпадение с «динь» даёт аккорд, а не фальшь.
+let musForce = null;   // пульт sounds.html: включить мелодию вручную
+let MUS = null, musMood = null, musPart = 0, musStep = 0, musT = 0, musWait = 0, NOISE = null;
+// аккорды: [бас, три ноты аккорда]; «си» в G есть только в аккорде, в мелодии его нет
+const CHORD = {C:[130.81, 261.63, 329.63, 392.00], Am:[110.00, 220.00, 261.63, 329.63], F:[87.31, 174.61, 220.00, 261.63], G:[98.00, 196.00, 246.94, 293.66]};
+// часть мелодии: аккорды по тактам и ноты по восьмушкам (число — ступень pn, «.» — пауза, «|» — такт); без mel — такты без мелодии
+const mp = (ch, mel) => ({ch:ch.split(' '), mel:mel ? mel.split('|').map(b => b.trim().split(/\s+/).map(x => x === '.' ? null : +x)) : null});
+const TUNE_HOSP = {
+  A:mp('C Am F G C Am F C', '2 . 3 . 4 . 3 2 | 0 . . 2 1 . . . | -1 . 0 . 1 . 2 . | 3 . . . 1 . . . | 2 . 3 . 4 . 5 . | 4 . 3 . 2 . 0 . | -1 . 0 1 2 . 1 . | 0 . . . . . . .'),
+  B:mp('F C F G C Am G C', '4 . 5 . 4 . 3 . | 2 . 3 . 2 . 0 . | 4 . 5 . 6 . 5 . | 3 . . . . . 1 . | 2 . . 3 4 . . 3 | 2 . 0 . -1 . 0 . | 1 . 2 . 3 . 1 . | 0 . . . . . . .'),
+  R:mp('C Am F G')};
+const TUNE_PET = {   // вальс на три четверти
+  A:mp('C Am F G C Am G C', '2 . . . 3 . | 4 . . . 2 . | 0 . 1 . 2 . | 1 . . . . . | 2 . . . 3 . | 4 . 5 . 4 . | 3 . 1 . 2 . | 0 . . . . .'),
+  B:mp('F C Am G F C G C', '4 . . . 5 . | 3 . . . 2 . | 2 . 3 . 4 . | 3 . . . . . | 4 . . . 3 . | 2 . . . 0 . | 1 . 2 . 1 . | 0 . . . . .'),
+  R:mp('C Am F G')};
+const TUNE_RUN = {
+  A:mp('C C F G C Am G C', '0 . 2 . 3 . 2 . | 3 . 4 3 2 . 0 . | -1 . 0 . 2 . 0 . | 1 . 1 . 3 . . . | 0 . 2 . 3 . 5 . | 4 . 3 . 2 . 0 . | 1 . 2 . 3 . 1 . | 0 . 0 . 0 . . .'),
+  B:mp('F C F G C Am G C', '5 . 4 . 5 . 4 . | 3 . 2 . 3 . . . | 5 . 4 . 5 . 6 . | 5 . . . 3 . . . | 2 3 4 . 2 3 4 . | 5 . 4 . 2 . 0 . | 1 . 3 . 1 . 3 . | 5 . . . 0 . . .')};
+const TUNE_NIGHT = {   // колыбельная — родня звука sfx.lullaby
+  A:mp('C F C G C F G C', '2 . 1 . 0 . | -1 . . . 0 . | 2 . 1 . 0 . | -2 . . . . . | 0 . 1 . 2 . | 3 . 2 . 0 . | 1 . . . -2 . | 0 . . . . .'),
+  R:mp('C F G C')};
+// bpm — четверти в минуту, bar — восьмушек в такте, style — аккомпанемент, inst — чем играет мелодия, shift — сдвиг ступеней, vol — громкость MUS
+const TUNES = {
+  hosp: {parts:TUNE_HOSP,  seq:'ABAR', bpm:84,  bar:8, style:'box',   inst:'box', shift:0,  vol:0.28},
+  pet:  {parts:TUNE_PET,   seq:'ABAR', bpm:96,  bar:6, style:'waltz', inst:'box', shift:0,  vol:0.25},
+  home: {parts:TUNE_PET,   seq:'BARA', bpm:84,  bar:6, style:'waltz', inst:'mar', shift:-5, vol:0.28},
+  run:  {parts:TUNE_RUN,   seq:'AABA', bpm:128, bar:8, style:'run',   inst:'mar', shift:0,  vol:0.3},
+  map:  {parts:TUNE_RUN,   seq:'ABAB', bpm:100, bar:8, style:'box',   inst:'box', shift:0,  vol:0.24},
+  night:{parts:TUNE_NIGHT, seq:'ARAR', bpm:58,  bar:6, style:'waltz', inst:'box', shift:-5, vol:0.24}
+};
+function musicMood(){
+  if(musForce) return musForce;
+  const b = document.body.classList;
+  if(b.contains('run-on')) return R && R.paused ? 'map' : 'run';
+  if(b.contains('map-on')) return 'map';
+  if(petMode) return petSeal && petSeal.sleeping ? 'night' : homeMode ? 'home' : 'pet';
+  return 'hosp';
+}
+function mNote(f, t, d, vol, type = 'sine', att = 0.006){
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.value = f; env(g, t, vol, att, d);
+  o.connect(g).connect(MUS); o.start(t); o.stop(t + d + 0.05);
+}
+const MINST = {
+  box(f, t, v){ mNote(f, t, 1.4, v); mNote(f*3, t, 0.45, v*0.12, 'sine', 0.003); },       // шкатулка: долгий звон
+  mar(f, t, v){ mNote(f, t, 0.4, v, 'sine', 0.004); mNote(f*4, t, 0.06, v*0.2, 'sine', 0.002); },   // маримба: деревянный удар
+  pad(f, t, v, d){ mNote(f, t, d, v, 'triangle', 0.04); },                                  // аккорд: мягко, без удара
+  bass(f, t, v, d){ mNote(f, t, d, v, 'triangle', 0.02); mNote(f*2, t, d*0.7, v*0.4, 'sine', 0.02); },   // обертон — чтобы бас был слышен в динамике телефона
+  // шорох-«тик» (в забеге) и бубенчики (на Новый год) из одного кусочка шума
+  shh(t, v, d, freq){
+    const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+    s.buffer = NOISE; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.2; env(g, t, v, 0.003, d);
+    s.connect(f).connect(g).connect(MUS); s.start(t, Math.random()*0.2); s.stop(t + d + 0.02);
+  }
+};
+function musPlay(T, t){
+  const part = T.parts[T.seq[musPart]], bar = Math.floor(musStep / T.bar), i = musStep % T.bar;
+  const ch = CHORD[part.ch[bar]], e = 60 / T.bpm / 2, hum = () => t + (Math.random() - 0.5)*0.01;
+  // аккомпанемент
+  if(T.style === 'run'){
+    if(i % 2 === 0) MINST.bass(i % 4 ? ch[0]*1.5 : ch[0], hum(), 0.075, e*1.6);
+    else MINST.shh(hum(), i === 3 || i === 7 ? 0.018 : 0.012, 0.05, 7000);
+  } else if(T.style === 'waltz'){
+    if(i === 0) MINST.bass(ch[0], hum(), 0.07, e*T.bar*0.9);
+    if(i === 2 || i === 4) [ch[2], ch[3]].forEach(f => MINST.pad(f, hum(), 0.018, e*1.8));
+  } else {
+    if(i === 0) MINST.bass(ch[0], hum(), 0.07, e*T.bar*0.9);
+    if(i === 2 || i === 6) MINST.pad(ch[2], hum(), 0.02, e*1.8);
+    if(i === 4) MINST.pad(ch[3], hum(), 0.02, e*1.8);
+  }
+  if(HOL && HOL.id === 'newyear' && T.style !== 'run' && i % 2 === 0) MINST.shh(hum(), 0.01, 0.12, 9000);   // бубенчики
+  // мелодия: первая доля чуть громче
+  const n = part.mel && part.mel[bar][i];
+  if(n !== null && n !== undefined) MINST[T.inst](pn(n + T.shift), hum(), (i === 0 ? 0.075 : 0.062) * (T.inst === 'mar' ? 1.1 : 1));
+  if(++musStep >= part.ch.length * T.bar){ musStep = 0; musPart = (musPart + 1) % T.seq.length; }
+  return e;
+}
+function musFadeTo(v, s){
+  const t = AC.currentTime, g = MUS.gain;
+  g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(v, t + s);
+}
+function musTick(){
+  if(!AC || !MUS) return;
+  const t0 = AC.currentTime;
+  const want = !save.muted && save.music && !document.hidden && AC.state === 'running' ? musicMood() : null;
+  if(want !== musMood){
+    // сменилось место: старая мелодия тихо уходит, короткая пауза, новая начинается сначала
+    if(musMood){ musFadeTo(0, 0.7); musMood = null; musWait = t0 + 0.9; return; }
+    if(!want || t0 < musWait) return;
+    musMood = want; musPart = 0; musStep = 0; musT = t0 + 0.15;
+    musFadeTo(TUNES[want].vol, 1.5);
+  }
+  if(!musMood) return;
+  if(musT < t0) musT = t0 + 0.05;   // вкладка спала — пропущенные ноты не догоняем
+  while(musT < t0 + 0.4) musT += musPlay(TUNES[musMood], musT);
+}
+// большой звук (письмо, рост, колыбельная) — музыка ненадолго притихает, чтобы не спорить с ним
+function musDuck(s){
+  if(!MUS || !musMood) return;
+  const v = TUNES[musMood].vol, t = AC.currentTime, g = MUS.gain;
+  g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
+  g.linearRampToValueAtTime(v*0.2, t + 0.2); g.setValueAtTime(v*0.2, t + s); g.linearRampToValueAtTime(v, t + s + 1.5);
+}
+function musInit(){
+  if(MUS || !AC) return;
+  try{
+    MUS = AC.createGain(); MUS.gain.value = 0; MUS.connect(BUS);
+    const len = Math.floor(AC.sampleRate * 0.4); NOISE = AC.createBuffer(1, len, AC.sampleRate);
+    const ch = NOISE.getChannelData(0); for(let i = 0; i < len; i++) ch[i] = Math.random()*2 - 1;
+  }catch(e){ MUS = null; }
+}
+setInterval(() => { try{ if(AC && !MUS) musInit(); musTick(); }catch(e){} }, 120);
+// переключатель в ⚙️: «Музыка: Вкл | Выкл»
+function renderMusic(){
+  for(const b of document.querySelectorAll('#musicSeg button')){
+    const on = (b.dataset.m === '1') === !!save.music;
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
 }
