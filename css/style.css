@@ -568,6 +568,7 @@ body.map-on #corner>:not(#btnSound){display:none!important}
 .net-lobby .ttl,.co-pick .ttl{font-size:26px;margin:2px 0 8px;text-align:center}
 .net-lobby .got,.co-pick .got{font-size:15px;font-weight:800;margin:0 0 10px;text-align:center}
 .net-why{font-size:11px;font-weight:600;opacity:.55}
+#netSat{position:fixed;left:calc(8px + env(safe-area-inset-left));top:calc(6px + env(safe-area-inset-top));font-size:15px;opacity:.6;pointer-events:none;z-index:60}
 .net-code{font-size:52px;text-align:center;letter-spacing:8px;margin:4px 0 10px;min-height:64px}
 .net-code i{display:inline-block;width:52px;height:56px;line-height:56px;font-style:normal;color:var(--soft);border:2.5px dashed var(--soft);border-radius:14px;font-size:28px;margin:0 3px;letter-spacing:0}
 .net-emo{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 10px}

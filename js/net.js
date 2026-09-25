@@ -28,19 +28,62 @@ function netRandomCode(){ return [0, 1, 2].map(() => Math.floor(Math.random()*NE
 function netSend(m){ try{ if(net.conn && net.conn.open) net.conn.send(m); }catch(e){} }
 function netOn(type, fn){ net.on[type] = fn; }
 function netWire(conn){
+  const old = net.conn;
   net.conn = conn; net.lastIn = performance.now();
+  if(old && old !== conn) try{ old.close(); }catch(e){}   // переподключились — старую ниточку обрезаем
   conn.on('data', m => {
+    if(net.conn !== conn) return;
     net.lastIn = performance.now();
-    if(net.lost){ net.lost = false; if(net.onBack) net.onBack(); }
+    if(net.lost){ net.lost = false; netRecall(); if(net.onBack) net.onBack(); }
     if(m && m.t === 'hb') return;
     const f = m && net.on[m.t]; if(f) f(m);
   });
   conn.on('close', () => { if(net.conn === conn && !net.lost){ net.lost = true; if(net.onLost) net.onLost(); } });
   clearInterval(net.hb);
+  let tick = 0;
   net.hb = setInterval(() => {
     netSend({t:'hb'});
     if(!net.lost && performance.now() - net.lastIn > 5000){ net.lost = true; if(net.onLost) net.onLost(); }
+    if(net.lost && ++tick % 3 === 0) netRetry();   // связь пропала — каждые 3 с стучимся снова
   }, 1000);
+  netRelayCheck(conn);
+}
+// переподключение с тем же кодом: гость стучится в ту же комнату, хозяин ждёт; оба возвращаются на сервер-«знакомщик»
+function netRetry(){
+  const p = net.peer; if(!p || p.destroyed) return;
+  if(p.disconnected){ try{ p.reconnect(); }catch(e){} return; }
+  if(net.host) return;
+  const c = p.connect(NET_PREFIX + net.code, {reliable:true});
+  c.on('open', () => { if(net.lost && net.conn !== c) netWire(c); else if(net.conn !== c) c.close(); });
+}
+// голос после переподключения: звонит гость со своим микрофоном; хозяин — если гость не позвонил сам
+function netRecall(){
+  if(!net.mic || !net.peer || !net.conn) return;
+  const before = net.call;
+  const call = () => {
+    if(!net.mic || !netLive() || (net.host && net.call !== before)) return;
+    if(net.call) try{ net.call.close(); }catch(e){}
+    net.call = net.peer.call(net.conn.peer, net.mic); net.call.on('stream', netPlay);
+  };
+  if(net.host) setTimeout(call, 1500); else call();
+}
+// 🛰️ в углу — связь идёт через ретранслятор (тратит бесплатный лимит Metered), без значка — напрямую
+function netRelayCheck(conn){
+  const pc = conn.peerConnection; if(!pc || !pc.getStats) return;
+  const look = () => pc.getStats().then(st => {
+    if(net.conn !== conn) return;
+    let pair = null;
+    st.forEach(r => { if(r.type === 'transport' && r.selectedCandidatePairId) pair = st.get(r.selectedCandidatePairId); });
+    if(!pair) st.forEach(r => { if(r.type === 'candidate-pair' && r.state === 'succeeded' && (r.nominated || r.selected)) pair = r; });
+    const loc = pair && st.get(pair.localCandidateId), rem = pair && st.get(pair.remoteCandidateId);
+    netSat(!!((loc && loc.candidateType === 'relay') || (rem && rem.candidateType === 'relay')));
+  }).catch(() => {});
+  look(); setTimeout(look, 4000);
+}
+function netSat(on){
+  let el = document.getElementById('netSat');
+  if(on && !el){ el = document.createElement('div'); el.id = 'netSat'; el.textContent = '🛰️'; el.title = L('Связь через ретранслятор', 'Connected via relay'); document.body.appendChild(el); }
+  if(el) el.hidden = !on;
 }
 // создать комнату: ждём, пока подключится второй (cb(ok, why))
 function netHost(cb){
@@ -52,8 +95,8 @@ function netHost(cb){
     net.peer = p; net.code = code;
     p.on('open', () => cb('code', code));
     p.on('connection', c => {
-      if(net.conn && net.conn.open){ c.close(); return; }   // в комнате только двое
-      c.on('open', () => { netWire(c); cb('joined'); });
+      if(net.conn && net.conn.open && !net.lost){ c.close(); return; }   // в комнате только двое (но потерявшегося пускаем обратно)
+      c.on('open', () => { const first = !net.conn; netWire(c); if(first) cb('joined'); });
     });
     p.on('call', call => netAnswer(call));
     p.on('error', e => {
@@ -68,7 +111,7 @@ function netJoin(code, cb){
   netClose(); net.host = false; net.code = code;
   const gen = net.gen;
   let done = false;
-  const fail = why => { if(done) return; done = true; cb('fail', why); };
+  const fail = why => { if(done) return; done = true; cb('fail', why); };   // после входа ошибки молчат — обрыв чинит netRetry
   netPeer().then(p => {
     if(gen !== net.gen){ p.destroy(); return; }
     net.peer = p;
@@ -88,6 +131,7 @@ function netClose(){
   try{ if(net.conn) net.conn.close(); }catch(e){}
   try{ if(net.peer) net.peer.destroy(); }catch(e){}
   net.peer = net.conn = null; net.on = {}; net.lost = false; net.onLost = net.onBack = null;
+  netSat(false);
 }
 const netLive = () => !!(net.conn && net.conn.open && !net.lost);
 
