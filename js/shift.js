@@ -82,7 +82,9 @@ async function wakeUp(s){
 /* ---------- событие смены ---------- */
 async function runEvent(){
   $('#card').hidden = true;
-  if(save.shifts % 2 === 0) await evPup(); else await evShells();   // малыш — уже в первой смене: после неё он останется жить (Фаза 3)
+  // по кругу: малыш в гости (он же — в самой первой смене: после неё остаётся жить, Фаза 3), ракушки, «Скорая»
+  const k = save.shifts % 3;
+  if(k === 0) await evPup(); else if(k === 1) await evShells(); else await evNet();
 }
 // ракушка-гребешок: приплюснутый шарик с рёбрышками и «ушками» у основания
 const SHELL_TEX = canvasTex(64, (g, s) => {
@@ -170,6 +172,99 @@ async function evPup(){
   toast(my ? L(`${my.name}: «Я подожду тебя в уголке!» 🦭`, `${my.name}: “I will wait for you in my corner!” 🦭`) : L('Малыш: «Можно я ещё приплыву?» 🦭', 'Pup: “Can I come again?” 🦭'), 3200);
   unfocusCam();
   await wait(0.6);
+  await leave(pup); extraSeals.delete(pup);
+}
+
+/* ---------- «Скорая»: малыш запутался в сети ----------
+   Сирена, приплывает тюленёнок, обмотанный рыболовной сетью. На сети 5 узелков: вокруг светится круг —
+   покрути пальцем вокруг узелка, и он развязывается. Верёвка падает, когда развязаны все её узелки.
+   Одна вещь за раз: подсвечен только один узелок. Таймера нет, ошибиться нельзя. */
+// сеть облегает тело тюленя (эллипсоид тела из makeSeal): узелки спереди, верёвки уходят за спину
+const NET_C = new V3(0, 0.8, -0.2), NET_R = new V3(1.15, 0.8, 1.3).multiplyScalar(1.07);
+const NET_KNOTS = [[-0.75, 0.3, 0.6], [0.75, 0.3, 0.6], [-0.5, -0.3, 0.8], [0.5, -0.3, 0.8], [0, 0.05, 1]];
+const NET_ROPES = [[0, 4], [1, 4], [2, 4], [3, 4], [0, 2], [1, 3], [2, 3], [0, 1],
+  [0, [-0.6, 0.3, -0.75]], [1, [0.6, 0.3, -0.75]], [2, [-0.7, -0.35, -0.6]], [3, [0.7, -0.35, -0.6]], [[-0.6, 0.3, -0.75], [0.6, 0.3, -0.75]]];
+const netAt = v => new V3(...v).normalize().multiply(NET_R).add(NET_C);
+function makeNet(){
+  const g = new THREE.Group(), rope = toon(0x5E9C7C), knots = [], ropes = [];
+  const dir = x => new V3(...(Array.isArray(x) ? x : NET_KNOTS[x])).normalize();
+  for(const [a, b] of NET_ROPES){
+    const va = dir(a), vb = dir(b), pts = [];
+    for(let i = 0; i <= 14; i++) pts.push(netAt(va.clone().lerp(vb, i/14).toArray()));
+    const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.04, 6), rope);
+    g.add(m); ropes.push({m, ks:[a, b].filter(x => !Array.isArray(x))});
+  }
+  for(const v of NET_KNOTS){
+    const k = new THREE.Group(); k.position.copy(netAt(v));
+    const b = addOutline(new THREE.Mesh(SMALL, toon(0xE9B872)), 1.12); b.scale.setScalar(0.13); k.add(b);
+    for(const sd of [-1, 1]){ const l = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.03, 6, 14), toon(0xE9B872)), 1.12); l.position.x = sd*0.14; l.rotation.y = sd*0.5; k.add(l); }
+    g.add(k); knots.push({o:k, free:false});
+  }
+  g.userData = {knots, ropes};
+  return g;
+}
+async function evNet(){
+  // сирена «скорой» — мягкая, на колокольчиках
+  sfx.siren();
+  mgOpen(L('🚑 Скорая! Кто-то зовёт на помощь…', '🚑 Emergency! Someone is calling for help…'));
+  const pup = makeSeal({name:L('Малыш', 'Baby'), f:false, color:PUP_COLORS[Math.floor(Math.random()*PUP_COLORS.length)]});
+  const net = makeNet(); pup.root.add(net); pup.root.scale.setScalar(0.62);
+  setMood(pup, 'sad'); extraSeals.add(pup);
+  await wait(0.6); mgClose();
+  await arrive(pup);
+  sfx.arf(); floatText(L('Помогите!', 'Help!'), headTop(pup));
+  focusCam(worldOf(pup, new V3(0, -0.3, 0)), 2.5, 0.1);
+  await wait(0.6);
+  const {knots, ropes} = net.userData;
+  let left = knots.length;
+  mgOpen(L('Малыш запутался в сети! Покрути пальцем вокруг узелка 🔄', 'The pup is tangled in a net! Circle your finger around the knot 🔄'));
+  for(const kn of knots){
+    const at = () => kn.o.getWorldPosition(new V3()), c = () => toScreen(at());
+    const ring = mgNode('div', 'circle-hint net-hint'), un = pin(ring, at);
+    const pulse = t => kn.o.scale.setScalar(1 + Math.sin(now*6)*0.12);
+    mgTick(pulse);
+    let a0 = null, sum = 0, moved = false;
+    const ang = e => { const q = c(); return Math.atan2(e.clientY - q.y, e.clientX - q.x); };
+    await gesture({
+      pointerdown:e => { const q = c(); if(Math.hypot(e.clientX - q.x, e.clientY - q.y) > 150){ mgHint(L('Узелок — там, где светится круг 🔄', 'The knot is inside the glowing circle 🔄')); return false; } a0 = ang(e); sum = 0; moved = false; return false; },
+      pointerup:() => { if(a0 !== null && !moved) mgHint(L('Не нажимай — покрути пальцем по кругу 🔄', 'Don\'t tap — draw a circle with your finger 🔄')); a0 = null; return false; },
+      pointermove:e => {
+        if(a0 === null) return false;
+        const q = c(); if(Math.hypot(e.clientX - q.x, e.clientY - q.y) < 18) return false;
+        const a = ang(e), da = Math.atan2(Math.sin(a - a0), Math.cos(a - a0)); a0 = a; sum += da;
+        if(Math.abs(da) > 0.02){ moved = true; kn.o.rotation.z += da; if(Math.random() < 0.15) sfx.rub(); }
+        ring.style.setProperty('--p', Math.min(1, Math.abs(sum)/(Math.PI*1.6)));
+        return Math.abs(sum) >= Math.PI*1.6;
+      }});
+    un(); mgTicks.delete(pulse);
+    // развязали: узелок крутится и исчезает, свободные верёвки падают
+    kn.free = true; left--;
+    sfx.pop(); sfx.star(); burst(TEX.star, at(), 8, 1.4, 0.24);
+    const o = kn.o; tween(0.35, k => { o.scale.setScalar(Math.max(0.01, 1 - k)); o.rotation.z += 0.3; }).then(() => net.remove(o));
+    for(const r of ropes) if(!r.gone && r.ks.length && r.ks.every(i => knots[i].free)) dropRope(r);
+    pup.nod = 0; tween(0.3, k => pup.nod = Math.sin(k*Math.PI)*0.2, ease.lin);
+    if(left) mgHint(L(`Ещё ${left} ${plural(left, 'узелок', 'узелка', 'узелков', 'knot', 'knots')}!`, `${left} more ${plural(left, 'узелок', 'узелка', 'узелков', 'knot', 'knots')}!`));
+  }
+  mgClose();
+  // сеть спадает целиком
+  for(const r of ropes) if(!r.gone) dropRope(r);
+  function dropRope(r){
+    r.gone = true; const m = r.m, y0 = m.position.y;
+    tween(0.6, k => { m.position.y = y0 - k*1.6; m.scale.setScalar(1 - k*0.3); }, ease.io).then(() => net.remove(m));
+  }
+  await wait(0.5);
+  setMood(pup, 'happy'); sfx.hug(); pup.flap = 1;
+  floatText(L('Свобода!', 'Free!'), headTop(pup), '#D9527E');
+  burst(TEX.heart, headTop(pup), 14, 2, 0.3);
+  await tween(0.8, k => { pup.inner.position.y = Math.sin(k*Math.PI)*0.9; pup.inner.rotation.y = k*Math.PI*2; }, ease.io);
+  pup.inner.position.y = 0; pup.inner.rotation.y = 0; pup.flap = 0.3;
+  sfx.thud(); await squash(pup, 0.25);
+  floatText(L('Спасибо, доктор!', 'Thank you, doctor!'), headTop(pup), '#D9527E');
+  addShells(6, toScreen(headTop(pup)));
+  await wait(1.2);
+  toast(L('Сети в море опасны для тюленей. Хорошо, что есть ты! ♡', 'Fishing nets are dangerous for seals. Good thing you are here! ♡'), 3400);
+  unfocusCam();
+  await wait(0.8);
   await leave(pup); extraSeals.delete(pup);
 }
 
