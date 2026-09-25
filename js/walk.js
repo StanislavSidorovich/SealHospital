@@ -59,7 +59,7 @@ async function hopTo(s, to, h = 1.0, dur = 0.7){
   await faceTo(s, to);
   s.flap = 0.8; sfx.whoosh(); await squash(s, 0.18, 0.2);
   await tween(dur, k => { r.position.lerpVectors(from, to, k); r.position.y += Math.sin(k*Math.PI)*h; }, ease.lin);
-  r.position.copy(to); s.flap = 0; sfx.plop();
+  r.position.copy(to); s.flap = 0; sfx.thud();
   burst(TEX.puff, to.clone().add(new V3(0, 0.1, 0)), 6, 1, 0.4);
   await squash(s, 0.22, 0.3);
 }
@@ -196,10 +196,10 @@ async function swimHome(s, from){
   s.swimming = false; s.inner.position.y = 0;
   const up = WALK_EDGE.clone();
   await tween(0.7, k => { r.position.lerpVectors(shore, up, k); r.position.y += Math.sin(k*Math.PI)*1.1; follow(); }, ease.lin);
-  r.position.copy(up); await squash(s);
+  r.position.copy(up); sfx.thud(); await squash(s);
   unfocusCam();
   // отряхнулся от воды и бегом на своё место
-  sfx.splash();
+  sfx.drip();
   for(let i = 0; i < 10; i++){ const a = i/10*Math.PI*2; emit(TEX.drop, headTop(s), {v:new V3(Math.cos(a)*1.4, 1 + Math.random(), Math.sin(a)*0.7), g:4, life:0.8, size:0.16}); }
   await tween(0.6, k => { s.shake = Math.sin(k*Math.PI*8)*0.4*(1 - k); }, ease.lin); s.shake = 0;
   await waddleTo(s, PET_SPOT, 1.0);

@@ -351,7 +351,7 @@ async function adopt(){
   burst(TEX.heart, headTop(petSeal), 18, 2.2, 0.32);
   await tween(0.8, k => { petSeal.inner.position.y = Math.sin(k*Math.PI)*0.9; petSeal.inner.rotation.y = k*Math.PI*2; }, ease.io);
   petSeal.inner.position.y = 0; petSeal.inner.rotation.y = 0; petSeal.flap = 0.3;
-  await squash(petSeal, 0.25);
+  sfx.thud(); await squash(petSeal, 0.25);
   floatText(L('Ура-а!', 'Hooray!'), headTop(petSeal), '#D9527E');
   await wait(0.6);
 
@@ -447,7 +447,7 @@ async function petMoveIn(){
   sfx.splash(); burst(TEX.puff, new V3(x1, 0.1, PET_SPOT.z), 10, 1.6, 0.45);
   s.swimming = false; s.inner.position.y = 0;
   await tween(0.75, k => { r.position.x = x1 + 3.4*k; r.position.y = -0.55 + 0.8*k + Math.sin(k*Math.PI)*1.3; }, ease.lin);
-  r.position.copy(PET_SPOT); await squash(s);
+  r.position.copy(PET_SPOT); sfx.thud(); await squash(s);
   await tween(0.45, k => { r.rotation.y = Math.PI/2*(1 - k); });
 }
 
@@ -672,7 +672,7 @@ async function petBath(s){
   // отряхивается: брызги во все стороны
   foams.forEach(f => { f.parent.remove(f); f.material.dispose(); });
   spots.forEach(sp => { sp.parent.remove(sp); sp.material.dispose(); });
-  sfx.splash();
+  sfx.drip();
   for(let i = 0; i < 12; i++){ const a = i/12*Math.PI*2; emit(TEX.drop, headTop(s), {v:new V3(Math.cos(a)*1.6, 1 + Math.random(), Math.sin(a)*0.8), g:4, life:0.9, size:0.18}); }
   await tween(0.7, k => { s.shake = Math.sin(k*Math.PI*8)*0.45*(1 - k); s.wobble = Math.sin(k*Math.PI*8)*0.06*(1 - k); }, ease.lin);
   s.shake = 0; s.wobble = 0;

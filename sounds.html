@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Пульт звуков</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pangolin&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<!-- Пульт звукорежиссёра: только для проверки звуков, в игру не входит. Было / стало, 👍 / 👎. -->
+<style>
+  :root{ --ink:#3B3A4A; --pink:#FF9BB8; --pink2:#D9527E; --paper:#FFFDF8; --mint:#DDF5EA; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:Nunito, system-ui, sans-serif; color:var(--ink); background:linear-gradient(#BDE5F4, #EAF7FB) fixed; padding:16px 16px 40px; }
+  h1{ font-family:Pangolin, cursive; font-size:30px; margin:4px 0 2px; }
+  .sub{ margin:0 0 14px; font-size:15px; }
+  .top{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  button{ font:inherit; font-weight:800; color:var(--ink); background:var(--paper); border:2.5px solid var(--ink); border-radius:16px; box-shadow:0 4px 0 var(--ink); min-height:48px; padding:0 14px; cursor:pointer; }
+  button:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--ink); }
+  .list{ display:grid; gap:12px; max-width:720px; }
+  .card{ background:var(--paper); border:2.5px solid var(--ink); border-radius:22px; box-shadow:0 4px 0 var(--ink); padding:12px 14px; }
+  .card.up{ background:var(--mint); }
+  .card.down{ background:#FFE3EC; }
+  .name{ font-family:Pangolin, cursive; font-size:22px; }
+  .where{ font-size:14px; opacity:.8; margin:2px 0 10px; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .row .old{ background:#EEE; }
+  .row .new{ background:var(--pink); }
+  .vote.on{ background:var(--ink); color:var(--paper); }
+  .new-tag{ font-size:12px; background:var(--pink2); color:#fff; border-radius:8px; padding:1px 6px; vertical-align:middle; }
+  textarea{ width:100%; max-width:720px; height:120px; margin-top:12px; border:2.5px solid var(--ink); border-radius:16px; padding:10px; font:inherit; }
+</style>
+</head>
+<body>
+<h1>🎧 <span id="t1"></span></h1>
+<p class="sub" id="t2"></p>
+<div class="top">
+  <button id="btnAll"></button>
+  <button id="btnCopy"></button>
+  <button id="btnClear"></button>
+</div>
+<div class="list" id="list"></div>
+<textarea id="out" hidden readonly></textarea>
+
+<script src="js/i18n.js"></script>
+<script>
+  // заглушки из data.js, чтобы подключить настоящий js/audio.js без всей игры
+  const $ = s => document.querySelector(s);
+  const save = {muted:false};
+</script>
+<script src="js/audio.js"></script>
+<script>
+// «Было»: старые звуки ровно как до Фазы 12 — напрямую в динамики, без общей цепочки
+function oTone(f, d, {type='sine', vol=0.12, to=null, delay=0} = {}){
+  const a = ac(); if(!a) return;
+  const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if(to) o.frequency.exponentialRampToValueAtTime(to, t + d);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + 0.05);
+}
+function oNoise(d, {vol=0.2, freq=1000, type='bandpass', q=0.8, delay=0} = {}){
+  const a = ac(); if(!a) return;
+  const t = a.currentTime + delay, len = Math.floor(a.sampleRate * d);
+  const buf = a.createBuffer(1, len, a.sampleRate), ch = buf.getChannelData(0);
+  for(let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = a.createBufferSource(); src.buffer = buf;
+  const f = a.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+  const g = a.createGain(); g.gain.value = vol;
+  src.connect(f).connect(g).connect(a.destination); src.start(t);
+}
+const OLD = {
+  tap(){ oTone(700, 0.07, {type:'triangle', vol:0.08}); },
+  good(){ [523,659,784,1047].forEach((f,i) => oTone(f, 0.22, {type:'triangle', vol:0.11, delay:i*0.09})); },
+  bad(){ oTone(330, 0.16, {type:'square', vol:0.04, to:250}); oTone(250, 0.2, {type:'square', vol:0.04, to:200, delay:0.17}); },
+  arf(){ oTone(640, 0.11, {type:'square', vol:0.045, to:360}); oTone(700, 0.12, {type:'square', vol:0.045, to:380, delay:0.15}); },
+  beep(){ oTone(1760, 0.35, {vol:0.07}); },
+  tick(){ oTone(1320, 0.035, {vol:0.035}); },
+  ding(){ oTone(1319, 0.16, {vol:0.08}); oTone(1760, 0.24, {vol:0.07, delay:0.09}); },
+  plop(){ oTone(360, 0.14, {vol:0.1, to:140}); oNoise(0.18, {vol:0.1, freq:900, delay:0.03}); },
+  thud(){ this.plop(); },
+  rub(){ oNoise(0.07, {vol:0.06, freq:3200}); },
+  pour(){ oNoise(0.35, {vol:0.12, freq:650, type:'lowpass'}); oTone(520, 0.28, {vol:0.05, to:300, delay:0.05}); },
+  chomp(){ oNoise(0.07, {vol:0.3, freq:700}); },
+  sneeze(){ oTone(700, 0.18, {type:'triangle', vol:0.06, to:1100}); oNoise(0.3, {vol:0.18, freq:2600, delay:0.2}); },
+  splash(){ oNoise(0.6, {vol:0.25, freq:700, type:'lowpass'}); },
+  drip(){ this.splash(); },
+  boost(){ oTone(380, 0.4, {type:'triangle', vol:0.08, to:1400}); oNoise(0.35, {vol:0.08, freq:2600, delay:0.05}); },
+  grr(){ oTone(150, 0.45, {type:'sawtooth', vol:0.035, to:110}); oTone(180, 0.3, {type:'sawtooth', vol:0.025, to:130, delay:0.2}); },
+  giggle(){ [880, 1175, 988, 1319, 1109].forEach((f,i) => oTone(f, 0.08, {type:'triangle', vol:0.06, delay:i*0.08})); },
+  whoosh(){ oNoise(0.4, {vol:0.14, freq:1500}); },
+  pop(){ oTone(420, 0.1, {vol:0.12, to:900}); },
+  hug(){ [659,784,988,1319,1568].forEach((f,i) => oTone(f, 0.3, {vol:0.09, delay:i*0.08})); },
+  coin(){ oTone(1319, 0.07, {type:'triangle', vol:0.07}); oTone(1976, 0.14, {type:'triangle', vol:0.06, delay:0.06}); },
+  star(){ [1047,1319,1568].forEach((f,i) => oTone(f, 0.18, {type:'triangle', vol:0.08, delay:i*0.07})); },
+  buy(){ [784,988,1175,1568,1976].forEach((f,i) => oTone(f, 0.2, {type:'triangle', vol:0.08, delay:i*0.06})); },
+  yawn(){ oTone(520, 0.7, {vol:0.06, to:260}); },
+  grow(){ [523,587,659,698,784,880,988,1047,1175,1319].forEach((f,i) => oTone(f, 0.2, {type:'triangle', vol:0.06 + i*0.004, delay:i*0.15})); },
+  sparkle(){ oTone(2093 + Math.random()*400, 0.12, {vol:0.03}); oTone(2637 + Math.random()*400, 0.16, {vol:0.025, delay:0.06}); },
+  purr(){ oTone(190 + Math.random()*30, 0.35, {type:'triangle', vol:0.05, to:150}); },
+  paper(){ oNoise(0.22, {vol:0.09, freq:3800}); oNoise(0.16, {vol:0.07, freq:2600, delay:0.14}); },
+  letter(){ [784,988,1175,988,1319].forEach((f,i) => oTone(f, 0.3, {type:'triangle', vol:0.07, delay:i*0.12})); },
+  lullaby(){ [784,659,698,587,523].forEach((f,i) => oTone(f, 0.45, {vol:0.05, delay:i*0.32})); }
+};
+// что где звучит; fresh = звука раньше не было (было — старый похожий)
+const LIST = [
+  ['splash', L('Плюх в воду', 'Splash'), L('Тюлень прыгает в воду и из воды', 'The seal jumps in and out of the water')],
+  ['thud', L('Топ на льдину', 'Landing thud'), L('Приземлился на льдину (раньше — «плюх»)', 'Lands on the ice (used to be the splash)'), 1],
+  ['drip', L('Отряхнулся', 'Shake-off'), L('После ванны и плавания — капельки', 'After the bath or a swim — droplets'), 1],
+  ['arf', L('Голос тюленя', 'Seal voice'), L('Малыш и пациенты говорят «ар!»', 'The pup and patients say “arf!”')],
+  ['bad', L('Не то', 'Not quite'), L('Ошибка в мини-игре — мягкая подсказка', 'A mistake in a mini-game — a soft hint')],
+  ['good', L('Получилось!', 'Well done!'), L('Мини-игра пройдена', 'A mini-game is done')],
+  ['tap', L('Касание', 'Tap'), L('Кнопки и касания', 'Buttons and taps')],
+  ['pop', L('Пузырь', 'Bubble pop'), L('Лопнул пузырь, сняли вещь', 'A bubble pops')],
+  ['plop', L('Бульк', 'Plop'), L('Мяч, прыжок в забеге, поклёвка', 'Ball, a hop in the dash, a fish bite')],
+  ['coin', L('Ракушка', 'Shell'), L('Собрал ракушку', 'Picked up a shell')],
+  ['star', L('Звёздочка', 'Star'), L('Звёзды и трюки', 'Stars and tricks')],
+  ['hug', L('Объятие', 'Hug'), L('Обнять пациента', 'Hug a patient')],
+  ['whoosh', L('Вжух', 'Whoosh'), L('Полёт, свайп, ветер', 'Flying, a swipe, wind')],
+  ['boost', L('Ускоритель', 'Boost'), L('Стрелки в забеге', 'Boost arrows in the dash')],
+  ['grr', L('Ворчит Тучка', 'Grumpy Cloud'), L('Тучка сердится в погоне', 'The Cloud grumbles in the chase')],
+  ['giggle', L('Хихиканье', 'Giggle'), L('Щекотка', 'Tickles')],
+  ['chomp', L('Ам!', 'Chomp'), L('Ест рыбку', 'Eats a fish')],
+  ['sneeze', L('Апчхи!', 'Achoo!'), L('Пациент чихает', 'A patient sneezes')],
+  ['purr', L('Мурчит', 'Purr'), L('Гладишь малыша', 'Petting the pup')],
+  ['yawn', L('Зевает', 'Yawn'), L('Хочет спать', 'Sleepy')],
+  ['rub', L('Трёт', 'Rub'), L('Мазь, пузыри в ванне', 'Ointment, bath bubbles')],
+  ['pour', L('Льёт', 'Pour'), L('Сироп', 'Syrup')],
+  ['ding', L('Дзинь', 'Ding'), L('Готово, открылось', 'Ready, unlocked')],
+  ['beep', L('Градусник', 'Thermometer'), L('Градусник померил', 'The thermometer is done')],
+  ['tick', L('Тик', 'Tick'), L('Отсчёт', 'Countdown')],
+  ['buy', L('Покупка', 'Purchase'), L('Купила в лавке', 'Bought in the shop')],
+  ['sparkle', L('Искорка', 'Sparkle'), L('Блёстки, сияющий малыш', 'Glitter, the shiny pup')],
+  ['paper', L('Бумага', 'Paper'), L('Конверт, альбом', 'Envelope, album')],
+  ['letter', L('Письмо', 'Letter'), L('Письмо от папы', 'A letter from Dad')],
+  ['lullaby', L('Колыбельная', 'Lullaby'), L('Малыш засыпает', 'The pup falls asleep')],
+  ['grow', L('Малыш вырос', 'Pup grew up'), L('Праздник роста', 'Growth party')]
+];
+const KEY = 'sh.sndvotes';
+let votes = {};
+try{ votes = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }catch(e){}
+const keep = () => { try{ localStorage.setItem(KEY, JSON.stringify(votes)); }catch(e){} };
+const play = (set, k) => { if(set === OLD) OLD[k](); else sfx[k](k === 'beep'); };
+
+$('#t1').textContent = L('Пульт звуков', 'Sound desk');
+$('#t2').textContent = L('Сабрина — звукорежиссёр! Послушай «было» и «стало» и поставь 👍 или 👎 новому звуку.', 'Sabrina is the sound director! Listen to “before” and “after” and give the new sound 👍 or 👎.');
+$('#btnAll').textContent = L('▶ Все новые подряд', '▶ All new in a row');
+$('#btnCopy').textContent = L('📋 Итоги для папы', '📋 Results for Dad');
+$('#btnClear').textContent = L('↺ Заново', '↺ Reset');
+
+function render(){
+  $('#list').innerHTML = LIST.map(([k, name, where, fresh]) => `
+    <div class="card ${votes[k] || ''}" data-k="${k}">
+      <div class="name">${name}${fresh ? ` <span class="new-tag">${L('новый', 'new')}</span>` : ''}</div>
+      <div class="where">${where}</div>
+      <div class="row">
+        <button class="old" data-p="old">▶ ${L('Было', 'Before')}</button>
+        <button class="new" data-p="new">▶ ${L('Стало', 'After')}</button>
+        <button class="vote ${votes[k] === 'up' ? 'on' : ''}" data-v="up" aria-label="${L('Нравится', 'Like')}">👍</button>
+        <button class="vote ${votes[k] === 'down' ? 'on' : ''}" data-v="down" aria-label="${L('Не нравится', 'Dislike')}">👎</button>
+      </div>
+    </div>`).join('');
+}
+render();
+$('#list').addEventListener('click', e => {
+  const b = e.target.closest('button'), card = e.target.closest('.card'); if(!b || !card) return;
+  const k = card.dataset.k;
+  if(b.dataset.p) play(b.dataset.p === 'old' ? OLD : sfx, k);
+  if(b.dataset.v){ votes[k] = votes[k] === b.dataset.v ? '' : b.dataset.v; keep(); render(); }
+});
+$('#btnAll').addEventListener('click', () => {
+  LIST.forEach(([k], i) => setTimeout(() => play(sfx, k), i*1100));
+});
+$('#btnCopy').addEventListener('click', () => {
+  const line = v => LIST.filter(([k]) => votes[k] === v).map(([k, n]) => n).join(', ') || '—';
+  const txt = `${L('Звуки', 'Sounds')} 👍: ${line('up')}\n${L('Звуки', 'Sounds')} 👎: ${line('down')}`;
+  const out = $('#out'); out.value = txt; out.hidden = false; out.select();
+  try{ navigator.clipboard.writeText(txt).catch(() => {}); }catch(e){}
+});
+$('#btnClear').addEventListener('click', () => { votes = {}; keep(); render(); $('#out').hidden = true; });
+</script>
+</body>
+</html>

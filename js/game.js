@@ -99,7 +99,7 @@ async function arrive(s){
   sfx.splash(); burst(TEX.puff, new V3(-3.4, 0.1, 0.6), 10, 1.6, 0.45);
   s.swimming = false; s.inner.position.y = 0;
   await tween(0.75, k => { r.position.x = -3.4 + 3.4*k; r.position.y = -0.55 + 0.8*k + Math.sin(k*Math.PI)*1.3; }, ease.lin);
-  r.position.set(0, 0.25, 0); await squash(s);
+  r.position.set(0, 0.25, 0); sfx.thud(); await squash(s);
   await tween(0.45, k => { r.rotation.y = Math.PI/2*(1 - k); });
 }
 async function leave(s){

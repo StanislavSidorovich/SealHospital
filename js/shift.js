@@ -162,7 +162,7 @@ async function evPup(){
   burst(TEX.heart, headTop(pup), 14, 2, 0.3);
   await tween(0.8, k => { pup.inner.position.y = Math.sin(k*Math.PI)*0.9; pup.inner.rotation.y = k*Math.PI*2; }, ease.io);
   pup.inner.position.y = 0; pup.inner.rotation.y = 0; pup.flap = 0.3;
-  await squash(pup, 0.25);
+  sfx.thud(); await squash(pup, 0.25);
   floatText(L('Это тебе!', 'This is for you!'), headTop(pup), '#D9527E');
   addShells(5, toScreen(headTop(pup)));
   await wait(1.2);
