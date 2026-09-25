@@ -223,3 +223,105 @@ function shiftTick(t, dt){
   }
   decorTick(t);
 }
+
+/* ---------- пингвин-самозванец (Фаза 6) ----------
+   Иногда второй пациент смены — пингвин в костюме тюленя. Под лупой вместо болячек три «странности»:
+   клюв из-под мордочки, оранжевые лапки и «кря» в животике. Доктор решает: «Это не тюлень!» — костюм
+   слетает в воду, пингвин Пинг смущается и признаётся, что замёрз: шарфик, объятие, фото в альбом.
+   Ошибиться нельзя: «Тюлень как тюлень» — пингвин крякает, и кнопка пропадает. */
+Object.assign(SYMPTOMS, {
+  beak: {ic:'🔸', name:() => L('Клюв?', 'A beak?')},
+  paws: {ic:'🐾', name:() => L('Оранжевые лапки?', 'Orange feet?')},
+  quack:{ic:'🦆', name:() => L('Сказал «кря»?', 'Said “quack”?')}
+});
+Object.assign(HOTSPOT, {
+  beak: s => [wpos(s.clue.beak)],
+  paws: s => s.clue.feet.map(wpos),
+  quack:s => [s.inner.localToWorld(new V3(0, 0.55, 1.0))]   // животик: там «кря» и прячется
+});
+Object.assign(THANKS, {
+  beak: [f => L('Можно я ещё приду? Только уже без костюма!', 'Can I come again? Without the costume this time!')],
+  paws: [f => L('Теперь я самый тёплый пингвин на льдине!', 'Now I am the warmest penguin on the ice!')],
+  quack:[f => L('Кря! То есть… спасибо, доктор Сабрина!', 'Quack! I mean… thank you, Doctor Sabrina!')]
+});
+const DISGUISE = {name:L('Тюлень Тюленевич', 'Sealy McSeal'), f:false, color:0xDCE3EC, spot:0xB9C4D3, ail:['beak', 'paws', 'quack'],
+  text:L('Здравствуйте, доктор! Я самый обыкновенный тюлень. Честно-честно! Просто что-то нездоровится…', 'Hello, doctor! I am a totally ordinary seal. Honest! I just feel a bit funny…')};
+const PENG = {name:L('Пинг', 'Ping'), f:false, color:0x46557A, ail:['beak', 'paws', 'quack'], peng:true,
+  text:L('Пингвин Пинг надел тюленью шубку: очень хотел попасть в самую весёлую больницу на льдине. А ещё он правда замёрз.', 'Ping the penguin put on a seal costume: he really wanted to visit the most fun hospital on the ice. And he really is cold.')};
+const PENG_SHELLS = 5;   // за разоблачение
+const pengMet = () => save.album.some(a => a.name === 'Пинг' || a.name === 'Ping');
+// второй пациент смены, не в самой первой смене; первый раз — обязательно, потом — иногда
+function pengDue(){
+  return !!shift && shift.n === 1 && save.shifts >= 1 && (!pengMet() || Math.random() < 0.25);
+}
+async function spawnImpostor(){
+  const seal = makeSeal(DISGUISE); addCostumeClues(seal);
+  S = {p:DISGUISE, seal, needs:[], done:new Set(), found:new Set(), ail:{}, stage:'arriving'};
+  setMood(seal, 'ok');
+  $('#card').hidden = false; $('#wardrobe').hidden = true; $('#tools').hidden = true; renderCard();
+  setBusy(true); await arrive(seal);
+  floatText(L('Кхе-кхе… Я тюлень!', 'Ahem… I am a seal!'), headTop(seal));
+  S.stage = 'diagnose'; renderCard();
+  await mgLupa(seal, DISGUISE.ail, a => {
+    S.found.add(a); renderCard();
+    if(a === 'quack'){ sfx.quack(); floatText(L('Кря!', 'Quack!'), headTop(seal).add(new V3(0, 0.3, 0))); }
+    if(a === 'beak') setTimeout(() => floatText(L('Это… родинка!', 'That is… a freckle!'), headTop(seal)), 700);
+  });
+  unfocusCam();
+  S.stage = 'reveal';
+
+  // решение доктора; «не то» не бывает — пингвин просто выдаёт себя ещё раз
+  mgOpen(L('Хм… Какой-то странный тюлень', 'Hmm… a strange kind of seal'));
+  const ask = mgNode('div', 'mg-panel adopt', `<p>${L('Клюв, оранжевые лапки и «кря»… Доктор, что скажешь?', 'A beak, orange feet and a “quack”… Doctor, what do you think?')}</p>
+    <div class="row"><button class="btn" id="pengYes">${L('Это не тюлень! 🐧', 'Not a seal! 🐧')}</button>
+    <button class="btn ghost" id="pengNo">${L('Тюлень как тюлень', 'Just a seal')}</button></div>`);
+  await new Promise(r => {
+    mgOn(ask.querySelector('#pengYes'), 'click', r);
+    const no = ask.querySelector('#pengNo');
+    mgOn(no, 'click', () => {
+      sfx.quack(); squash(seal, 0.15, 0.3); no.remove();
+      floatText(L('Кря! Ой… то есть ар!', 'Quack! Oops… I mean arf!'), headTop(seal));
+      mgHint(L('Разве тюлени говорят «кря»? 🙂', 'Do seals say “quack”? 🙂'));
+    });
+  });
+  sfx.tap(); ask.classList.add('away'); await wait(0.3); mgClose();
+
+  // разоблачение: костюм дрожит, пух — и пустой костюм кувырком улетает в воду
+  const peng = makePenguin(PENG), c = seal.root, p0 = c.position.clone();
+  peng.root.position.copy(p0);
+  focusCam(p0.clone().add(new V3(0, 1, 0)), 4.6, 0);
+  sfx.whoosh(); seal.flap = 1;
+  await tween(0.6, k => { seal.shake = Math.sin(k*Math.PI*8)*0.35; seal.wobble = Math.sin(k*Math.PI*10)*0.08; }, ease.lin);
+  seal.shake = seal.wobble = 0; seal.flap = 0;
+  seal.clue.beak.visible = false; seal.clue.feet.forEach(f => f.visible = false); setMood(seal, 'sleep');   // внутри пусто
+  sfx.pop(); burst(TEX.puff, p0.clone().add(new V3(0, 1, 0.3)), 16, 2.2, 0.55);
+  scene.add(peng.root); setMood(peng, 'sad');
+  const land = new V3(p0.x + 3.6, 0.1, p0.z - 0.4);
+  tween(1.0, k => { c.position.set(p0.x + 3.6*k, p0.y + Math.sin(k*Math.PI)*2.4 - 0.8*k, p0.z - 0.4*k); c.rotation.z = -k*4.2; c.scale.setScalar(1 - 0.3*k); }, ease.lin)
+    .then(() => { sfx.splash(); burst(TEX.puff, land, 10, 1.6, 0.45); scene.remove(c); });
+  await hop(peng, 0.35, 0.4); sfx.thud();
+  S.p = PENG; S.seal = peng; renderCard();
+  await wait(0.5);
+  floatText(L('Ой! Раскусили…', 'Oops! You got me…'), headTop(peng)); sfx.quack();
+  await wait(1.4);
+  setMood(peng, 'ok'); squash(peng, 0.15, 0.3);
+  floatText(L('Я Пинг!', 'I am Ping!'), headTop(peng), '#D9527E');
+  toast(L('Пинг: «Я пингвин! У вас тут так весело — очень хотелось в гости…»', 'Ping: “I am a penguin! It is so fun here — I really wanted to visit…”'), 3400);
+  addShells(PENG_SHELLS, toScreen(headTop(peng)));
+  await wait(1.8);
+  unfocusCam();
+
+  // …а замёрз он по-настоящему: дальше обычное лечение, только шарфик
+  S = {p:PENG, seal:peng, needs:['scarf'], done:new Set(), found:new Set(PENG.ail), ail:{cold:true}, stage:'treat'};
+  applyAilments(peng, S.ail);
+  $('#tools').hidden = false; renderCard(); setBusy(false);
+  toast(L('Пинг: «А ещё мне правда холодно… Можно шарфик?» 🧣', 'Ping: “And I really am cold… May I have a scarf?” 🧣'), 4200);
+}
+// вместо кроватки: пингвин танцует «спасибо» (спать в чужой кроватке ему неловко)
+async function pengBye(s){
+  sfx.quack(); floatText(L('Кря-кря! Танец спасибо!', 'Quack quack! A thank-you dance!'), headTop(s), '#D9527E');
+  s.flap = 1;
+  await tween(1.4, k => { s.inner.rotation.z = Math.sin(k*Math.PI*6)*0.18; s.inner.rotation.y = Math.sin(k*Math.PI*3)*0.5; }, ease.lin);
+  s.inner.rotation.z = s.inner.rotation.y = 0; s.flap = 0.35;
+  await wait(0.4);
+}

@@ -86,10 +86,45 @@ function makeSeal(p){
   hat.position.set(0, 0.6, -0.02); hat.rotation.set(-0.15, 0, 0.18); hat.userData.base = hat.position.clone();
   hat.visible = false; head.add(hat);
 
-  return {p, root, inner, head, body, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf, scarfMats:[ringMat, tailMat], hat, windup:null, wear:{}, sleeping:false,
+  return {p, root, inner, head, body, nose, flippers, eyes, happy, brows, blushMat, smile, sad, sweat, bubble, scratch, plaster, scarf, scarfMats:[ringMat, tailMat], hat, windup:null, wear:{}, sleeping:false,
     bodyMat, base:new THREE.Color(p.color), coldCol:new THREE.Color(p.color).lerp(new THREE.Color(0x9FC8EE), 0.45),
     mouthLocal, noseLocal, hits, nod:0, sneezeNod:0, shake:0, wobble:0, flap:0, blinkT:2, sneezeT:2.5, rumbleT:3.5,
     swimming:false, cold:false, bodyK:new V3(1, 1, 1)};
+}
+/* ---------- пингвин (Фаза 6: самозванец в костюме тюленя) ---------- */
+const PENG_ORANGE = 0xFFA552;
+function makeBeak(len = 0.32, r = 0.13){   // оранжевый конус носом вперёд (+Z)
+  const g = new THREE.ConeGeometry(r, len, 20); g.rotateX(Math.PI/2); g.translate(0, 0, len/2);
+  return addOutline(new THREE.Mesh(g, toon(PENG_ORANGE)), 1.1);
+}
+function makeFoot(){
+  const f = addOutline(new THREE.Mesh(SMALL, toon(PENG_ORANGE)), 1.12); f.scale.set(0.2, 0.06, 0.26); return f;
+}
+// костюм с «уликами»: клюв торчит из-под мордочки, лапки выглядывают снизу
+function addCostumeClues(s){
+  const beak = makeBeak(0.24, 0.09); onHead(beak, 0, -0.26, 1, -0.06); s.head.add(beak);
+  const feet = [-1, 1].map(sd => { const f = makeFoot(); f.position.set(0.3*sd, 0.05, 0.85); f.rotation.y = -0.3*sd; s.inner.add(f); return f; });
+  s.clue = {beak, feet};
+}
+// настоящий пингвин: тот же «скелет», что у тюленя (шарфик, настроение, объятие работают как обычно),
+// только тело стоймя, голова сверху, белые мордочка и животик, крылышки вниз, клюв и лапки
+function makePenguin(p){
+  const s = makeSeal(p);
+  s.bodyK.set(0.78, 1.55, 0.62); s.body.position.set(0, 1.22, 0);
+  const belly = new THREE.Mesh(SPH, toon(0xFFFDF8)); belly.scale.set(0.8, 0.84, 0.72); belly.position.set(0, -0.08, 0.32); s.body.add(belly);
+  s.head.position.set(0, 2.3, 0.12);
+  s.head.children[0].material = toon(0xFFFDF8);   // мордочка белая, а «шапочка» из цвета тела закрывает макушку и затылок
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16, 0, Math.PI*2, 0, 1.75), s.bodyMat);
+  cap.scale.set(HEAD_AX[0]*1.012, HEAD_AX[1]*1.012, HEAD_AX[2]*1.012); cap.rotation.x = -0.6; s.head.add(cap);
+  s.nose.visible = false; s.smile.scale.setScalar(1e-4); s.sad.scale.setScalar(1e-4);
+  s.head.add(onHead(makeBeak(), 0, -0.1, 1, -0.04));
+  s.inner.children.filter(c => c.position.z === -1.52).forEach(c => c.visible = false);   // задние ласты тюленя
+  for(const sd of [-1, 1]){ const f = makeFoot(); f.position.set(0.32*sd, 0.04, 0.42); f.rotation.y = -0.3*sd; s.inner.add(f); }
+  s.flippers.forEach(f => { f.position.set(0.62*f.userData.s, 1.6, 0.05); f.userData.up = -0.95; f.children[0].scale.set(0.46, 0.1, 0.24); });
+  const neck = new THREE.Group(); neck.position.set(0, 1.84, 0.1); neck.scale.set(1.12, 1, 1.08); s.inner.add(neck);
+  neck.add(s.scarf); s.scarf.position.set(0, 0, 0);
+  s.root.scale.setScalar(0.8);
+  return s;
 }
 /* шарфик: цвет + узор, текстуры кешируются */
 const SCARF_COLORS = ['#FF7A9C', '#FFB547', '#7FD1A8', '#7FB8F0', '#B69CF2', '#F5F1E8'];

@@ -99,6 +99,8 @@ const sfx = {
   boost(){ tone(380, 0.4, {type:'triangle', vol:0.07, to:1400, att:0.03}); noise(0.35, {vol:0.04, freq:1200, to:3200, delay:0.05, att:0.08}); },
   // ворчание Тучки: мягкое «бу-бу», без пилы
   grr(){ tone(147, 0.28, {type:'triangle', vol:0.075, to:131, att:0.03, vib:0.04, vibHz:9}); tone(131, 0.34, {type:'triangle', vol:0.07, to:110, delay:0.3, att:0.03, vib:0.04, vibHz:9}); },
+  // «кря» пингвина Пинга: гнусавое и смешное, два раза
+  quack(){ [0, 0.17].forEach((d, i) => { tone(760 - i*60, 0.13, {type:'triangle', vol:0.08, to:520 - i*40, delay:d, att:0.01, vib:0.05, vibHz:28}); tone(1500 - i*120, 0.1, {vol:0.02, to:1040, delay:d, att:0.01}); }); },
   giggle(){ [7, 8, 7, 9, 8].forEach((n,i) => squeak(pn(n), pn(n)*1.12, 0.08, {vol:0.05, delay:i*0.085})); },
   whoosh(){ noise(0.4, {vol:0.2, freq:600, to:2200, att:0.12}); },
   pop(){ const f = jit(440); tone(f, 0.09, {vol:0.16, to:f*2.1, att:0.004}); },

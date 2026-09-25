@@ -119,6 +119,7 @@ async function hop(s, h = 0.3, dur = 0.4){
   s.inner.position.y = 0;
 }
 async function spawnPatient(){
+  if(pengDue()) return spawnImpostor();   // иногда вместо тюленя — пингвин в костюме (shift.js)
   const p = patientFor(save.progress);
   const seal = makeSeal(p);
   S = {p, seal, needs:needsFor(p.ail), done:new Set(), found:new Set(), ail:Object.fromEntries(p.ail.map(a => [a, true])), stage:'arriving'};
@@ -208,7 +209,7 @@ async function hug(){
   addShells(earned, toScreen(headTop(s)));
   s.flap = 0.35;
   await wait(1.1);
-  await tuckIn(s);
+  await (s.p.peng ? pengBye(s) : tuckIn(s));   // пингвин в кроватку не хочет — у него свой танец
   $('#curedShells').textContent = `+${earned} 🐚` + (save.pet ? `  +${PATIENT_XP} 💗` : '');
   $('#btnNext').textContent = shift.n >= SHIFT_SIZE ? L('Итоги смены ⭐', 'Shift results ⭐') : L('Следующий пациент', 'Next patient');
   $('#curedImg').src = img;
@@ -253,8 +254,8 @@ canvas.addEventListener('pointerdown', e => {
   if(!ray.intersectObjects(S.seal.hits, false).length) return;
   if(S.stage === 'hug') return hug();
   if(S.stage === 'treat'){
-    const s = S.seal; sfx.arf();
-    floatText(L(['Ар!','Ур-р','Хи-хи','Ар-ар!'], ['Arf!','Urr','Hehe','Arf arf!'])[Math.floor(Math.random()*4)], headTop(s));
+    const s = S.seal, peng = S.p.peng; peng ? sfx.quack() : sfx.arf();
+    floatText((peng ? L(['Кря!','Кря-кря','Хи-хи','Кря?'], ['Quack!','Quack quack','Hehe','Quack?']) : L(['Ар!','Ур-р','Хи-хи','Ар-ар!'], ['Arf!','Urr','Hehe','Arf arf!']))[Math.floor(Math.random()*4)], headTop(s));
     squash(s, 0.15, 0.3);
   }
 });

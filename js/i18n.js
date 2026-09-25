@@ -23,7 +23,7 @@ function setLang(l){
   catch(e){ location.reload(); }
 }
 // имена пациентов: в сохранении и альбоме лежат русские, показываем по-английски (свои имена малыша не трогаем)
-const NAME_EN = {'Моти':'Mochi', 'Бублик':'Bagel', 'Зефирка':'Marshmallow', 'Тюпа':'Tyupa', 'Пельмешка':'Dumpling', 'Снежок':'Snowball', 'Ириска':'Toffee', 'Кнопка':'Button', 'Малыш':'Baby'};
+const NAME_EN = {'Моти':'Mochi', 'Бублик':'Bagel', 'Зефирка':'Marshmallow', 'Тюпа':'Tyupa', 'Пельмешка':'Dumpling', 'Снежок':'Snowball', 'Ириска':'Toffee', 'Кнопка':'Button', 'Малыш':'Baby', 'Пинг':'Ping'};
 const NAME_RU = Object.fromEntries(Object.entries(NAME_EN).map(([ru, en]) => [en, ru]));
 const nameL = n => LANG === 'en' ? (NAME_EN[n] || n) : (NAME_RU[n] || n);   // работает в обе стороны: в альбоме могут лежать имена, записанные на другом языке
 
