@@ -399,6 +399,7 @@ function frame(ts){
   }
   shiftTick(t, dt);
   petTick(t, dt); walkTick(t); homeTick(t, dt); mailTick(t, dt); advTick(t, dt);
+  if(typeof holTick === 'function') holTick(t, dt);   // старый index.html из кеша может ещё не знать про holidays.js
   updateParts(dt);
   renderer.render(scene, camera);
 }

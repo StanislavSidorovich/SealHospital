@@ -23,6 +23,9 @@ const BUB_Y = 1.9;   // пузыри с рыбками висят над вод�
 const runRoot = new THREE.Group(); runRoot.visible = false; scene.add(runRoot);
 if(!save.adv) save.adv = sanitizeAdv(null);   // Pages мог отдать старый data.js
 if(!save.adv.tips) save.adv.tips = [];
+if(!save.adv.fish) save.adv.fish = [];
+if(!save.adv.sec) save.adv.sec = [];
+if(!save.adv.quest) save.adv.quest = {d:'', ids:[], done:[]};
 const tipSeen = k => save.adv.tips.includes(k);
 const tipDone = k => { if(!tipSeen(k)){ save.adv.tips.push(k); persist(); } };
 

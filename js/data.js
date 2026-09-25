@@ -30,7 +30,8 @@ function sanitize(d){
     pet:sanitizePet(d.pet),    // свой тюленёнок (Фаза 3) или null, пока не познакомились
     mail:sanitizeMail(d.mail),   // папина почта (Фаза 7)
     home:sanitizeHome(d.home),   // домик малыша (Фаза 4)
-    adv:sanitizeAdv(d.adv)};     // приключения (Фаза 9)
+    adv:sanitizeAdv(d.adv),      // приключения (Фаза 9)
+    hol:strList(d.hol)};         // какие праздничные подарки уже получены ('halloween-2026', js/holidays.js)
 }
 // adv = {best:{уровень: звёзды 0…3}, cups:[уровни, где спасли всех рыбок — кубок на полке в домике], runs, day:{d, n} — забегов сегодня,
 //        tips:[какие подсказки забега уже показали: lane, boost, snow, tickle],
