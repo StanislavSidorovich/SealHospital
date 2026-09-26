@@ -527,7 +527,7 @@ const CO_GAMES = {
   fight:{ic:'☁️', name:() => L('Большая Туча', 'The Big Cloud'),
     say:() => L('Туча засыпает льдину снегом. Щекочите её снежками вдвоём! Упал — напарник спасёт из пузыря.', 'The Cloud is burying the ice in snow. Tickle it with snowballs, two of you! Fall down — your partner saves you from the bubble.')},
   rescue:{ic:'🦭', name:() => L('Потеряшка', 'Lost pup'),
-    say:() => L('Малыш потерялся и застрял во льду. Один прыгает высоко, другой сильный и ныряет — дойдите до него вместе!', 'A pup is lost and stuck in the ice. One of you jumps high, the other is strong and dives — reach it together!')}
+    say:() => L('Кто-то потерялся! Один прыгает высоко, другой сильный и ныряет — дойдите вместе. Два уровня: Бухта и Грот.', 'Someone is lost! One of you jumps high, the other is strong and dives — get there together. Two levels: the Bay and the Grotto.')}
 };
 async function coopMenu(){
   for(;;){
@@ -555,7 +555,7 @@ async function coopMenu(){
         : rw ? `💗 ${L(`Спасено потеряшек: ${rw}`, `Lost pups rescued: ${rw}`)}` : '';
       const we = panel.querySelector('.co-wins'); we.textContent = w; we.hidden = !w;
       panel.querySelectorAll('[data-g]').forEach(b => b.setAttribute('aria-selected', b.dataset.g === coGame));
-      const pb = panel.querySelector('[data-k="ping"] small'); if(pb) pb.textContent = coGame === 'rescue' ? L('он Силач', 'he\'s strong') : L('он поможет', 'he\'ll help');
+      const pb = panel.querySelector('[data-k="ping"] small'); if(pb) pb.textContent = L('он поможет', 'he\'ll help');
       const sb = panel.querySelector('[data-k="solo"] small'); if(sb) sb.textContent = coGame === 'rescue' ? L('ведёшь обоих', 'lead both') : L('полегче', 'a bit easier');
     };
     panel.querySelectorAll('[data-g]').forEach(b => mgOn(b, 'click', () => { if(coGame !== b.dataset.g){ sfx.tap(); coGame = b.dataset.g; show(); } }));

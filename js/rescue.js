@@ -10,7 +10,10 @@
    (управляешь обоими, 🔄 — переключиться). Проиграть нельзя.
    Сеть: каждый ведёт своего тюленя и шлёт, где он; плиты и ворота каждый считает сам по обоим тюленям;
    рычаги, решётка и мама — событиями; глыбу двигает только Силач и рассылает, где она.
-   Подключается после gull.js и до game.js. */
+   Уровни: RS_LVS.bay — «Бухта потеряшки» (тут), RS_LVS.grot — «Грот» (js/grotto.js). Всё, что зависит от уровня
+   (постройка, мир, подсказки, Пинг, финал), лежит в объекте уровня; физика, пузыри, кнопки, сеть и итоги — общие.
+   На каждом уровне 3 жемчужинки 🦪 (зачем проходить ещё раз). Пинг может быть и Силачом, и Прыгуном.
+   Подключается после gull.js и до grotto.js. */
 const RS_POS = new V3(-600, 0, 0);
 const rsAt = (x, y, z = 0) => new V3(RS_POS.x + x, RS_POS.y + y, RS_POS.z + z);
 const RS_SC = 0.42, RS_HW = 0.42, RS_H = 0.85;     // размер тюленя и его «коробка» для столкновений
@@ -20,9 +23,14 @@ const RS_BUB_T = 5, RS_LAUNCH = 14.5;               // пузырь сам ло�
 const RS_DAILY = 2, RS_GIFT = 10, RS_FIRST = 25;    // ракушки: за первую победу и за первые две в день
 const RS_ROLE = {
   jump:  {ic:'🦘', run:3.5, jv:8.2, jv2:7.4, name:() => L('Прыгун', 'Jumper'), can:() => L('прыгает высоко — и ещё раз прямо в воздухе', 'jumps high — and once more in mid-air')},
-  strong:{ic:'💪', run:3.1, jv:7.6, jv2:0, name:() => L('Силач', 'Strong one'), can:() => L('толкает льдины, качает качели и ныряет под лёд', 'pushes ice, bounces the seesaw and dives under the ice')}
+  strong:{ic:'💪', run:3.1, jv:7.6, jv2:0, name:() => L('Силач', 'Strong one'), can:() => L('толкает льдины, ныряет под лёд, держит друга на плечах', 'pushes ice, dives under the ice, lifts a friend on his shoulders')}
 };
 if(save.coop && !save.coop.resc) save.coop.resc = {wins:0, day:{d:'', n:0}};   // Pages мог отдать старый data.js
+const RS_PEARL = 5, RS_PEARLS3 = 15;                // ракушки за новую жемчужинку и за все три на уровне
+const RS_LVS = {};                                  // уровни по id; Q.L — текущий, Q.W — его подвижные части
+let rsLvPick = 'bay';                               // какой уровень выбран в меню (помним до перезагрузки)
+const rsResc = () => { const c = save.coop, r = c.resc || (c.resc = {wins:0, day:{d:'', n:0}}); r.lv = r.lv || {}; r.pearls = r.pearls || {}; return r; };
+const rsLvOpen = id => id === 'bay' || (rsResc().lv.bay || rsResc().wins) > 0;   // Грот — после первой победы в Бухте
 
 /* ---------- уровень «Бухта потеряшки» (x — вдоль, y — вверх, земля y=0) ----------
    0–8 старт · 9–15 плиты и ворота · 16–27 качели и полка с рычагом · 29–36 вода и ледяная стена ·
@@ -82,6 +90,7 @@ function rsSealLook(coat, scarf, sc){
 
 /* ---------- постройка ---------- */
 const rsRoot = new THREE.Group(); rsRoot.visible = false; scene.add(rsRoot);
+const rsLive = new THREE.Group(); scene.add(rsLive);   // тюлени, пузыри, значки — на любом уровне
 const RS_MAT = {ice:toon(0xC9E4F4), cliff:toon(0xB5D5EC), snow:toon(0xF7FBFE), gate:toon(0xA8DDF2), block:toon(0xCFEFFB),
   plate:toon(0xFFD66B), on:toon(0x9BE3B5), lever:toon(0xFF9BB8), wood:toon(0xC9A479), bar:toon(0xBFE6F7)};
 const RS_WATER = new THREE.MeshBasicMaterial({color:0x6FC0DF, transparent:true, opacity:0.55, depthWrite:false});
@@ -100,6 +109,25 @@ function rsIconTex(emoji){
   });
 }
 const RS_ICON = {jump:rsIconTex('🦘'), strong:rsIconTex('💪')};
+function rsLeverObj(l, parent){   // рычаг: столбик и ручка
+  const g = new THREE.Group(); g.position.copy(rsAt(l.x, l.y, 0.3)); parent.add(g);
+  const base = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.4), RS_MAT.wood), 1.08); base.position.y = 0.11; g.add(base);
+  const arm = new THREE.Group(); arm.position.y = 0.2; arm.rotation.z = 0.7; g.add(arm);
+  const st = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.7, 8), RS_MAT.wood), 1.2); st.position.y = 0.35; arm.add(st);
+  const kn = addOutline(new THREE.Mesh(SMALL, RS_MAT.lever), 1.1); kn.scale.setScalar(0.13); kn.position.y = 0.72; arm.add(kn);
+  return {...l, g, arm, on:false};
+}
+// жемчужинки уровня: перламутровый шарик с бликом; уже найденные раньше — бледные
+const RS_PEARL_MAT = toon(0xFFF1F6), RS_PEARL_OLD = new THREE.MeshBasicMaterial({color:0xFFFFFF, transparent:true, opacity:0.45, depthWrite:false});
+function rsPearlsBuild(L){
+  return L.pearls.map(p => {
+    const g = new THREE.Group(); g.position.copy(rsAt(p.x, p.y, 0.3)); L.root.add(g);
+    const b = addOutline(new THREE.Mesh(SMALL, RS_PEARL_MAT), 1.1); b.scale.setScalar(0.2); g.add(b);
+    const hi = new THREE.Mesh(SMALL, whiteMat); hi.scale.setScalar(0.06); hi.position.set(-0.07, 0.07, 0.17); g.add(hi);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:TEX.star, transparent:true, depthWrite:false})); sp.scale.setScalar(0.22); sp.position.set(0.18, 0.2, 0.1); g.add(sp);
+    return {...p, g, b, sp};
+  });
+}
 let rsBuilt = false;
 const RSW = {};   // подвижные части уровня (строятся один раз)
 function rsBuild(){
@@ -146,14 +174,7 @@ function rsBuild(){
     return {...p, o, on:false};
   });
   // рычаги: столбик и ручка
-  RSW.levers = lv.levers.map(l => {
-    const g = new THREE.Group(); g.position.copy(rsAt(l.x, l.y, 0.3)); rsRoot.add(g);
-    const base = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.4), RS_MAT.wood), 1.08); base.position.y = 0.11; g.add(base);
-    const arm = new THREE.Group(); arm.position.y = 0.2; arm.rotation.z = 0.7; g.add(arm);
-    const st = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.7, 8), RS_MAT.wood), 1.2); st.position.y = 0.35; arm.add(st);
-    const kn = addOutline(new THREE.Mesh(SMALL, RS_MAT.lever), 1.1); kn.scale.setScalar(0.13); kn.position.y = 0.72; arm.add(kn);
-    return {...l, g, arm, on:false};
-  });
+  RSW.levers = lv.levers.map(l => rsLeverObj(l, rsRoot));
   // качели-катапульта: доска на подставке
   const S = lv.see, pv = new THREE.Group(); pv.position.copy(rsAt(S.x, 0.35, 0.1)); rsRoot.add(pv);
   const plank = addOutline(new THREE.Mesh(new THREE.BoxGeometry(S.half*2, 0.14, 1.0), RS_MAT.wood), 1.03); pv.add(plank);
@@ -190,9 +211,9 @@ function rsReset(){
 /* ---------- состояние ---------- */
 let Q = null;
 function rsSeal(m, role, kind, name){
-  const bub = new THREE.Sprite(new THREE.SpriteMaterial({map:BUBBLE_TEX, transparent:true, depthWrite:false})); bub.scale.setScalar(1.35); bub.visible = false; rsRoot.add(bub);
-  const ic = new THREE.Sprite(new THREE.SpriteMaterial({map:RS_ICON[role], transparent:true, depthWrite:false})); ic.scale.setScalar(0.42); rsRoot.add(ic);
-  rsRoot.add(m.root);
+  const bub = new THREE.Sprite(new THREE.SpriteMaterial({map:BUBBLE_TEX, transparent:true, depthWrite:false})); bub.scale.setScalar(1.35); bub.visible = false; rsLive.add(bub);
+  const ic = new THREE.Sprite(new THREE.SpriteMaterial({map:RS_ICON[role], transparent:true, depthWrite:false})); ic.scale.setScalar(0.42); rsLive.add(ic);
+  rsLive.add(m.root);
   return {m, role, kind, name, x:0, y:0, vx:0, vy:0, air:false, coy:0, jq:0, jumps:0, ground:null, face:1, inW:false,
     bub:false, bubT:0, bubY:0, inv:0, bubO:bub, ic, nx:0, ny:0, ng:true, nw:false, dive:false, push:false,
     aiT:0, stuckT:0, lastX:0, said:0, lost:false, gone:false};
@@ -200,16 +221,20 @@ function rsSeal(m, role, kind, name){
 const rsLocal = p => p && p.kind !== 'net';
 const rsBoth = () => [Q.me, Q.pal].filter(p => p && !p.gone);
 const rsOnPlate = (p, pl) => p && !p.gone && !p.bub && Math.abs(p.x - pl.x) < 0.55 && Math.abs(p.y - pl.y) < 0.15 && (p.kind === 'net' ? p.ng : !p.air);
-const rsInWater = x => x > RS_LV.water[0] && x < RS_LV.water[1];
+const rsInWater = x => { const w = Q.L.water; return x > w[0] && x < w[1]; };
+const rsHeld = () => rsBoth().some(s => s.hold);   // кто-то держит верёвку (Грот)
 
 /* ---------- мир: ворота, стена, лифт, качели, сосульки ---------- */
 function rsSolids(){
   const out = Q.sol;
   out.length = 0;
   for(const s of Q.stat) out.push(s);
+  Q.L.solids(out);
+  return out;
+}
+function rsBaySolids(out){
   for(const g of RSW.gates) out.push(g.s);
   out.push(RSW.wall.s, RSW.see.a, RSW.see.b, RSW.block.s, RSW.lift.s);
-  return out;
 }
 function rsWorldSync(){
   const B = RSW.block, bs = RS_LV.block.s;
@@ -224,7 +249,7 @@ function rsWorldSync(){
   sw.a.y1 = S.hi + (S.lo - S.hi)*k; sw.b.y1 = S.lo + (S.hi - S.lo)*k;
   sw.pv.rotation.z = -Math.atan2(S.hi - S.lo, S.half*2)*(1 - 2*k);
 }
-function rsWorld(dt){
+function rsBayWorld(dt){
   // ворота 1 держит любая плита 1–2; пока кто-то стоит в проёме — не закрываются
   const pl = RSW.plates;
   for(const p of pl){
@@ -252,6 +277,7 @@ function rsWorld(dt){
       if(F.top <= lf.bot){ F.top = lf.bot; F.dir = 1; F.wait = 1.8; sfx.thud(); }
       if(F.top >= lf.top){ F.top = lf.top; F.dir = -1; F.wait = 1.4; }
     }
+    for(const s of rsBoth()) if(rsLocal(s) && s.ground === F.s && !s.bub) s.y = F.top;   // кто стоит на лифте — едет с ним (и при редких кадрах)
   }
   // качели возвращаются
   const sw = RSW.see;
@@ -276,7 +302,6 @@ function rsWorld(dt){
     }
   }
   rsWorldSync();
-  for(const l of RSW.levers) l.arm.rotation.z += ((l.on ? -0.7 : 0.7) - l.arm.rotation.z)*Math.min(1, dt*10);
   RSW.foam.position.y = RS_POS.y + RS_WS + Math.sin(now*2)*0.02;
 }
 
@@ -284,7 +309,9 @@ function rsWorld(dt){
 function rsJump(p){ if(p && !p.bub && Q && Q.st === 'go') p.jq = 0.15; }
 function rsMove(p, dt, dir, dive){
   const R = RS_ROLE[p.role];
-  if(p.bub){ p.y += (p.bubY - p.y)*Math.min(1, dt*2.5); p.vx = p.vy = 0; return; }
+  if(p.bub){ p.y += (p.bubY - p.y)*Math.min(1, dt*2.5); p.vx = p.vy = 0; if(p.bubG && p.bubG.v) p.x += p.bubG.v*dt; return; }   // пузырь над плотом плывёт с ним
+  if(p.climb){ if(Q.L.climb && Q.L.climb(p, dt)) return; p.climb = false; p.air = true; }   // лезет по верёвке (Грот)
+  if(p.hold && (dir || p.air)) p.hold = false;   // держит верёвку, пока стоит; пошёл — отпустил
   const wasW = p.inW;
   p.inW = rsInWater(p.x) && p.y < RS_WS - 0.1;
   if(p.inW && !wasW && p.vy < -2){ p.vy *= 0.3; sfx.splash(); burst(TEX.puff, rsAt(p.x, RS_WS + 0.1, 0.4), 8, 1.4, 0.35); }
@@ -307,9 +334,9 @@ function rsMove(p, dt, dir, dive){
   }
   const sol = Q.sol;
   // по горизонтали
-  let nx = p.x + p.vx*dt; p.push = false;
+  let nx = p.x + p.vx*dt + (p.air && p.cv ? p.cv*dt : 0) + (p.inW && Q.L.flow ? Q.L.flow(p)*dt : 0); p.push = false;   // cv — скорость плота, с которого прыгнул; flow — течение
   for(const s of sol){
-    if(nx + RS_HW <= s.x0 || nx - RS_HW >= s.x1 || p.y + RS_H <= s.y0 + 0.01 || p.y >= s.y1 - 0.01) continue;
+    if(s.one || nx + RS_HW <= s.x0 || nx - RS_HW >= s.x1 || p.y + RS_H <= s.y0 + 0.01 || p.y >= s.y1 - 0.01) continue;   // one — только сверху (плот)
     if(!p.air && s.y1 - p.y <= RS_STEP && s.y1 - p.y > 0 && !sol.some(o => o !== s && nx + RS_HW > o.x0 && nx - RS_HW < o.x1 && s.y1 + RS_H > o.y0 && s.y1 < o.y1)){ p.y = s.y1; continue; }
     if(s.k === 'block' && Q.blockMine && p.role === 'strong' && !p.air && Math.abs(p.vx) > 0.2){   // Силач толкает глыбу
       const B = RSW.block, bl = RS_LV.block, want = nx > p.x ? nx + RS_HW + bl.s/2 : nx - RS_HW - bl.s/2;
@@ -330,7 +357,12 @@ function rsMove(p, dt, dir, dive){
   for(const s of sol){
     if(p.x + RS_HW - 0.02 <= s.x0 || p.x - RS_HW + 0.02 >= s.x1 || ny + RS_H <= s.y0 || ny >= s.y1) continue;
     if(p.vy <= 0.5 && p.y >= s.y1 - 0.3){ ny = s.y1; ground = s; }
-    else if(p.vy > 0 && p.y + RS_H <= s.y0 + 0.3){ ny = s.y0 - RS_H; p.vy = 0; }
+    else if(p.vy > 0 && !s.one && p.y + RS_H <= s.y0 + 0.3){ ny = s.y0 - RS_H; p.vy = 0; }
+  }
+  if(!ground && Q.L.stack && p.role === 'jump' && p.vy <= 0.5) for(const o of rsBoth()){   // Прыгун встаёт Силачу на голову
+    if(o === p || o.role !== 'strong' || o.bub || o.climb) continue;
+    const top = o.y + RS_H;
+    if(Math.abs(p.x - o.x) < 0.55 && p.y >= top - 0.3 && ny <= top){ ny = top; ground = {k:'pal', o, y1:top}; }
   }
   if(ground){
     if(p.air && p.vy < -3 && ground.k === 'seeA' && p.role === 'strong') rsSeeHit(p);
@@ -339,6 +371,9 @@ function rsMove(p, dt, dir, dive){
   } else { p.air = !p.inW; p.ground = null; p.coy -= dt; }
   p.y = ny;
   if(p.ground && p.ground.k === 'block') p.x += RSW.block.dx;   // едет на глыбе
+  if(p.ground && p.ground.k === 'pal'){ const o = p.ground.o; if(p.palX != null) p.x += o.x - p.palX; p.palX = o.x; } else p.palX = null;   // на голове у Силача
+  if(p.ground && p.ground.v) p.x += p.ground.v*dt;   // на плоту
+  if(p.ground) p.cv = p.ground.v || 0; else if(p.inW) p.cv = 0;
   if(p.inv > 0) p.inv -= dt;
 }
 // Силач прыгнул на высокий край качелей — кто стоит на низком, взлетает
@@ -364,7 +399,7 @@ function rsLaunchCheck(){
 /* ---------- пузырь ---------- */
 function rsBubble(p){
   if(p.bub || p.inv > 0 || Q.st !== 'go') return;
-  p.bub = true; p.bubT = RS_BUB_T; p.bubY = Math.min(p.y + 0.9, 3.2 + (p.y >= 2.9 ? 3 : 0)); p.vx = p.vy = 0; sfx.pop();
+  p.bub = true; p.bubG = p.ground; p.hold = false; p.climb = false; p.bubT = RS_BUB_T; p.bubY = Math.min(p.y + 0.9, 3.2 + (p.y >= 2.9 ? 3 : 0)); p.vx = p.vy = 0; sfx.pop();
   burst(TEX.puff, rsAt(p.x, p.y + 0.5), 10, 1.8, 0.4);
   floatText(L('Ой!', 'Oops!'), rsAt(p.x, p.y + 1.4));
   if(p === Q.me){
@@ -384,16 +419,19 @@ function rsRevive(p, byPal){
 
 /* ---------- рычаги, решётка, мамы ---------- */
 function rsLever(i, remote){
-  const l = RSW.levers[i]; if(!l || l.on) return;
+  const l = Q.W.levers[i]; if(!l || l.on) return;
   l.on = true; sfx.lever();
   floatText(L('Щёлк!', 'Click!'), rsAt(l.x, l.y + 1.1), '#2F9E72');
   burst(TEX.star, rsAt(l.x, l.y + 0.7), 8, 1.6, 0.24);
   if(!remote && Q.mode === 'net') netSend({t:'qlv', i});
+  Q.L.lever(i);
+  Q.hintT = 0;
+}
+function rsBayLever(i){
   if(i === 2){ RSW.lift.wait = 1.2; RSW.lift.dir = 1; }   // лифт чуть подождёт — вдруг на нём ещё не стоят
   const at = [RS_LV.gates[1], RS_LV.wall, RS_LV.lift][i];
   wait(0.5).then(() => { if(Q) floatText([L('Дверь открылась!', 'The door is open!'), L('Стена поднялась!', 'The wall went up!'), L('Лифт поехал!', 'The lift is moving!')][i], rsAt((at.x0 + at.x1)/2, i === 1 ? 1.2 : i === 2 ? 3.8 : 2.2), '#3E8DB8'); });
   for(const k of ['s4', 's6']) for(const r of ['jump', 'strong']) Q.said.delete(k + r);
-  Q.hintT = 0;
 }
 function rsCage(remote){
   if(Q.cage) return;
@@ -409,6 +447,10 @@ function rsCage(remote){
 function rsClue(){
   const f = Q.fam;
   return L(`«У моей мамы шубка ${f.coat.w()} и ${f.sc.w()} шарфик!»`, `“My mum has a ${f.coat.w()} coat and a ${f.sc.w()} scarf!”`);
+}
+function rsBayTap(near){
+  if(Q.asked && !Q.won) for(let i = 0; i < Q.moms.length; i++) if(near(rsAt(Q.moms[i].x, 3.7), 85)){ sfx.tap(); rsMom(i); return true; }
+  return false;
 }
 function rsMom(i, remote){
   const m = Q.moms[i]; if(!m || Q.won || !Q.asked) return;
@@ -442,13 +484,31 @@ async function rsWin(i){
   Q.end = 'win';
 }
 
-/* ---------- Пинг-Силач: сам помогает (по участкам уровня) ---------- */
+/* ---------- Пинг: сам помогает (по участкам уровня) ----------
+   Уровень отдаёт цель {tx — куда идти, jump, dive, up — двойной прыжок на макушке, act — действие уровня}. */
 function rsAI(p, dt){
+  const me = Q.me;
+  let o;
+  if(me.bub){ o = {tx:me.x}; if(Math.abs(me.x - p.x) < 1.3 && Math.abs(me.y - p.y) < 2.5 && (p.aiT -= dt) < 0){ p.aiT = 0.4; rsRevive(me, true); } }
+  else o = Q.L.ai(p, dt);
+  const tx = o.tx; let jump = !!o.jump;
+  if(o.act && Q.L.doAct) Q.L.doAct(p, o.act);
+  if(o.up && p.air && p.jumps === 1 && p.vy < 1 && RS_ROLE[p.role].jv2) jump = true;   // двойной прыжок на макушке
+  // застрял у стенки — подпрыгни
+  if(Math.abs(p.x - p.lastX) < 0.01 && Math.abs(tx - p.x) > 0.4 && !p.air && !p.inW && !p.hold){ p.stuckT += dt; if(p.stuckT > 0.35){ jump = true; p.stuckT = 0; } } else p.stuckT = 0;
+  p.lastX = p.x;
+  const d = tx - p.x;
+  let dir = Math.abs(d) < 0.12 || p.hold || (p.fling > 0 && p.air) ? 0 : Math.sign(d)*Math.min(1, Math.abs(d)*2.5);
+  if(jump) p.jq = 0.12;
+  return {dir, dive:!!o.dive};
+}
+// Бухта, Пинг-Силач
+function rsBayAI(p, dt){
+  if(p.role === 'jump') return rsBayAIJ(p, dt);
   const me = Q.me, lv = RS_LV, W = RSW;
   let tx = me.x - 1.3, jump = false, dive = false;
   const lever = i => W.levers[i].on;
-  if(me.bub){ tx = me.x; if(Math.abs(me.x - p.x) < 1.3 && Math.abs(me.y - p.y) < 2.5 && (p.aiT -= dt) < 0){ p.aiT = 0.4; rsRevive(me, true); } }
-  else if(p.x < 12.4){   // ворота с плитами
+  if(p.x < 12.4){   // ворота с плитами
     const open = W.gates[0].k > 0.8;
     if(me.x > 12.4) tx = open ? 13.8 : 11.1;
     else if(rsOnPlate(me, lv.plates[0])) tx = lv.plates[1].x;
@@ -458,8 +518,10 @@ function rsAI(p, dt){
     const S = lv.see;
     if(lever(0) || me.y > 3){ tx = W.gates[1].k > 0.8 ? 29 : 25.6; }
     else if(me.x > S.x && me.x < S.x + S.half && !me.air && me.y < 0.3){
-      if(p.x > S.x - S.half - 0.2){ tx = 16.1; }
-      else { tx = 18.2; if(p.x > 15.9 && p.x < 16.6 && !p.air) jump = true; }
+      // сначала отойти для разбега, потом бежать и прыгнуть на высокий край (без дрожи на границе)
+      if(p.x < 16.3 && !p.air) p.aiRun = true;
+      if(p.aiRun){ tx = 18.2; if(p.x > 15.9 && p.x < 16.6 && !p.air) jump = true; if(p.x > 17.6 || (p.ground && p.ground.k === 'seeA')) p.aiRun = false; }
+      else tx = 16.1;
     } else tx = p.x > S.x - S.half ? 16.1 : Math.min(16.1, Math.max(p.x, me.x - 1.3));
   } else if(!lever(1)){   // вода: ныряем под стену и тянем рычаг на том берегу
     if(me.x < 26.5 && p.x < 28.5) tx = 28;
@@ -481,12 +543,39 @@ function rsAI(p, dt){
     if(!Q.cage){ tx = rsOnPlate(me, p4) ? p3.x : me.x > p4.x - 0.6 && me.x < p4.x + 0.6 ? p3.x : p4.x; if(rsOnPlate(me, p3)) tx = p4.x; }
     else tx = Math.min(RS_END - 1.4, me.x - 1.2);
   }
-  // застрял у стенки — подпрыгни
-  if(Math.abs(p.x - p.lastX) < 0.01 && Math.abs(tx - p.x) > 0.4 && !p.air && !p.inW){ p.stuckT += dt; if(p.stuckT > 0.35){ jump = true; p.stuckT = 0; } } else p.stuckT = 0;
-  p.lastX = p.x;
-  const d = tx - p.x, dir = Math.abs(d) < 0.12 ? 0 : Math.sign(d)*Math.min(1, Math.abs(d)*2.5);
-  if(jump) p.jq = 0.12;
-  return {dir, dive};
+  return {tx, jump, dive};
+}
+// Бухта, Пинг-Прыгун: встаёт на плиты, взлетает с качелей, тянет рычаги, запрыгивает с глыбы на скалу
+function rsBayAIJ(p, dt){
+  const me = Q.me, lv = RS_LV, W = RSW, S = lv.see, lever = i => W.levers[i].on;
+  let tx = me.x - 1.3, jump = false, up = false;
+  const pull = i => { tx = lv.levers[i].x; if(Math.abs(p.x - tx) < 0.5 && !p.air) rsLever(i); };
+  if(p.ground) p.aiBlk = p.ground.k === 'block';
+  if(p.x < 12.4 && p.y < 1){   // ворота с плитами — как у Силача
+    const open = W.gates[0].k > 0.8;
+    if(me.x > 12.4) tx = open ? 13.8 : 11.1;
+    else if(rsOnPlate(me, lv.plates[0])) tx = lv.plates[1].x;
+    else if(me.x > 6.5) tx = lv.plates[0].x;
+  } else if(p.x < 16.4 && me.x < 12.4) tx = lv.plates[1].x;
+  else if(p.x < 26.3){   // качели, полка, рычаг
+    if(p.y > 3){ if(!lever(0)) pull(0); else tx = 20.6; }   // с полки — влево и вниз
+    else if(p.fling > 0) tx = p.x;
+    else if(lever(0)) tx = W.gates[1].k > 0.8 ? 28.2 : 25.6;
+    else tx = S.x + 0.9;   // низкий край качелей: ждём, когда Силач прыгнет
+  } else if(!lever(1) && p.x < 29.5) tx = 28.2;   // ждём, пока Силач откроет стену
+  else if(p.x < 36.2){ tx = 37.2; if(p.inW && p.x > 34.4) jump = true; }
+  else if(p.y < 2.5 && p.x < 48.4){   // глыба: Силач толкает к скале, с неё — наверх
+    const B = W.block, bl = lv.block;
+    if(B.x < bl.max - 0.05) tx = Math.max(37.1, Math.min(me.x - 1.3, B.x - 1.4));   // ждём за Силачом, но уже на берегу
+    else if(p.ground && p.ground.k === 'block'){ tx = 49.6; if(p.x > B.x + 0.1) jump = true; }
+    else if(p.air && p.aiBlk){ tx = 49.6; up = true; }   // прыгнул с глыбы — на макушке ещё раз
+    else { tx = B.x; if(!p.air && Math.abs(p.x - B.x) < 1.35) jump = true; }
+  } else if(!Q.cage){   // на скале: рычаг лифта, потом две плиты
+    const [p3, p4] = [lv.plates[2], lv.plates[3]];
+    if(!lever(2)) pull(2);
+    else { tx = rsOnPlate(me, p4) ? p3.x : me.x > p4.x - 0.6 && me.x < p4.x + 0.6 ? p3.x : p4.x; if(rsOnPlate(me, p3)) tx = p4.x; }
+  } else tx = Math.min(RS_END - 1.4, me.x - 1.2);
+  return {tx, jump, up};
 }
 
 /* ---------- подсказки по участкам ---------- */
@@ -522,16 +611,16 @@ function rsSecHint(sec, role){
   return '';
 }
 function rsHintNow(force){
-  const me = Q.me, sec = rsSec(me), key = 's' + sec + me.role;
+  const me = Q.me, sec = Q.L.sec(me), key = 's' + sec + me.role;
   if(!force && Q.said.has(key)) return;
-  Q.said.add(key); mgHint(rsSecHint(sec, me.role)); Q.hintT = now + (force ? 6 : 7);
+  Q.said.add(key); mgHint(Q.L.hint(sec, me.role)); Q.hintT = now + (force ? 6 : 7);
 }
 
 /* ---------- сеть ---------- */
-function rsSendMe(){ const p = Q.me; netSend({t:'qp', x:+p.x.toFixed(2), y:+p.y.toFixed(2), f:p.face, g:!p.air, b:p.bub, w:p.inW, d:p.dive}); }
+function rsSendMe(){ const p = Q.me; netSend({t:'qp', x:+p.x.toFixed(2), y:+p.y.toFixed(2), f:p.face, g:!p.air, b:p.bub, w:p.inW, d:p.dive, h:!!p.hold, c:!!p.climb}); }
 function rsNetWire(){
   netOn('qp', m => { const p = Q && Q.pal; if(!p || p.kind !== 'net') return;
-    p.nx = m.x; p.ny = m.y; p.face = m.f; p.ng = m.g; p.nw = m.w; p.dive = m.d;
+    p.nx = m.x; p.ny = m.y; p.face = m.f; p.ng = m.g; p.nw = m.w; p.dive = m.d; p.hold = !!m.h; p.climb = !!m.c;
     if(m.b && !p.bub){ p.bub = true; burst(TEX.puff, rsAt(p.x, p.y + 0.5), 10, 1.8, 0.4); sfx.pop(); floatText(L('Помоги!', 'Help!'), rsAt(p.x, p.y + 1.6), '#D9527E'); }
     if(!m.b && p.bub){ p.bub = false; burst(TEX.heart, rsAt(p.x, p.y + 0.5), 10, 2, 0.3); }
   });
@@ -541,6 +630,8 @@ function rsNetWire(){
   netOn('qrev', () => { if(Q && Q.me.bub) rsRevive(Q.me, true); });
   netOn('qcage', () => { if(Q) rsCage(true); });
   netOn('qmom', m => { if(Q) rsMom(m.i, true); });
+  netOn('qpearl', m => { if(Q) rsPearl(m.i, true); });
+  if(Q.L.wire) Q.L.wire();   // события своего уровня
   netOn('emo', () => { if(Q && Q.pal) rsHeart(Q.pal); });
   netOn('bye', () => rsPalGone());
   net.onLost = () => { if(Q && Q.pal){ Q.pal.lost = true; mgHint(L('Связь пропала… подождём 🌊', 'Lost the connection… let\'s wait 🌊')); } };
@@ -567,7 +658,7 @@ function rsStep(dt){
     const ai = pal && pal.kind === 'ai' ? rsAI(pal, dt) : null;
     const n = Math.ceil(dt/0.016), h = dt/n;
     for(let i = 0; i < n; i++){
-      RSW.block.dx = 0;
+      if(Q.L.pre) Q.L.pre(h);
       rsMove(me, h, me.auto != null ? 0 : Q.in.dir, Q.in.dive);
       if(pal && rsLocal(pal) && !pal.gone) rsMove(pal, h, ai ? ai.dir : 0, ai ? ai.dive : false);
     }
@@ -578,30 +669,56 @@ function rsStep(dt){
     }
   }
   if(pal && pal.kind === 'net' && !pal.gone){ pal.x += (pal.nx - pal.x)*Math.min(1, dt*12); pal.y += (pal.ny - pal.y)*Math.min(1, dt*12); pal.air = !pal.ng; pal.inW = pal.nw; }
-  rsWorld(dt);
+  Q.L.world(dt);
+  for(const l of Q.W.levers) l.arm.rotation.z += ((l.on ? -0.7 : 0.7) - l.arm.rotation.z)*Math.min(1, dt*10);
   // пузыри: сами лопаются
   for(const p of [me, pal]) if(p && rsLocal(p) && p.bub && (p.bubT -= dt) <= 0) rsRevive(p);
-  // решётка: обе плиты на скале нажаты
-  if(!Q.cage && RSW.plates[2].on && RSW.plates[3].on) rsCage();
-  // потеряшка и мамы
-  rsPupStep(dt);
-  if(go && Q.momAsk && now > Q.momAsk){ Q.momAsk = 0; Q.asked = true; Q.said.delete('s8' + me.role); rsHintNow(true); Q.hintT = now + 60; sfx.arf(); }
+  Q.L.step(dt, go);   // решётка, потеряшка, мамы — у каждого уровня свои
+  rsPearlStep(dt);
   // подсказка участка (один раз) и кнопка действия
   if(go){
     if(now > Q.hintT && Q.hintT){ Q.hintT = 0; if(!Q.asked) mgHint(''); }
     if(!me.bub) rsHintNow(false);
-    rsStuckHints(dt);
+    if(Q.L.stuck) Q.L.stuck(dt);
     rsActBtn();
   }
   // сеть
   if(Q.mode === 'net'){
     if((Q.sendT -= dt) <= 0){ Q.sendT = 0.08; rsSendMe(); }
-    if(Q.blockMine && Math.abs(RSW.block.x - Q.bSent) > 0.005 && (Q.bT -= dt) <= 0){ Q.bT = 0.08; Q.bSent = RSW.block.x; netSend({t:'qbk', x:+RSW.block.x.toFixed(3)}); }
+    if(Q.L.net) Q.L.net(dt);
   }
   rsCam(dt);
   for(const p of [me, pal]) if(p) rsDraw(p, dt);
-  for(const m of Q.moms) rsMomDraw(m, dt);
+  if(Q.L.draw) Q.L.draw(dt);
   rsPalArrow();
+}
+// Бухта: решётка на двух плитах, потеряшка зовёт маму, мамы
+function rsBayStep(dt, go){
+  if(!Q.cage && RSW.plates[2].on && RSW.plates[3].on) rsCage();
+  rsPupStep(dt);
+  if(go && Q.momAsk && now > Q.momAsk){ Q.momAsk = 0; Q.asked = true; Q.said.delete('s8' + Q.me.role); rsHintNow(true); Q.hintT = now + 60; sfx.arf(); }
+}
+function rsBayNet(dt){
+  if(Q.blockMine && Math.abs(RSW.block.x - Q.bSent) > 0.005 && (Q.bT -= dt) <= 0){ Q.bT = 0.08; Q.bSent = RSW.block.x; netSend({t:'qbk', x:+RSW.block.x.toFixed(3)}); }
+}
+/* ---------- жемчужинки: коснулся — твоя (по сети — общая) ---------- */
+function rsPearlStep(dt){
+  const P = Q.pearlO; if(!P) return;
+  P.forEach((o, i) => {
+    if(!o.g.visible) return;
+    o.g.rotation.y += dt*1.6; o.g.position.y = RS_POS.y + o.y + Math.sin(now*2.4 + i)*0.06; o.sp.material.rotation += dt;
+    if(Q.st !== 'go') return;
+    for(const p of [Q.me, Q.pal]) if(p && rsLocal(p) && !p.gone && !p.bub && Math.abs(p.x - o.x) < RS_HW + 0.22 && o.y > p.y - 0.22 && o.y < p.y + RS_H + 0.22){ rsPearl(i); return; }
+  });
+}
+function rsPearl(i, remote){
+  const o = Q.pearlO[i]; if(!o || !o.g.visible) return;
+  o.g.visible = false; Q.pearl[i] = true;
+  if(!remote && Q.mode === 'net') netSend({t:'qpearl', i});
+  const had = (rsResc().pearls[Q.L.id] || []).includes(i);
+  sfx.sparkle(); sfx.coin(); burst(TEX.star, rsAt(o.x, o.y), 12, 2, 0.26);
+  const n = Q.pearl.filter(Boolean).length;
+  floatText(had ? `🦪 ${n}/3` : L(`Жемчужинка! 🦪 ${n}/3`, `A pearl! 🦪 ${n}/3`), rsAt(o.x, o.y + 0.8), '#D9527E');
 }
 function rsStuckHints(dt){   // напарник застрял за воротами: подскажем, что делать
   const me = Q.me, pal = Q.pal; if(!pal || pal.gone || Q.mode === 'solo') return;
@@ -611,25 +728,28 @@ function rsStuckHints(dt){   // напарник застрял за ворот�
 }
 function rsActBtn(){
   const me = Q.me, b = Q.actB; if(!b) return;
-  let k = '';
+  let k = '', ic = '🔧', aria = L('Потянуть рычаг', 'Pull the lever');
   if(!me.bub){
-    const l = RSW.levers.findIndex(l => !l.on && Math.abs(me.x - l.x) < 0.85 && Math.abs(me.y - l.y) < 0.6);
+    const l = Q.W.levers.findIndex(l => !l.on && Math.abs(me.x - l.x) < 0.85 && Math.abs(me.y - l.y) < 0.6);
+    const a = l < 0 && Q.L.act ? Q.L.act(me) : null;   // своё действие уровня: держать верёвку, лезть
     if(l >= 0) k = 'lever:' + l;
-    else if(me.role === 'strong' && me.inW) k = 'dive';
+    else if(a){ k = a.k; ic = a.ic; aria = a.aria; }
+    else if(me.role === 'strong' && me.inW){ k = 'dive'; ic = '⬇️'; aria = L('Нырнуть', 'Dive'); }
   }
   if(b.dataset.k !== k){
     b.dataset.k = k; b.hidden = !k;
-    b.textContent = k === 'dive' ? '⬇️' : '🔧';
-    b.setAttribute('aria-label', k === 'dive' ? L('Нырнуть', 'Dive') : L('Потянуть рычаг', 'Pull the lever'));
-    if(k.startsWith('lever')) wiggle(b);
+    b.textContent = ic;
+    b.setAttribute('aria-label', aria);
+    if(k && k !== 'dive') wiggle(b);
     if(k !== 'dive') Q.in.dive = false;
   }
+  if(k === 'hold') b.classList.toggle('on', !!me.hold);
 }
 function rsCam(dt){
   const me = Q.me, tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2);
   const W = camera.aspect < 1 ? 9 : 13, d = Math.max(W/2/(tv*camera.aspect), 7.5/tv);
   let fx = me.x + me.face*0.9, fy = Math.max(-0.5, Math.min(4.5, me.y*0.6));
-  if(Q.asked && !Q.won){ fx = (RS_END + RS_LV.moms[2])/2 - 0.3; fy = 1.8; }   // малыш ищет маму — показываем всех мам
+  const f = Q.L.cam && Q.L.cam(); if(f){ fx = f[0]; fy = f[1]; }   // уровень просит показать место (мам, полку Пипы)
   if(Q.photoX != null){ fx = Q.photoX; fy = 1.8; }
   Q.cx += (fx - Q.cx)*Math.min(1, dt*3); Q.cy += (fy - Q.cy)*Math.min(1, dt*3);
   const look = rsAt(Q.cx, Q.cy + (camera.aspect < 1 ? 1.2 : 1.4), 0);
@@ -690,6 +810,30 @@ function rsPalArrow(){
   }
 }
 
+/* ---------- «Бухта потеряшки» как уровень ---------- */
+RS_LVS.bay = {id:'bay', ic:'🌊', name:() => L('Бухта', 'Bay'),
+  say:() => L('Тюленёнок застрял во льду: плиты, качели, ледяная стена — и мама по приметам.', 'A seal pup is stuck in the ice: plates, a seesaw, an ice wall — and mum by the clues.'),
+  root:rsRoot, ground:RS_LV.ground, walls:RS_LV.walls, more:[RS_LV.shelf], water:RS_LV.water,
+  // жемчужинки: на дне у ледяной стены (Силач ныряет), высоко над полкой (Прыгун, двойной прыжок), между сосульками
+  pearls:[{x:30.4, y:-2.75}, {x:22.2, y:6.3}, {x:40.7, y:2.9}], pearlO:null,
+  W:() => RSW,
+  build(){ rsBuild(); if(!this.pearlO) this.pearlO = rsPearlsBuild(this); },
+  reset:rsReset, solids:rsBaySolids, world:rsBayWorld, pre(){ RSW.block.dx = 0; }, lever:rsBayLever,
+  ai:rsBayAI, sec:rsSec, hint:rsSecHint, step:rsBayStep, net:rsBayNet, stuck:rsStuckHints, tap:rsBayTap,
+  cam:() => Q.asked && !Q.won ? [(RS_END + RS_LV.moms[2])/2 - 0.3, 1.8] : null,
+  draw(dt){ for(const m of Q.moms) rsMomDraw(m, dt); },
+  setup(fam){   // потеряшка в клетке и три мамы
+    const pupS = rsSealLook(fam.coat, fam.sc.c, 0.28); rsRoot.add(pupS.root);
+    Q.pup = {s:pupS, x:RS_LV.pup, tx:null, face:1, hop:0, callT:now + 2, happy:0, run:false};
+    Q.moms = fam.moms.map((f, i) => { const s = rsSealLook(f.coat, f.sc.c, 0.5); rsRoot.add(s.root); s.root.rotation.y = -0.35; return {s, ok:!!f.ok, x:RS_LV.moms[i], tx:null, z:0, zz:0, shakeT:0, hug:false}; });
+  },
+  clean(){ if(Q.pup) rsRoot.remove(Q.pup.s.root); for(const m of Q.moms) rsRoot.remove(m.s.root); },
+  endX:RS_END, photoY:3.55,
+  photo:() => L('Потеряшка нашла маму', 'The lost pup found mum'),
+  endTtl:() => L('Потеряшка дома! 💗', 'The lost pup is home! 💗'),
+  endSay:() => L('Малыш нашёл маму — и всё благодаря вам 🦭', 'The pup found mum — all thanks to you 🦭')
+};
+
 /* ---------- экран: кнопки ---------- */
 function rsHud(){
   const pad = mgNode('div', 'rs-pad', `<button class="rs-l" aria-label="${L('Влево', 'Left')}">◀</button><button class="rs-r" aria-label="${L('Вправо', 'Right')}">▶</button>`);
@@ -717,8 +861,9 @@ function rsHud(){
     const k = ab.dataset.k;
     if(k === 'dive'){ try{ ab.setPointerCapture(e.pointerId); }catch(er){} Q.in.dive = true; ab.classList.add('on'); }
     else if(k.startsWith('lever')) rsLever(+k.split(':')[1]);
+    else if(k && Q.L.doAct) Q.L.doAct(Q.me, k);
   });
-  const dOff = () => { Q.in.dive = false; ab.classList.remove('on'); };
+  const dOff = () => { Q.in.dive = false; if(ab.dataset.k !== 'hold') ab.classList.remove('on'); };
   mgOn(ab, 'pointerup', dOff); mgOn(ab, 'pointercancel', dOff);
   mgOn(side.querySelector('.rs-tip'), 'click', e => { e.stopPropagation(); sfx.tap(); rsHintNow(true); });
   mgOn(side.querySelector('.rs-swap'), 'click', e => { e.stopPropagation(); rsSwap(); });
@@ -739,7 +884,7 @@ function rsHud(){
       if(p === Q.me && Q.mode !== 'solo') continue;
       if(near(rsAt(p.x, p.y + 0.3), 80)){ if(p.kind === 'net') netSend({t:'qrev'}); rsRevive(p, true); return; }
     }
-    if(Q.asked && !Q.won) for(let i = 0; i < Q.moms.length; i++) if(near(rsAt(Q.moms[i].x, 3.7), 85)){ sfx.tap(); rsMom(i); return; }
+    if(Q.L.tap && Q.L.tap(near)) return;
     if(Q.mode === 'solo' && Q.pal && near(rsAt(Q.pal.x, Q.pal.y + 0.5), 70)) rsSwap();
   });
   // клавиатура
@@ -748,7 +893,7 @@ function rsHud(){
     if(e.key === 'ArrowLeft' || e.key === 'ArrowRight'){ e.preventDefault(); held.k = e.key === 'ArrowRight' ? 1 : -1; upd(); }
     if(e.key === ' ' || e.key === 'ArrowUp'){ e.preventDefault(); rsJump(Q.me); }
     if(e.key === 'ArrowDown'){ e.preventDefault(); Q.in.dive = true; }
-    if(e.key === 'e' || e.key === 'Enter'){ const k = Q.actB.dataset.k; if(k.startsWith('lever')) rsLever(+k.split(':')[1]); }
+    if(e.key === 'e' || e.key === 'Enter'){ const k = Q.actB.dataset.k; if(k.startsWith('lever')) rsLever(+k.split(':')[1]); else if(k && k !== 'dive' && Q.L.doAct) Q.L.doAct(Q.me, k); }
     if(e.key === 'Tab' && Q.mode === 'solo'){ e.preventDefault(); rsSwap(); }
   });
   mgOn(window, 'keyup', e => {
@@ -763,7 +908,7 @@ function rsSwap(){   // без напарника: переключиться н
   Q.in.dive = false;
   burst(TEX.star, rsAt(Q.me.x, Q.me.y + 1.1), 8, 1.4, 0.22);
   floatText(RS_ROLE[Q.me.role].ic, rsAt(Q.me.x, Q.me.y + 1.5));
-  Q.said.delete('s' + rsSec(Q.me) + Q.me.role); Q.hintT = 0;
+  Q.said.delete('s' + Q.L.sec(Q.me) + Q.me.role); Q.hintT = 0;
 }
 
 /* ---------- кто кем будет ---------- */
@@ -772,25 +917,41 @@ async function rsRolePick(mode, palName){
   mgOpen('');
   if(mode === 'net' && !net.host){
     const panel = mgNode('div', 'mg-panel fun-pick rs-roles', `<p class="ttl display">🦭 ${L('Спасаем потеряшку', 'Rescue the lost pup')}</p>
-      <p class="got">${L(`${palName} выбирает, кем быть…`, `${palName} is choosing who to be…`)}</p>`);
+      <p class="got">${L(`${palName} выбирает уровень и кем быть…`, `${palName} is choosing the level and who to be…`)}</p>`);
     const m = await new Promise(r => { netOn('qstart', r); netOn('bye', () => r(null)); });
     panel.remove(); mgClose();
     return m;
   }
+  const lvs = Object.values(RS_LVS);
+  if(!RS_LVS[rsLvPick] || !rsLvOpen(rsLvPick)) rsLvPick = 'bay';
+  const pearls = id => (rsResc().pearls[id] || []).length;
   const panel = mgNode('div', 'mg-panel fun-pick rs-roles', `
     <p class="ttl display">🦭 ${L('Спасаем потеряшку', 'Rescue the lost pup')}</p>
-    <p class="got">${mode === 'ping' ? L('Пинг будет Силачом 💪 — он отлично ныряет. А ты — Прыгун!', 'Ping will be the strong one 💪 — he\'s a great diver. And you are the jumper!')
+    ${lvs.length > 1 ? `<div class="co-games rs-lvs" role="tablist">${lvs.map(v => `<button role="tab" data-lv="${v.id}"${rsLvOpen(v.id) ? '' : ' class="lock"'}>
+      <span><span aria-hidden="true">${rsLvOpen(v.id) ? v.ic : '🔒'}</span> ${v.name()}</span><small>🦪 ${pearls(v.id)}/3</small></button>`).join('')}</div>` : ''}
+    <p class="got rs-say"></p>
+    <p class="got">${mode === 'ping' ? L('Кем будешь ты? Пинг станет другим 🐧', 'Who will you be? Ping takes the other role 🐧')
       : mode === 'solo' ? L('Ты ведёшь обоих тюленей: 🔄 — переключиться', 'You lead both seals: 🔄 — switch')
       : L('Кем будешь ты? Второй станет другим', 'Who will you be? The other one takes the other role')}</p>
-    <div class="picks">${mode === 'net' ? card('jump') + card('strong') : ''}</div>
-    ${mode !== 'net' ? `<ul class="gull-how">${['jump', 'strong'].map(r => `<li><b>${RS_ROLE[r].ic}</b><span><strong>${RS_ROLE[r].name()}</strong>${mode === 'ping' ? ` (${r === 'jump' ? L('ты', 'you') : L('Пинг', 'Ping')})` : ''} — ${RS_ROLE[r].can()}</span></li>`).join('')}</ul>
+    <div class="picks">${mode !== 'solo' ? card('jump') + card('strong') : ''}</div>
+    ${mode === 'solo' ? `<ul class="gull-how">${['jump', 'strong'].map(r => `<li><b>${RS_ROLE[r].ic}</b><span><strong>${RS_ROLE[r].name()}</strong> — ${RS_ROLE[r].can()}</span></li>`).join('')}</ul>
       <button class="btn" data-r="jump">${L('Поехали! 🐾', 'Let\'s go! 🐾')}</button>` : ''}
     <button class="btn ghost small" data-r="">${L('Потом', 'Later')}</button>`);
+  const show = () => {
+    panel.querySelectorAll('[data-lv]').forEach(b => b.setAttribute('aria-selected', b.dataset.lv === rsLvPick));
+    panel.querySelector('.rs-say').textContent = RS_LVS[rsLvPick].say();
+  };
+  panel.querySelectorAll('[data-lv]').forEach(b => mgOn(b, 'click', () => {
+    const id = b.dataset.lv;
+    if(!rsLvOpen(id)){ sfx.bad(); wiggle(b); toast(L('Сначала спасите малыша в Бухте 🌊', 'First rescue the pup in the Bay 🌊')); return; }
+    if(id !== rsLvPick){ sfx.tap(); rsLvPick = id; show(); }
+  }));
+  show();
   const r = await new Promise(res => panel.querySelectorAll('[data-r]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); res(b.dataset.r); })));
   panel.classList.add('away'); await wait(0.2); mgClose();
   if(!r) return null;
-  const m = {role:r, seed:Math.floor(Math.random()*1e9)};
-  if(mode === 'net') netSend({t:'qstart', role:r === 'jump' ? 'strong' : 'jump', seed:m.seed});
+  const m = {role:r, seed:Math.floor(Math.random()*1e9), lv:rsLvPick};
+  if(mode === 'net') netSend({t:'qstart', role:r === 'jump' ? 'strong' : 'jump', seed:m.seed, lv:m.lv});
   return m;
 }
 
@@ -804,24 +965,29 @@ async function rescueGame(mode, pal0 = null){
   while(again){
     const start = await rsRolePick(mode, palName);
     if(!start){ if(mode === 'net'){ netSend({t:'bye'}); netClose(); } break; }
-    rsBuild();
+    const LV = RS_LVS[start.lv] || RS_LVS.bay;
+    LV.build();
+    for(const v of Object.values(RS_LVS)) if(v.root) v.root.visible = v === LV;
     if(!homeB){
       sfx.whoosh(); flash();
-      scene.fog = null; rsRoot.visible = true; runCam.on = true; HEMI.intensity = 0.62; sun.intensity = 0.58;
+      scene.fog = null; runCam.on = true; HEMI.intensity = 0.62; sun.intensity = 0.58;
       document.body.classList.add('run-on');
       homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
       homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#btnSound').after(homeB);
       homeB.addEventListener('click', () => { sfx.tap(); if(quit) quit(); });
     }
-    rsReset();
+    LV.reset();
     const fam = rsFamily(start.seed), myRole = start.role, palRole = myRole === 'jump' ? 'strong' : 'jump';
-    Q = {mode, st:'ready', me:null, pal:null, in:{dir:0, dive:false}, sol:[], stat:[], said:new Set(), hintT:0, cx:1, cy:0.5,
+    Q = {mode, L:LV, W:LV.W(), st:'ready', me:null, pal:null, in:{dir:0, dive:false}, sol:[], stat:[], said:new Set(), hintT:0, cx:1, cy:0.5,
       sendT:0, bT:0, bSent:RS_LV.block.x, blockMine:true, cage:false, asked:false, momAsk:0, won:false, end:null, photoX:null,
-      fam, moms:[], pup:null, arrow:null, actB:null};
+      fam, moms:[], pup:null, arrow:null, actB:null, pearl:LV.pearls.map(() => false), pearlO:LV.pearlO};
     // неподвижные бруски
-    for(const g of RS_LV.ground) Q.stat.push({x0:g[0], x1:g[1], y0:g[2], y1:g[3], k:'ice'});
-    for(const w of RS_LV.walls) Q.stat.push({x0:w[0], x1:w[1], y0:w[2], y1:w[3], k:'ice'});
-    const sh = RS_LV.shelf; Q.stat.push({x0:sh[0], x1:sh[1], y0:sh[2], y1:sh[3], k:'ice'});
+    for(const g of LV.ground) Q.stat.push({x0:g[0], x1:g[1], y0:g[2], y1:g[3], k:'ice'});
+    for(const w of LV.walls) Q.stat.push({x0:w[0], x1:w[1], y0:w[2], y1:w[3], k:'ice'});
+    for(const w of LV.more || []) Q.stat.push({x0:w[0], x1:w[1], y0:w[2], y1:w[3], k:w[4] || 'ice'});
+    // жемчужинки: все на месте, найденные раньше — бледные
+    const had = rsResc().pearls[LV.id] || [];
+    Q.pearlO.forEach((o, i) => { const old = had.includes(i); o.g.visible = true; o.b.material = old ? RS_PEARL_OLD : RS_PEARL_MAT; o.b.children.forEach(c => c.visible = !old); o.sp.visible = !old; });
     // тюлени
     const mine = coSealOf(coPetDesc()); mine.root.scale.setScalar(RS_SC);
     Q.me = rsSeal(mine, myRole, 'me', save.pet ? save.pet.name : L('Ты', 'You'));
@@ -830,11 +996,8 @@ async function rescueGame(mode, pal0 = null){
     else { const m = makeSeal({name:'', f:false, color:0xC6DCF4}); m.root.scale.setScalar(RS_SC); Q.pal = rsSeal(m, palRole, 'idle', RS_ROLE[palRole].name()); }
     Q.me.x = mode === 'net' && !net.host ? 3 : 1.2; Q.pal.x = Q.pal.nx = mode === 'net' && !net.host ? 1.2 : 3;
     Q.cx = Q.me.x;
-    // потеряшка и мамы
-    const pupS = rsSealLook(fam.coat, fam.sc.c, 0.28); rsRoot.add(pupS.root);
-    Q.pup = {s:pupS, x:RS_LV.pup, tx:null, face:1, hop:0, callT:now + 2, happy:0, run:false};
-    Q.moms = fam.moms.map((f, i) => { const s = rsSealLook(f.coat, f.sc.c, 0.5); rsRoot.add(s.root); s.root.rotation.y = -0.35; return {s, ok:!!f.ok, x:RS_LV.moms[i], tx:null, z:0, zz:0, shakeT:0, hug:false}; });
-    save.coop.resc = save.coop.resc || {wins:0, day:{d:'', n:0}};
+    LV.setup(fam);   // потеряшка, мамы — у каждого уровня свои
+    rsResc();
     mgOpen('');
     rsHud();
     let done; const fin = new Promise(r => done = r);
@@ -857,41 +1020,48 @@ async function rescueGame(mode, pal0 = null){
   if(mode === 'net') netClose();
   if(homeB){
     homeB.remove(); document.body.classList.remove('run-on'); flash();
-    rsRoot.visible = false; runCam.on = false; homeLights(false); scene.fog = fog;
+    for(const v of Object.values(RS_LVS)) if(v.root) v.root.visible = false;
+    runCam.on = false; homeLights(false); scene.fog = fog;
   }
   return res;
 }
 function rsClean(){
   if(!Q) return;
-  for(const p of [Q.me, Q.pal]) if(p){ rsRoot.remove(p.m.root); rsRoot.remove(p.bubO); rsRoot.remove(p.ic); }
-  if(Q.pup) rsRoot.remove(Q.pup.s.root);
-  for(const m of Q.moms) rsRoot.remove(m.s.root);
+  for(const p of [Q.me, Q.pal]) if(p){ rsLive.remove(p.m.root); rsLive.remove(p.bubO); rsLive.remove(p.ic); }
+  if(Q.L.clean) Q.L.clean();
   Q = null;
 }
 function rsResults(){
-  const c = save.coop, r = c.resc || (c.resc = {wins:0, day:{d:'', n:0}}), first = !r.wins, today = new Date().toDateString();
+  const r = rsResc(), id = Q.L.id, first = !(r.lv[id] || (id === 'bay' && r.wins)), today = new Date().toDateString();
   const n = r.day && r.day.d === today ? r.day.n : 0, paid = n < RS_DAILY;
-  r.wins++; r.day = {d:today, n:n + 1};
-  const gift = first ? RS_FIRST : paid ? RS_GIFT : 0;
+  r.wins++; r.day = {d:today, n:n + 1}; r.lv[id] = (r.lv[id] || 0) + 1;
+  // жемчужинки: новые — в копилку уровня, за каждую ракушки, за все три — ещё
+  const had = r.pearls[id] || [], fresh = Q.pearl.map((v, i) => v && !had.includes(i) ? i : -1).filter(i => i >= 0);
+  r.pearls[id] = [...had, ...fresh].sort();
+  const all3 = fresh.length > 0 && r.pearls[id].length >= Q.pearl.length;
+  const pg = fresh.length*RS_PEARL + (all3 ? RS_PEARLS3 : 0);
+  const gift = (first ? RS_FIRST : paid ? RS_GIFT : 0) + pg;
   let photo = null;
   try{
-    // фото крупнее: камера на миг подъезжает к маме с малышом и тюленям
-    const c = rsAt(Q.photoX != null ? Q.photoX : RS_END, 3.55), tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), d = 5.4/(2*tv*Math.min(1, camera.aspect));
+    // фото крупнее: камера на миг подъезжает к спасённому и тюленям
+    const c = rsAt(Q.photoX != null ? Q.photoX : Q.L.endX, Q.L.photoY), tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), d = 5.4/(2*tv*Math.min(1, camera.aspect));
     camera.position.copy(c).add(new V3(0, 1.2, d)); camera.lookAt(c);
     photo = snapshot({root:{position:c.clone().setY(c.y - 1), scale:{x:1}}}, 4.4);
-    albumAdd({name:L('Потеряшка нашла маму', 'The lost pup found mum'), img:photo, d:Date.now()}); renderAlbumCount();
+    albumAdd({name:Q.L.photo(), img:photo, d:Date.now()}); renderAlbumCount();
   }catch(e){}
   persist();
-  return {gift, first, photo, mode:Q.mode, pal:Q.pal && !Q.pal.gone && Q.mode !== 'solo' ? Q.pal.name : null, netGone:!!Q.netGone};
+  return {gift, first, photo, mode:Q.mode, pal:Q.pal && !Q.pal.gone && Q.mode !== 'solo' ? Q.pal.name : null, netGone:!!Q.netGone,
+    ttl:Q.L.endTtl(), say:Q.L.endSay(), pearls:r.pearls[id].length, fresh:fresh.length, all3, paid:first || paid};
 }
 async function rsResultPanel(res){
   const net1 = res.mode === 'net' && netLive();
   const panel = mgNode('div', 'mg-panel run-end co-end', `
-    <p class="ttl display">${L('Потеряшка дома! 💗', 'The lost pup is home! 💗')}</p>
-    <p class="got">${L('Малыш нашёл маму — и всё благодаря вам 🦭', 'The pup found mum — all thanks to you 🦭')}</p>
+    <p class="ttl display">${res.ttl}</p>
+    <p class="got">${res.say}</p>
     ${res.pal ? `<p class="got">💗 ${L(`Ты и ${res.pal} — команда!`, `You and ${res.pal} — a team!`)}</p>` : ''}
     ${res.photo ? `<img class="co-photo" src="${res.photo}" alt=""><p class="got">📷 ${L('Фото — в альбоме', 'The photo is in the album')}</p>` : ''}
-    ${!res.gift ? `<p class="got">${L('Ракушки за спасение на сегодня собраны — завтра будут новые 🌊', 'Today\'s shells for rescues are collected — more tomorrow 🌊')}</p>` : ''}
+    <p class="got rs-pearls">🦪 ${L('Жемчужинки', 'Pearls')}: <b>${res.pearls}/3</b>${res.fresh ? ` · ${L('новых', 'new')}: +${res.fresh}` : ''}${res.all3 ? ` · ${L('все собраны! ✨', 'all found! ✨')}` : ''}</p>
+    ${!res.paid ? `<p class="got">${L('Ракушки за спасение на сегодня собраны — завтра будут новые 🌊', 'Today\'s shells for rescues are collected — more tomorrow 🌊')}</p>` : ''}
     <p class="earned display">${res.gift ? `+${res.gift} 🐚` : ''}</p>
     <p class="got co-wait" hidden></p>
     <div class="row"><button class="btn" data-k="home">${L('Домой 🏠', 'Home 🏠')}</button>${!res.netGone && (!net1 || net.host) ? `<button class="btn ghost" data-k="again">${L('Ещё раз ↻', 'Again ↻')}</button>` : ''}</div>`);

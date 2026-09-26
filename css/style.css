@@ -631,3 +631,8 @@ body.map-on #corner>:not(#btnSound){display:none!important}
 .gull-chip .round{font-size:20px;line-height:1;width:44px;height:44px}
 .gull-chip .co-mic.on{background:#DDF5EA}
 body:not(.pet-mode) .gull-chip,body.mg-on .gull-chip,body.home-mode .gull-chip{display:none}
+.rs-lvs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:58px}
+.rs-lvs button small{font-family:"Nunito",sans-serif;font-size:12px;font-weight:800;opacity:.8}
+.rs-lvs button.lock{opacity:.55}
+.rs-roles .rs-say{font-weight:700;font-size:14px;margin:0 0 6px}
+.co-end .rs-pearls b{font-size:17px}
