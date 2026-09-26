@@ -636,3 +636,46 @@ body:not(.pet-mode) .gull-chip,body.mg-on .gull-chip,body.home-mode .gull-chip{d
 .rs-lvs button.lock{opacity:.55}
 .rs-roles .rs-say{font-weight:700;font-size:14px;margin:0 0 6px}
 .co-end .rs-pearls b{font-size:17px}
+/* четыре парные игры — сеткой 2×2 (js/coop.js) */
+.co-games.grid{display:grid;grid-template-columns:1fr 1fr}
+.co-games.grid button{min-height:46px}
+.co-pick .picks[hidden]{display:none}
+/* «Ледяной код» (js/icecode.js) */
+.mg-panel.ice-panel{top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+.mg-panel.ice-ask,.mg-panel.ice-make{top:auto}
+body.ice-on #corner>:not(#btnSound){display:none!important}
+.mg-panel.ice-panel .ttl{padding:0 44px}
+.ice-panel .ttl{font-size:26px;margin:2px 0 4px;text-align:center}
+.ice-panel .got{font-size:15px;font-weight:800;margin:0 0 8px;text-align:center}
+.ice-rows{flex:1;min-height:60px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin:0 0 6px;padding:2px}
+.ice-row{display:flex;align-items:center;gap:8px;background:#F4FAFE;border:2px solid var(--ink);border-radius:14px;padding:4px 8px}
+.ice-row.win{background:#DDF5EA}
+.ice-row .n{font-weight:800;font-size:13px;color:var(--soft);min-width:16px}
+.ice-row .its{flex:1;font-size:26px;letter-spacing:4px;line-height:1.2}
+.ice-row .pegs{display:grid;grid-template-columns:repeat(2,14px);gap:3px}
+.ice-row .pegs i{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink);background:#fff}
+.ice-row .pegs i.g{background:#5CCB8F}
+.ice-row .pegs i.y{background:#FFD66B}
+.ice-key{font-size:12.5px;font-weight:800;text-align:center;margin:0 0 6px;color:var(--soft)}
+.ice-cur{display:flex;justify-content:center;gap:8px;margin:0 0 8px}
+.ice-cur .slot{width:60px;height:60px;border-radius:16px;border:2.5px dashed var(--ink);background:#fff;font-size:32px;line-height:1}
+.ice-cur .slot:not(:empty){border-style:solid;box-shadow:0 3px 0 var(--ink)}
+.ice-cur .slot.lock{background:#FFF7DD}
+.ice-pal{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:0 0 10px}
+.ice-pal button{height:52px;border-radius:14px;border:2.5px solid var(--ink);background:#EAF4FF;box-shadow:0 3px 0 var(--ink);font-size:28px;line-height:1}
+.ice-pal button:disabled{opacity:.3;box-shadow:none}
+.ice-panel .row{display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:6px}
+.ice-panel .ice-go:disabled{opacity:.45}
+.ice-panel .btn.small{display:block;margin:0 auto}
+.ice-sign{display:block;text-align:center;font-weight:800;font-size:14px;margin:0 0 8px}
+.ice-sign input,.ice-in{font:inherit;font-size:17px;border:2.5px solid var(--ink);border-radius:12px;padding:6px 10px;width:150px;background:#fff}
+.ice-in{display:block;width:100%;box-sizing:border-box;text-align:center;font-size:22px;letter-spacing:2px;margin:0 0 8px}
+.ice-out{text-align:center}
+.ice-code{font-size:34px;margin:0 0 2px;letter-spacing:3px}
+.ice-out textarea{width:100%;box-sizing:border-box;font-size:13px;border:2px solid var(--ink);border-radius:10px}
+.ice-err{color:var(--pink-d)}
+.ice-end .ice-its{font-size:40px;letter-spacing:6px;text-align:center;margin:0 0 4px}
+.ice-end .stars{font-size:30px;text-align:center;margin:0 0 4px}
+/* «Метель» (js/blizzard.js): белая пелена, видно только рядом */
+.bz-veil{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.rs-act.look{background:#FFF7DD}

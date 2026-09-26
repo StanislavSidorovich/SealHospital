@@ -30,7 +30,7 @@ const RS_PEARL = 5, RS_PEARLS3 = 15;                // ракушки за но�
 const RS_LVS = {};                                  // уровни по id; Q.L — текущий, Q.W — его подвижные части
 let rsLvPick = 'bay';                               // какой уровень выбран в меню (помним до перезагрузки)
 const rsResc = () => { const c = save.coop, r = c.resc || (c.resc = {wins:0, day:{d:'', n:0}}); r.lv = r.lv || {}; r.pearls = r.pearls || {}; return r; };
-const rsLvOpen = id => id === 'bay' || (rsResc().lv.bay || rsResc().wins) > 0;   // Грот — после первой победы в Бухте
+const rsLvOpen = id => id === 'bay' || (id === 'snow' ? (rsResc().lv.grot || 0) > 0 : (rsResc().lv.bay || rsResc().wins) > 0);   // Грот — после Бухты, Метель — после Грота
 
 /* ---------- уровень «Бухта потеряшки» (x — вдоль, y — вверх, земля y=0) ----------
    0–8 старт · 9–15 плиты и ворота · 16–27 качели и полка с рычагом · 29–36 вода и ледяная стена ·
@@ -748,12 +748,12 @@ function rsActBtn(){
 function rsCam(dt){
   const me = Q.me, tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2);
   const W = camera.aspect < 1 ? 9 : 13, d = Math.max(W/2/(tv*camera.aspect), 7.5/tv);
-  let fx = me.x + me.face*0.9, fy = Math.max(-0.5, Math.min(4.5, me.y*0.6));
-  const f = Q.L.cam && Q.L.cam(); if(f){ fx = f[0]; fy = f[1]; }   // уровень просит показать место (мам, полку Пипы)
+  let fx = me.x + me.face*0.9, fy = Math.max(-0.5, Math.min(4.5, me.y*0.6)), fz = 1;
+  const f = Q.L.cam && Q.L.cam(); if(f){ fx = f[0]; fy = f[1]; fz = f[2] || 1; }   // уровень просит показать место (мам, полку Пипы) — и отъехать подальше (fz)
   if(Q.photoX != null){ fx = Q.photoX; fy = 1.8; }
-  Q.cx += (fx - Q.cx)*Math.min(1, dt*3); Q.cy += (fy - Q.cy)*Math.min(1, dt*3);
+  Q.cx += (fx - Q.cx)*Math.min(1, dt*3); Q.cy += (fy - Q.cy)*Math.min(1, dt*3); Q.cz = (Q.cz || 1) + (fz - (Q.cz || 1))*Math.min(1, dt*3);
   const look = rsAt(Q.cx, Q.cy + (camera.aspect < 1 ? 1.2 : 1.4), 0);
-  runCam.look.copy(look); runCam.pos.copy(look).add(new V3(0, 3.2, d));   // чуть сверху — видно снежные верхушки льдин
+  runCam.look.copy(look); runCam.pos.copy(look).add(new V3(0, 3.2*Q.cz, d*Q.cz));   // чуть сверху — видно снежные верхушки льдин
 }
 function rsDraw(p, dt){
   const m = p.m, sw = p.inW && !p.bub;
@@ -943,7 +943,7 @@ async function rsRolePick(mode, palName){
   };
   panel.querySelectorAll('[data-lv]').forEach(b => mgOn(b, 'click', () => {
     const id = b.dataset.lv;
-    if(!rsLvOpen(id)){ sfx.bad(); wiggle(b); toast(L('Сначала спасите малыша в Бухте 🌊', 'First rescue the pup in the Bay 🌊')); return; }
+    if(!rsLvOpen(id)){ sfx.bad(); wiggle(b); toast(id === 'snow' ? L('Сначала найдите Пипу в Гроте 🕯️', 'First find Pipa in the Grotto 🕯️') : L('Сначала спасите малыша в Бухте 🌊', 'First rescue the pup in the Bay 🌊')); return; }
     if(id !== rsLvPick){ sfx.tap(); rsLvPick = id; show(); }
   }));
   show();
@@ -978,7 +978,7 @@ async function rescueGame(mode, pal0 = null){
     }
     LV.reset();
     const fam = rsFamily(start.seed), myRole = start.role, palRole = myRole === 'jump' ? 'strong' : 'jump';
-    Q = {mode, L:LV, W:LV.W(), st:'ready', me:null, pal:null, in:{dir:0, dive:false}, sol:[], stat:[], said:new Set(), hintT:0, cx:1, cy:0.5,
+    Q = {mode, L:LV, W:LV.W(), st:'ready', seed:start.seed, me:null, pal:null, in:{dir:0, dive:false}, sol:[], stat:[], said:new Set(), hintT:0, cx:1, cy:0.5,
       sendT:0, bT:0, bSent:RS_LV.block.x, blockMine:true, cage:false, asked:false, momAsk:0, won:false, end:null, photoX:null,
       fam, moms:[], pup:null, arrow:null, actB:null, pearl:LV.pearls.map(() => false), pearlO:LV.pearlO};
     // неподвижные бруски
