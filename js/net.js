@@ -170,6 +170,19 @@ function netMicOff(all){
   }
 }
 
+// 📤 ссылка-приглашение: …/?room=КОД&g=игра — напарник нажимает в WhatsApp и сразу входит в комнату (js/coop.js, coopFromLink)
+function netInviteUrl(code){
+  const u = new URL(location.href); u.search = ''; u.hash = '';
+  u.searchParams.set('room', code); if(typeof coGame === 'string') u.searchParams.set('g', coGame);
+  return u.href;
+}
+async function netShare(code){
+  const url = netInviteUrl(code), text = L(`Поиграем вместе? 🦭 Комната ${netCodeText(code)} — нажми на ссылку:`, `Let's play together! 🦭 Room ${netCodeText(code)} — tap the link:`);
+  try{ if(navigator.share){ await navigator.share({title:L('Тюленья больница', 'Seal Hospital'), text, url}); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
+  try{ await navigator.clipboard.writeText(`${text} ${url}`); toast(L('Ссылка скопирована — вставь её в WhatsApp 📋', 'Link copied — paste it into WhatsApp 📋'), 3200); }
+  catch(e){ prompt(L('Скопируй ссылку:', 'Copy the link:'), url); }
+}
+
 // мелкая подпись с причиной — папе, чтобы понять, что сломалось
 const netWhy = why => why ? `<br><small class="net-why">(${String(why).replace(/[^\w-]/g, '')}${NET_TURN.user ? '' : ', no turn'})</small>` : '';
 
@@ -191,10 +204,16 @@ async function netLobby(only){
     if(k === 'no'){ netClose(true); mgClose(); return null; }
     if(k === 'host'){
       set(`<p class="ttl display">${L('Комната', 'Room')}</p><p class="net-code" aria-live="polite">…</p>
-        <p class="got net-say">${L('Подключаемся…', 'Connecting…')}</p><button class="btn ghost small" data-k="no">${L('Назад', 'Back')}</button>`);
+        <p class="got net-say">${L('Подключаемся…', 'Connecting…')}</p>
+        <button class="btn net-share" data-k="share" hidden>📤 ${L('Позвать ссылкой', 'Invite with a link')}</button>
+        <button class="btn ghost small" data-k="no">${L('Назад', 'Back')}</button>`);
       const ok = await new Promise(r => {
         netHost((st, v) => {
-          if(st === 'code'){ panel.querySelector('.net-code').textContent = netCodeText(v); panel.querySelector('.net-say').textContent = L('Скажи этот код папе — и ждём его ✨', 'Tell this code to your partner — and wait ✨'); sfx.good(); }
+          if(st === 'code'){
+            panel.querySelector('.net-code').textContent = netCodeText(v); sfx.good();
+            panel.querySelector('.net-say').textContent = L('Скажи этот код напарнику или отправь ссылку — и ждём ✨', 'Tell this code to your partner or send a link — and wait ✨');
+            const sb = panel.querySelector('[data-k="share"]'); sb.hidden = false; sb.onclick = () => { sfx.tap(); netShare(v); };
+          }
           if(st === 'joined') r(true);
           if(st === 'fail'){ panel.querySelector('.net-say').innerHTML = L('Не получилось подключиться. Проверь интернет и попробуй ещё.', 'Could not connect. Check the internet and try again.') + netWhy(v); }
         });

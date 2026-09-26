@@ -81,6 +81,7 @@ async function petFun(s){
   if(k === 'tricks'){ const t = await pickTrick(s); if(!t){ s.happyUntil = 0; return false; } funKind = 'tricks'; return TRICK_GAMES[t.id](s, t); }
   if(k === 'run'){ const lv = await advMap(); if(!lv){ s.happyUntil = 0; return false; } funKind = 'run'; return petRun(s, lv); }   // js/adventure.js
   if(k === 'dive'){ funKind = 'dive'; return petDive(s); }   // подводная бухта (js/dive.js)
+  if(k === 'chase'){ funKind = 'chase'; const r = await chaseGame(typeof pengMet === 'function' && pengMet() ? 'ping' : 'solo'); s.root.position.copy(PET_SPOT); s.happyUntil = r ? now + 3 : 0; return r ? undefined : false; }   // салки с акулой (js/chase.js), с Пингом, если знакомы
   if(k === 'no') return false;
   funKind = k;
   if(k === 'ping') return nbBall(s);   // мяч втроём с соседом Пингом (js/neighbors.js)
@@ -98,9 +99,10 @@ async function funMenu(s){
       <button data-k="walk"><span class="ic">🐾</span><b>${L('Гулять', 'Walk')}</b><small>${newFind ? L('✨ Что-то блестит!', '✨ Something shines!') : L(`Находки ${p.finds.length} из ${TREASURES.length}`, `Finds ${p.finds.length} of ${TREASURES.length}`)}</small></button>
       <button data-k="tricks"><span class="ic">🎓</span><b>${L('Трюки', 'Tricks')}</b><small>${L(`выучено ${learned} из ${open}`, `learned ${learned} of ${open}`)}</small></button>
       <button data-k="run"><span class="ic">🏔️</span><b>${L('Приключение', 'Adventure')}</b><small>${L('забег по льдинам', 'ice floe dash')}</small></button>
-      ${typeof petDive === 'function' ? `<button data-k="dive" class="wide"><span class="ic">🤿</span><b>${L('Нырнуть', 'Dive')}</b><small>${L(`подводная бухта · сегодня в гостях: ${dvDef(dvGuest()).name}`, `underwater bay · today's guest: ${dvDef(dvGuest()).name}`)}</small></button>` : ''}
+      ${typeof petDive === 'function' ? `<button data-k="dive"${typeof chaseGame === 'function' ? '' : ' class="wide"'}><span class="ic">🤿</span><b>${L('Нырнуть', 'Dive')}</b><small>${L(`в гостях: ${dvDef(dvGuest()).name}`, `guest: ${dvDef(dvGuest()).name}`)}</small></button>` : ''}
+      ${typeof chaseGame === 'function' ? `<button data-k="chase"><span class="ic">🦈</span><b>${L('Салки', 'Tag')}</b><small>${L(`с акулой · ${chTheme().ic} ${chTheme().name}`, `with the shark · ${chTheme().ic} ${chTheme().name}`)}</small></button>` : ''}
       ${typeof nbHere === 'function' && nbHere() ? `<button data-k="ping" class="wide"><span class="ic">🐧</span><b>${L('Мяч с Пингом', 'Ball with Ping')}</b><small>${L('втроём', 'all three')}</small></button>` : ''}
-      ${typeof coopFromPet === 'function' ? `<button data-k="coop" class="wide"><span class="ic">☁️</span><b>${L('Вместе', 'Together')}</b><small>${L('бой с Большой Тучей', 'fight the Big Cloud')}</small></button>` : ''}
+      ${typeof coopFromPet === 'function' ? `<button data-k="coop" class="wide"><span class="ic">☁️</span><b>${L('Вместе', 'Together')}</b><small>${L('с папой, другом или Пингом', 'with Dad, a friend or Ping')}</small></button>` : ''}
     </div>
     <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
   if(newFind) panel.querySelector('[data-k="walk"]').classList.add('new');
@@ -110,12 +112,13 @@ async function funMenu(s){
   return k;
 }
 // что меняется после игры: гуляли — проголодался и испачкался сильнее
-const FUN_COST = {ball:{food:0.12, bath:0.25}, ping:{food:0.15, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}, run:{food:0.2, bath:0.3, sleep:0.2}, dive:{food:0.25, bath:0.15, sleep:0.2}};
+const FUN_COST = {ball:{food:0.12, bath:0.25}, ping:{food:0.15, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}, run:{food:0.2, bath:0.3, sleep:0.2}, dive:{food:0.25, bath:0.15, sleep:0.2}, chase:{food:0.25, bath:0.15, sleep:0.2}};
 const FUN_SAY = {
   ball: () => L(`${gg('Наигрался', 'Наигралась')}! И немножко ${gg('испачкался', 'испачкалась')} 🛁`, 'All played out! And a little bit dirty 🛁'),
   ping: () => L(`Вот это игра! ${save.pet.name} и Пинг — лучшие друзья 🐧`, `What a game! ${save.pet.name} and Ping are best friends 🐧`),
   walk: () => L(`${gg('Нагулялся', 'Нагулялась')}! Лапки в снегу — пора купаться 🛁`, 'What a walk! Paws full of snow — bath time 🛁'),
   dive: () => diveSay,
+  chase: () => L('Вот это салки! Акула застряла, а мы уплыли 🦈💨', 'What a game of tag! The shark got stuck and we got away 🦈💨'),
   run: () => runSay || L(`${gg('Набегался', 'Набегалась')}! Лапки в снегу — пора купаться 🛁`, 'What a run! Snowy flippers — bath time 🛁'),
   tricks: () => trickMsg || L(`Умница! ${save.pet.name} любит учиться с тобой ♡`, `Well done! ${save.pet.name} loves learning with you ♡`)
 };

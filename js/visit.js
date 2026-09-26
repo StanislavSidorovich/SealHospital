@@ -26,7 +26,7 @@ if(!save.coop.visit) save.coop.visit = {n:0, d:''};   // Pages мог отдат
 let V = null;   // идёт визит: {role:'host'|'guest', ...}
 const vsW = p => PET_POS.clone().add(p);   // льдина → мир
 const vsSc = d => Math.min(VS_SC, d && d.coat ? STAGES[Math.min(SHINY, Math.max(0, d.stage | 0))].sc : VS_SC);
-const vsGames = () => ['dive', 'road', 'fight', 'rescue'].filter(g => CO_GAMES[g] && coGamesOn().includes(g));
+const vsGames = () => ['chase', 'dive', 'road', 'fight', 'rescue'].filter(g => CO_GAMES[g] && coGamesOn().includes(g));
 const vsAng = (a, b) => ((b - a + Math.PI*3) % (Math.PI*2)) - Math.PI;   // кратчайший поворот от a к b
 function vsSeal(d, name){
   const s = coSealOf(d && d.coat ? d : null); s.root.scale.setScalar(vsSc(d)); if(s.bubble) s.bubble.visible = false;

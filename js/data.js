@@ -42,17 +42,20 @@ function sanitize(d){
 //         garden:[когда посажен росток, мс, или 0 — три грядки], gh:[в какой день грядка последний раз дарила ракушки],
 //         turt — черепаху освободили, shark:{hid — сколько раз спрятались, friend — подружились}, map:[найденные кусочки 0–2], chest, book — подарок за всю энциклопедию,
 //         big — в какой день открыли большую раковину (вдвоём), gloom:{met — сколько раз приходила Мгла, hid — спрятались, out — выбросила наверх,
-//         st — история Мглы (js/gloom.js): 0 — только прятались, 1 — нашли бочку, 2 — услышали, как Мгла плачет (можно спасать), 3 — спасли Кляксу}}
+//         st — история Мглы (js/gloom.js): 0 — только прятались, 1 — нашли бочку, 2 — услышали, как Мгла плачет (можно спасать), 3 — спасли Кляксу},
+//         chase:{n — сколько раз доплыли в «Салках с акулой» (js/chase.js), best — лучшие звёзды, day:{d, n — погонь сегодня (ракушки за первые две), st — звёзды сегодня}}}
 function sanitizeDive(a){
   a = a && typeof a === 'object' ? a : {};
   const day = a.day && typeof a.day === 'object' ? a.day : {}, sh = a.shark && typeof a.shark === 'object' ? a.shark : {}, gl = a.gloom && typeof a.gloom === 'object' ? a.gloom : {};
+  const ch = a.chase && typeof a.chase === 'object' ? a.chase : {}, cd = ch.day && typeof ch.day === 'object' ? ch.day : {};
   const num = v => Number.isFinite(v) ? Math.max(0, v) : 0, three = (v, f) => [0, 1, 2].map(i => f(Array.isArray(v) ? v[i] : undefined));
   return {n:num(a.n), seen:[...new Set(strList(a.seen))],
     day:{d:typeof day.d === 'string' ? day.d : '', cl:Array.isArray(day.cl) ? [...new Set(day.cl.filter(i => i === 0 || i === 1 || i === 2))] : []},
     garden:three(a.garden, num), gh:three(a.gh, v => typeof v === 'string' ? v : ''),
     turt:!!a.turt, shark:{hid:num(sh.hid), friend:!!sh.friend},
     map:Array.isArray(a.map) ? [...new Set(a.map.filter(i => i === 0 || i === 1 || i === 2))] : [], chest:!!a.chest, book:!!a.book,
-    big:typeof a.big === 'string' ? a.big : '', gloom:{met:num(gl.met), hid:num(gl.hid), out:num(gl.out), st:Math.min(3, Math.floor(num(gl.st)))}};
+    big:typeof a.big === 'string' ? a.big : '', gloom:{met:num(gl.met), hid:num(gl.hid), out:num(gl.out), st:Math.min(3, Math.floor(num(gl.st)))},
+    chase:{n:num(ch.n), best:Math.min(3, Math.floor(num(ch.best))), day:{d:typeof cd.d === 'string' ? cd.d.slice(0, 20) : '', n:num(cd.n), st:Math.min(3, Math.floor(num(cd.st)))}}};
 }
 // coop = {wins — побед над Большой Тучей, tries — боёв, net — побед по сети, day:{d, n} — сколько побед сегодня (ракушки за первые две),
 //         gull:{d, n} — полёты чайкой, resc:{wins, day:{d, n}, lv:{bay, grot}, pearls:{bay:[], grot:[]}} — спасённые потеряшки:

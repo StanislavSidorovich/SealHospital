@@ -600,12 +600,13 @@ function coopNetGo(game, pal){
     toast(L(`Напарник выбрал «${CO_GAMES[g].name()}» — играем в неё!`, `Your partner picked “${CO_GAMES[g].name()}” — let's play that!`), 3200);
   }
   return g === 'rescue' ? rescueGame('net', pal) : g === 'road' && typeof roadGame === 'function' ? roadGame('net', pal)
-    : g === 'dive' && typeof diveNet === 'function' ? diveNet(pal) : coopFight('net', pal);
+    : g === 'dive' && typeof diveNet === 'function' ? diveNet(pal) : g === 'chase' && typeof chaseGame === 'function' ? chaseGame('net', pal) : coopFight('net', pal);
 }
 function coopPlay(pick){
   if(pick.game === 'visit') return visitGo(pick.mode);   // 🏝️ «Остров в гостях» (js/visit.js)
   if(pick.game === 'code') return iceGame(pick.mode);
   if(pick.mode === 'net') return coopNet(pick.game);
+  if(pick.game === 'chase') return chaseGame(pick.mode);   // 🦈 салки с акулой (js/chase.js)
   return pick.game === 'rescue' ? rescueGame(pick.mode) : pick.game === 'road' ? roadGame(pick.mode) : coopFight(pick.mode);
 }
 // знакомство по сети: обмениваемся малышами, хозяин даёт старт
@@ -734,7 +735,7 @@ async function coResultPanel(res){
 FUN_COST.coop = {food:0.2, bath:0.2, sleep:0.2};
 let coGull = false;   // последний раз летали чайкой в чужом забеге (js/gull.js), а не бились с Тучей
 FUN_SAY.coop = () => coGull ? L('Хорошо полетали чайкой! 🐦', 'Great flying as the gull! 🐦')
-  : coGame === 'code' ? L('Какой хитрый код! 🧊', 'What a tricky code! 🧊') : coGame === 'visit' ? L('Как здорово, когда приходят гости! 🏝️', 'It is so nice to have guests! 🏝️') : coGame === 'dive' ? L('Хорошо поплавали вместе! 🤿', 'What a swim together! 🤿') : coGame === 'rescue' ? L('Потеряшка нашла маму — мы молодцы! 💗', 'The lost pup found mum — well done us! 💗') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
+  : coGame === 'chase' ? L('Вот это салки! Акула не угналась 🦈💨', 'What a game of tag! The shark could not keep up 🦈💨') : coGame === 'code' ? L('Какой хитрый код! 🧊', 'What a tricky code! 🧊') : coGame === 'visit' ? L('Как здорово, когда приходят гости! 🏝️', 'It is so nice to have guests! 🏝️') : coGame === 'dive' ? L('Хорошо поплавали вместе! 🤿', 'What a swim together! 🤿') : coGame === 'rescue' ? L('Потеряшка нашла маму — мы молодцы! 💗', 'The lost pup found mum — well done us! 💗') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
 async function coopFromPet(s){
   if(typeof GL !== 'undefined' && GL && GL.home) gullRunEnd(true);   // чайка порхала над уголком — отпускаем: новая игра соединяется заново
   const pick = await coopMenu();
@@ -752,3 +753,42 @@ async function coopFromIntro(){
   if(typeof V !== 'undefined' && V && V.role === 'host'){ started = true; if(!petMode) goPet(true); return; }   // позвала в гости — ждём на своей льдине (js/visit.js)
   $('#intro').hidden = false;
 }
+// ссылка-приглашение …/?room=КОД&g=игра (📤 в комнате, js/net.js): «Тебя зовут играть!» → одно нажатие → в комнате.
+// Игру выбирает тот, кто позвал (coopNetGo), g — только чтобы сказать, во что зовут.
+(function coopFromLink(){
+  const q = new URLSearchParams(location.search), code = q.get('room'), g = q.get('g');
+  if(!code) return;
+  try{ const u = new URL(location.href); u.searchParams.delete('room'); u.searchParams.delete('g'); history.replaceState(null, '', u.href); }catch(e){}
+  if(!/^[0-7]{3}$/.test(code)) return;
+  if(!netAvail()) return setTimeout(() => toast(L('Здесь играть по сети не получится — открой ссылку в браузере 🌐', 'Online play does not work here — open the link in a browser 🌐'), 4000), 900);
+  setTimeout(async () => {
+    const G = CO_GAMES[g];   // игры из следующих файлов (chase.js, dive.js…) к этому времени уже на месте
+    if(!mgRoot.hidden) return;
+    const intro = $('#intro'), was = !intro.hidden;
+    intro.hidden = true;
+    mgOpen('');
+    const panel = mgNode('div', 'mg-panel net-lobby', `
+      <p class="ttl display">${L('Тебя зовут играть! 💗', 'You are invited to play! 💗')}</p>
+      ${G ? `<p class="got">${G.ic} <b>${G.name()}</b></p>` : ''}
+      <p class="net-code">${netCodeText(code)}</p>
+      <p class="got net-say"></p>
+      <div class="row col"><button class="btn" data-k="go">${L('Играем! ▶', 'Let\'s play! ▶')}</button>
+      <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button></div>`);
+    const say = panel.querySelector('.net-say'), goB = panel.querySelector('[data-k="go"]');
+    const ok = await new Promise(r => {
+      panel.querySelector('[data-k="no"]').onclick = () => { sfx.tap(); netClose(true); r(false); };
+      goB.onclick = () => {
+        ac(); sfx.tap(); goB.disabled = true; say.textContent = L('Стучимся в комнату…', 'Knocking on the room…');
+        netJoin(code, (st, why) => {
+          if(st === 'joined') return r(true);
+          say.innerHTML = (why === 'peer-unavailable' ? L('Комната уже закрылась. Попроси новую ссылку 💌', 'The room is closed. Ask for a new link 💌') : L('Не получилось подключиться. Попробуй ещё.', 'Could not connect. Try again.')) + netWhy(why);
+          sfx.bad(); goB.disabled = false; goB.textContent = L('Ещё раз ↻', 'Try again ↻');
+        });
+      };
+    });
+    mgClose();
+    if(ok){ sfx.good(); if(G) coGame = g; try{ await coopNet(G ? g : 'fight'); }catch(e){ console.error(e); } }
+    if(typeof V !== 'undefined' && V && V.role === 'host'){ started = true; if(!petMode) goPet(true); return; }
+    if(was) intro.hidden = false;
+  }, 800);
+})();
