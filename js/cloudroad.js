@@ -57,9 +57,69 @@ function crGate(){   // двойные ворота-сердечки на две
   return g;
 }
 
-/* ---------- трасса дня: из seed (по сети — одинаковая у обоих) ---------- */
-function crLayout(seed){
+/* ---------- дорога дня: одна трасса на весь день и своя «погода» (как трек дня в забеге) ----------
+   Тема меняется каждый день по кругу (вчера и сегодня — разные): другой набор препятствий, небо и задание дня.
+   w — доли [сугробы, валики, ворота] (остальное — ракушки), more — как часто рядом ещё дорожка ракушек,
+   rep — что может стоять два раза подряд, pair — сугробы всегда по два, snow — множитель паузы между снежками, sky — небо сверху вниз, sun — цвет солнца.
+   Задание: k — что считаем (gates: ворота вместе / одному — просто ворота, shells, hops — перепрыгнутые валики,
+   overs — перепрыгнутые сугробы, lanes — смены полосы), n — сколько. Выполнил — CR_TASK_GIFT 🐚 раз в день. */
+const CR_TASK_GIFT = 10;
+const CR_DAYS = [
+  {id:'pals', ic:'💗', name:L('Дружная', 'Friendly'), about:L('много двойных ворот — держитесь рядышком!', 'lots of double gates — stay side by side!'),
+    w:[0.2, 0.12, 0.5], rep:'gate', task:{k:'gates', n:4}},
+  {id:'shells', ic:'🐚', name:L('Ракушечная', 'Shelly'), about:L('ракушки дорожками на каждом шагу!', 'shell trails everywhere!'),
+    w:[0.22, 0.14, 0.16], more:0.95, task:{k:'shells', n:35}},
+  {id:'hop', ic:'🧊', name:L('Прыгучая', 'Bouncy'), about:L('ледяные валики один за другим — прыгайте!', 'ice ridges one after another — jump!'),
+    w:[0.14, 0.56, 0.12], rep:'ridge', task:{k:'hops', n:6}},
+  {id:'snowy', ic:'❄️', name:L('Снежковая', 'Snowy'), about:L('идёт снег, и Туча кидается чаще!', 'it’s snowing and the Cloud throws more!'),
+    snow:0.62, sky:['#B9C3DE', '#E6ECF6'], sun:0xDDE6FF, flakes:true, task:{k:'overs', n:5}},
+  {id:'zig', ic:'〰️', name:L('Извилистая', 'Wiggly'), about:L('сугробы парами — петляй!', 'snowdrifts in pairs — weave!'),
+    w:[0.5, 0.1, 0.16], pair:true, task:{k:'lanes', n:15}},
+  {id:'sunset', ic:'🌅', name:L('Закатная', 'Sunset'), about:L('Туча улетает к закату — красота!', 'the Cloud flies into the sunset — so pretty!'),
+    sky:['#FFB8A8', '#FFE6C2'], sun:0xFFC9A0, task:{k:'shells', n:25}}
+];
+const CR_TASK_T = {
+  gates:(n, two) => two ? L(`Пройдите вместе ${n} ворот 💗`, `Go through ${n} gates together 💗`) : L(`Пробеги через ${n} ворот 💗`, `Run through ${n} gates 💗`),
+  shells:n => L(`Соберите ${n} ракушек 🐚`, `Collect ${n} shells 🐚`),
+  hops:n => L(`Перепрыгни ${n} валиков 🧊`, `Jump over ${n} ice ridges 🧊`),
+  overs:n => L(`Перепрыгни ${n} ${plural(n, 'сугроб', 'сугроба', 'сугробов')} ❄️`, `Jump over ${n} snowdrifts ❄️`),
+  lanes:n => L(`Смени полосу ${n} раз ⬅️➡️`, `Change lanes ${n} times ⬅️➡️`)
+};
+// какой сегодня день дороги: номер темы (по кругу по номеру дня) и seed трассы
+function crDay(key = advDayKey()){
+  const d = Math.round(Date.parse(key)/864e5), rnd = seeded(key + 'road');
+  const th = Number.isFinite(d) ? d % CR_DAYS.length : Math.floor(rnd()*CR_DAYS.length);
+  return {th, seed:Math.floor(rnd()*1e9)};
+}
+const crTheme = () => CR_DAYS[crDay().th];
+// сколько нужно для задания на этой трассе: не больше, чем там есть (с запасом)
+function crNeed(T, L0){
+  const n = T.task.n, k = T.task.k;
+  return k === 'hops' ? Math.min(n, L0.ridges.length - 1) : k === 'gates' ? Math.min(n, L0.gates.length - 1)
+    : k === 'shells' ? Math.min(n, Math.floor(L0.shells.length*0.7)) : n;
+}
+const crTodayNeed = () => { const d = crDay(), T = CR_DAYS[d.th]; return crNeed(T, crLayout(d.seed, T)); };
+const crTaskText = (T, two = true, n = T.task.n) => CR_TASK_T[T.task.k](n, two);
+const crTaskDone = () => !!save.coop.rday && save.coop.rday === advDayKey();
+function crTaskVal(){
+  const k = CR.T.task.k;
+  return k === 'gates' ? (crPals().length > 1 ? CR.paws : CR.gp) : k === 'shells' ? CR.shells : k === 'hops' ? CR.hops : k === 'overs' ? CR.overs : CR.lanes;
+}
+function crTaskCheck(){
+  if(!CR || CR.taskOk || crTaskVal() < CR.need) return;
+  CR.taskOk = true; crHud();
+  if(crTaskDone()) return;
+  save.coop.rday = advDayKey(); save.shells += CR_TASK_GIFT; persist();
+  sfx.good(); floatText(`🎯 +${CR_TASK_GIFT} 🐚`, crAt(CR.z, CR.me.x, 1.7), '#D9527E');
+  crSay(L(`Задание дня готово! +${CR_TASK_GIFT} 🐚`, `Task of the day done! +${CR_TASK_GIFT} 🐚`), 2200);
+}
+// небо дня: градиент на фон сцены (пока идёт дорога)
+function crSkyTex(c){ return canvasTex(8, (g, w, h) => { const r = g.createLinearGradient(0, 0, 0, h); r.addColorStop(0, c[0]); r.addColorStop(1, c[1]); g.fillStyle = r; g.fillRect(0, 0, w, h); }, 128); }
+
+/* ---------- трасса: из seed и темы дня (по сети — одинаковая у обоих) ---------- */
+function crLayout(seed, T = CR_DAYS[0]){
   const r = rsRand(seed), L0 = {drifts:[], ridges:[], gates:[], shells:[]};
+  const w = T.w || [0.3, 0.2, 0.22], c1 = w[0], c2 = c1 + w[1], c3 = c2 + w[2], more = T.more || 0.6;
   const ln = () => Math.floor(r()*4);
   const line = (z, l, n = 5) => { for(let i = 0; i < n; i++) L0.shells.push({z:z + i*1.3, ln:l}); };
   // начало — по одной штуке, чтобы понять, что к чему
@@ -70,14 +130,14 @@ function crLayout(seed){
   let z = 54, last = '';
   while(z < CR_LEN - 16){
     const k = r();
-    if(k < 0.3 && last !== 'drift'){
-      const a = ln(), b = r() < 0.5 ? null : (a + 1 + Math.floor(r()*3)) % 4;
+    if(k < c1 && last !== 'drift'){
+      const a = ln(), b = !T.pair && r() < 0.5 ? null : (a + 1 + Math.floor(r()*3)) % 4;
       L0.drifts.push({z, ln:a}); if(b !== null) L0.drifts.push({z, ln:b});
       last = 'drift';
-    } else if(k < 0.5 && last !== 'ridge'){ L0.ridges.push({z}); last = 'ridge'; }
-    else if(k < 0.72 && last !== 'gate'){ L0.gates.push({z, a:Math.floor(r()*3)}); last = 'gate'; }
+    } else if(k < c2 && (last !== 'ridge' || T.rep === 'ridge')){ L0.ridges.push({z}); last = 'ridge'; }
+    else if(k < c3 && (last !== 'gate' || T.rep === 'gate')){ L0.gates.push({z, a:Math.floor(r()*3)}); last = 'gate'; }
     else { line(z - 2, ln()); last = 'shells'; }
-    if(last !== 'shells' && r() < 0.6) line(z + 2.5, ln(), 3);
+    if(last !== 'shells' && r() < more) line(z + 2.5, ln(), 3);
     z += 7 + r()*3;
   }
   return L0;
@@ -94,7 +154,7 @@ function crJump(p){ if(!p.air && p.tumble <= 0 && CR.st === 'go'){ p.air = true;
 function crLane(p, d){
   const n = p.ln + d;
   if(n < 0 || n > 3){ if(p === CR.me){ sfx.tick(); p.bump = 0.2; } return; }
-  p.ln = n; if(p === CR.me) sfx.tap();
+  p.ln = n; if(p === CR.me){ sfx.tap(); if(CR.st === 'go'){ CR.lanes++; crTaskCheck(); } }
 }
 function crBonk(p, what){
   if(p.tumble > 0) return;
@@ -110,7 +170,7 @@ function crBoost(two){
   CR.boost = two ? CR_BT : CR_BT*0.6; sfx.boost();
   for(const p of crPals()) floatText(two ? L('Дай лапу! 💗', 'Paws together! 💗') : L('Вжух!', 'Whoosh!'), crAt(CR.z, p.x, 1.6), '#D9527E');
   if(two){ CR.paws++; burst(TEX.heart, crAt(CR.z, (CR.me.x + CR.pal.x)/2, 1.1), 12, 2, 0.3); sfx.hug(); }
-  crHud();
+  crHud(); crTaskCheck();
 }
 function crGatePass(g, who){
   g.who.add(who);
@@ -201,7 +261,7 @@ function crStep(dt){
         }
       }
       // Туча кидает снежки (решает хозяин комнаты)
-      if(CR.host && (CR.snowT -= dt) <= 0 && CR.z > 30){ CR.snowT = CR_SNOW_T*(0.85 + Math.random()*0.3); crThrow(); }
+      if(CR.host && (CR.snowT -= dt) <= 0 && CR.z > 30){ CR.snowT = CR_SNOW_T*(CR.T.snow || 1)*(0.85 + Math.random()*0.3); crThrow(); }
       if(CR.z >= CR_LEN) crFinish();
     }
   }
@@ -242,16 +302,23 @@ function crBody(p, dt, z0){
     if(p.y <= 0 && p.vy < 0){ p.y = 0; p.air = false; if(p === CR.me) sfx.plop(); burst(TEX.puff, crAt(CR.z, p.x, 0.1), 4, 0.8, 0.3); }
   }
   const who = p === CR.me ? 'me' : 'pal', near = z => z > z0 - 0.5 && z < CR.z + 0.5;
-  for(const r of CR.L.ridges) if(!r.hit.has(who) && near(r.z) && p.y < 0.42){ r.hit.add(who); crBonk(p, r); }
-  for(const d of CR.L.drifts) if(!d.hit.has(who) && near(d.z) && p.y < 0.5 && Math.abs(crLx(d.ln) - p.x) < 0.7){ d.hit.add(who); crBonk(p, d); }
+  for(const r of CR.L.ridges) if(!r.hit.has(who) && near(r.z)){
+    r.hit.add(who);
+    if(p.y < 0.42) crBonk(p, r); else if(who === 'me'){ CR.hops++; crTaskCheck(); }   // перепрыгнул — для задания дня
+  }
+  for(const d of CR.L.drifts) if(!d.hit.has(who) && near(d.z) && Math.abs(crLx(d.ln) - p.x) < 0.7){
+    d.hit.add(who);
+    if(p.y < 0.5) crBonk(p, d); else if(who === 'me'){ CR.overs++; crTaskCheck(); }
+  }
   for(const g of CR.L.gates) if(!g.who.has(who) && near(g.z) && p.x > crLx(g.a) - 0.55 && p.x < crLx(g.a + 1) + 0.55){
+    if(who === 'me') CR.gp++;
     crGatePass(g, who);
     if(CR.mode === 'net') netSend({t:'crgt', i:CR.L.gates.indexOf(g)});
   }
 }
 function crShell(i){
   const sh = CR.L.shells[i]; if(!sh || sh.got) return;
-  sh.got = true; CR.shells++; CR.grp.remove(sh.o); sfx.coin();
+  sh.got = true; CR.shells++; CR.grp.remove(sh.o); sfx.coin(); crTaskCheck();
   emit(TEX.star, sh.o.position, {v:new V3(0, 1, 0), life:0.45, size:0.22, spin:4});
 }
 function crDraw(p, dt){
@@ -272,6 +339,7 @@ function crHud(){
   const h = CR && CR.hud; if(!h) return;
   h.querySelector('.sh').textContent = CR.shells;
   h.querySelector('.pw').textContent = CR.paws;
+  const t = h.querySelector('.tk b'); if(t) t.textContent = CR.taskOk ? '✅' : `${Math.min(crTaskVal(), CR.need)}/${CR.need}`;
   h.querySelector('.bar i').style.width = Math.max(0, Math.min(1, CR.z/CR_LEN))*100 + '%';
 }
 async function crFinish(){
@@ -338,21 +406,27 @@ async function cloudRoad(mode, pal0){
   let done; const fin = new Promise(r => done = r);
   homeB.addEventListener('click', () => { sfx.tap(); done('quit'); });
   const host = mode !== 'net' || net.host;
-  CR = {mode, host, st:'ready', z:0, sp:0, boost:0, shells:0, paws:0, bonks:0, snow:[], snowT:2, sendT:0, zT:0, cx:0, endGap:15, endK:0,
+  CR = {mode, host, st:'ready', z:0, sp:0, boost:0, shells:0, paws:0, bonks:0, gp:0, hops:0, overs:0, lanes:0, taskOk:false, T:null, snow:[], snowT:2, sendT:0, zT:0, cx:0, endGap:15, endK:0,
     grp:new THREE.Group(), L:null, me:null, pal:null, cloud:null, hud:null, end:null, onBye:null};
   crRoot.add(CR.grp);
-  // старт по сети: хозяин придумывает трассу и шлёт seed, гость ждёт
-  let seed = Math.floor(Math.random()*1e9);
+  // трасса дня; по сети хозяин шлёт свою (seed и тему), гость ждёт — вдруг у них разные даты
+  let {seed, th} = crDay();
   if(mode === 'net'){
     crNetWire();
-    if(net.host){ await Promise.race([new Promise(r => netOn('crready', r)), wait(8), fin]); netSend({t:'crgo', seed}); }
+    if(net.host){ await Promise.race([new Promise(r => netOn('crready', r)), wait(8), fin]); netSend({t:'crgo', seed, th}); }
     else {
       const g = new Promise(r => netOn('crgo', m => r(m))), iv = setInterval(() => netSend({t:'crready'}), 400);
       netSend({t:'crready'}); const m = await Promise.race([g, fin]); clearInterval(iv);
       if(m && m.seed != null) seed = m.seed;
+      if(m && CR_DAYS[m.th]) th = m.th;
     }
   }
-  CR.L = crLayout(seed);
+  const T = CR.T = CR_DAYS[th];
+  CR.L = crLayout(seed, T); CR.need = crNeed(T, CR.L);
+  // небо и солнце дня (вернём после дороги)
+  const bg = scene.background, sunC = sun.color.getHex();
+  if(T.sky) scene.background = crSkyTex(T.sky);
+  if(T.sun) sun.color.setHex(T.sun);
   for(const d of CR.L.drifts){ d.hit = new Set(); d.o = makeDrift(); d.o.scale.set(0.5, 0.72, 0.75); d.o.position.copy(crAt(d.z, crLx(d.ln))); CR.grp.add(d.o); }
   for(const r of CR.L.ridges){ r.hit = new Set(); r.o = crRidge(); r.o.position.copy(crAt(r.z, 0, 0.1)); CR.grp.add(r.o); }
   for(const g of CR.L.gates){ g.who = new Set(); g.o = crGate(); g.o.position.copy(crAt(g.z, (crLx(g.a) + crLx(g.a + 1))/2)); CR.grp.add(g.o); }
@@ -366,7 +440,7 @@ async function cloudRoad(mode, pal0){
   const c = makeCloud(); cloudKind(c, false); c.scale.setScalar(0.8); CR.grp.add(c); CR.cloud = c;
   CR.onBye = null;
   mgOpen('', {hintBottom:true});
-  CR.hud = mgNode('div', 'run-hud', `<span class="pill">🐚 <b class="sh">0</b></span><span class="pill">💗 <b class="pw">0</b></span><span class="bar"><i></i><span class="flag" aria-hidden="true">☁️</span></span>`);
+  CR.hud = mgNode('div', 'run-hud', `<span class="pill">🐚 <b class="sh">0</b></span><span class="pill">💗 <b class="pw">0</b></span><span class="pill tk" aria-label="${L('Задание дня', 'Task of the day')}">🎯 <b>0</b></span><span class="bar"><i></i><span class="flag" aria-hidden="true">☁️</span></span>`);
   const btns = mgNode('div', 'co-btns', `${mode !== 'solo' ? `<button class="round co-heart" aria-label="${L('Сердечко напарнику', 'A heart for your partner')}">💗</button>` : ''}`);
   const hb = btns.querySelector('.co-heart');
   if(hb) mgOn(hb, 'pointerdown', e => {
@@ -375,10 +449,20 @@ async function cloudRoad(mode, pal0){
     else if(CR.pal) setTimeout(() => { if(CR && CR.pal){ burst(TEX.heart, crAt(CR.z, CR.pal.x, 1.2), 8, 1.6, 0.3); floatText(L('Кря! 💙', 'Quack! 💙'), crAt(CR.z, CR.pal.x, 1.6)); } }, 700);
   });
   crControls(); crHud();
-  mgTick(dt => { crStep(dt); if(CR && CR.end) done(CR.end); });
+  let flT = 0;
+  mgTick(dt => {
+    crStep(dt); if(CR && CR.end) done(CR.end);
+    if(CR && T.flakes && (flT -= dt) < 0){   // снежинки летят навстречу
+      flT = 0.07;
+      emit(TEX.dot, crAt(CR.z + 4 + Math.random()*10, (Math.random() - 0.5)*9, 3 + Math.random()*2), {v:new V3((Math.random() - 0.5)*0.6, -1.3, 0), life:2.4, size:0.09});
+    }
+  });
   mgHint(L('Большая Туча улетает! Догоните её по ледяной дороге ☁️', 'The Big Cloud is flying away! Chase it down the ice road ☁️')); sfx.grr();
   const tick = t => Promise.race([wait(t), fin]);
-  await tick(2.6);
+  await tick(2.4);
+  if(save.coop.road){ mgHint(`${T.ic} ${L(`Сегодня ${T.name} дорога: ${T.about}`, `Today's road is ${T.name}: ${T.about}`)}`); await tick(2.6); }   // в первый раз и так много подсказок
+  if(!crTaskDone()){ mgHint(`🎯 ${L('Задание дня', 'Task of the day')}: ${crTaskText(T, mode !== 'solo', CR.need)}`); await tick(2.4); }
+  else CR.taskOk = true;
   if(!save.coop.road){
     mgHint(L('Проведи пальцем ⬅️ ➡️ — полоса, коснись — прыжок', 'Swipe ⬅️ ➡️ to change lane, tap to jump')); await tick(2.4);
     if(mode !== 'solo'){ mgHint(L('💗 Двойные ворота — проходите вместе, рядышком: вжух!', '💗 Double gates — go through side by side: whoosh!')); await tick(2.6); }
@@ -396,6 +480,8 @@ async function cloudRoad(mode, pal0){
   CR = null;
   homeB.remove(); document.body.classList.remove('run-on');
   crRoot.visible = false; runCam.on = false; homeLights(false); scene.fog = fog;
+  if(scene.background !== bg){ if(scene.background && scene.background.dispose) scene.background.dispose(); scene.background = bg; }
+  sun.color.setHex(sunC);
   return res;
 }
 // дорога → бой. Ракушки с дороги — вместе с наградой за бой (в те же первые две победы за день)

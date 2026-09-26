@@ -526,7 +526,10 @@ let coGame = 'road';
 let coRoadShells = 0;   // ракушки, собранные по «Дороге к Туче» (js/cloudroad.js), — добавятся к награде за бой
 const CO_GAMES = {
   road:{ic:'🛣️', name:() => L('Дорога', 'Road'),
-    say:() => L('Туча улетает! Догоните её вдвоём по ледяной дороге — а в конце бой. Двойные ворота 💗 проходите рядышком!', 'The Cloud is flying away! Chase it together down the ice road — then the fight. Go through the double gates 💗 side by side!')},
+    say:() => { const T = typeof crTheme === 'function' && crTheme();
+      return L('Туча улетает! Догоните её вдвоём по ледяной дороге — а в конце бой.', 'The Cloud is flying away! Chase it together down the ice road — then the fight.')
+        + (T ? ' ' + L(`Сегодня ${T.ic} ${T.name} дорога: ${T.about}`, `Today ${T.ic} the ${T.name} road: ${T.about}`) : ''); },
+    wins:() => typeof crTheme === 'function' ? `🎯 ${crTaskText(crTheme(), false, crTodayNeed())}${crTaskDone() ? ' ✅' : ` (+${CR_TASK_GIFT} 🐚)`}` : ''},
   fight:{ic:'☁️', name:() => L('Туча', 'Cloud'),
     say:() => L('Туча засыпает льдину снегом. Щекочите её снежками вдвоём! Упал — напарник спасёт из пузыря.', 'The Cloud is burying the ice in snow. Tickle it with snowballs, two of you! Fall down — your partner saves you from the bubble.')},
   rescue:{ic:'🦭', name:() => L('Потеряшка', 'Lost pup'),
