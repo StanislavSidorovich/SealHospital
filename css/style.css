@@ -363,6 +363,12 @@ body:not(.pet-mode) .night{opacity:0}
 .code-msg.bad{color:var(--pink-d)}
 .code-ask{margin-top:10px;padding:12px;border-radius:16px;background:#FFF1C9;border:2.5px solid var(--ink)}
 .code-ask p{margin-bottom:10px!important}
+.dad-stats{margin-top:14px;text-align:left;font-size:13px;color:var(--soft)}
+.dad-stats summary{cursor:pointer;min-height:40px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.dad-stats p{font-size:13px!important;margin:4px 0 8px!important}
+.dad-stats table{width:100%;border-collapse:collapse;font-size:12.5px}
+.dad-stats td,.dad-stats th{padding:3px 4px;border-bottom:1px solid rgba(59,58,74,.15)}
+.dad-stats td:nth-child(n+2),.dad-stats th:nth-child(n+2){text-align:right;white-space:nowrap}
 .store-note{margin:10px 0 0!important;font-size:13px!important;color:var(--soft)}
 
 /* ---------------- прогулка и трюки (js/walk.js) ---------------- */

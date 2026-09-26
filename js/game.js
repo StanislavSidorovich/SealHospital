@@ -275,6 +275,7 @@ function openSettings(){
   sfx.tap(); codeBox.value = ''; codeNew = null; $('#codeAsk').hidden = true; codeSay('');
   $('#storeNote').textContent = '';
   keepSave().then(ok => { $('#storeNote').textContent = ok === null ? '' : ok ? L('🔒 Браузер обещал не стирать сохранение.', '🔒 The browser promised to keep your save.') : L('Браузер может стереть сохранение, если кончится место: лучше скопируй код и спрячь его.', 'The browser may erase your save if it runs out of space: better copy the code and keep it safe.'); });
+  $('#dadStats').open = false;
   $('#settings').hidden = false;
 }
 async function copyCode(){
@@ -315,6 +316,61 @@ $('#btnCodePaste').addEventListener('click', pasteCode);
 $('#btnCodeYes').addEventListener('click', () => { sfx.good(); applyCode(); });
 $('#btnCodeNo').addEventListener('click', () => { sfx.tap(); $('#codeAsk').hidden = true; codeNew = null; });
 codeBox.addEventListener('input', () => { $('#codeAsk').hidden = true; codeNew = null; });
+/* ---------------- тихий счётчик (для папы в ⚙️ и для будущей грамоты) ----------------
+   Раз в кадр смотрим, где сейчас игрок (statPlace), и копим секунды по местам в save.st.g. Время идёт, только
+   пока вкладка видна и экран трогали последние STAT_IDLE секунд: телефон, забытый на столе, не считается. */
+const STAT_IDLE = 60;
+const STAT_NAMES = {hosp:['🏥 Больница', '🏥 Hospital'], pet:['🦭 Малыш', '🦭 Pup'], home:['🏠 Иглу', '🏠 Igloo'], map:['🗺️ Карта забегов', '🗺️ Run map'],
+  run:['🏃 Забег', '🏃 Run'], road:['☁️ Дорога к Туче', '☁️ Road to the Cloud'], cloud:['⛈️ Бой с Тучей', '⛈️ Cloud battle'], gull:['🕊️ Чайка', '🕊️ Gull'],
+  bay:['🌊 Потеряшка: Бухта', '🌊 Lost pup: Bay'], grot:['🕯️ Потеряшка: Грот', '🕯️ Lost pup: Grotto'], snow:['❄️ Потеряшка: Метель', '❄️ Lost pup: Blizzard'],
+  dive:['🤿 Бухта под водой', '🤿 Underwater bay'], chase:['🦈 Салки с акулой', '🦈 Shark tag'], gloom:['🌑 Мгла', '🌑 Gloom'],
+  ice:['🧊 Ледяной код', '🧊 Ice code'], visit:['🏝️ Остров в гостях', '🏝️ Island visit'], shop:['🛍️ Лавка', '🛍️ Shop'], mail:['✉️ Почта', '✉️ Mail']};
+let statLastIn = -1e9, statAcc = 0, statWas = null;
+['pointerdown', 'keydown'].forEach(e => addEventListener(e, () => statLastIn = performance.now(), {capture:true, passive:true}));
+const statDay = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+function statPlace(){
+  if(!$('#intro').hidden) return null;
+  const b = document.body.classList;
+  if(b.contains('gloom-on')) return 'gloom';
+  if(b.contains('visit-on')) return 'visit';
+  if(b.contains('ice-on')) return 'ice';
+  if(b.contains('chase-on')) return 'chase';
+  if(b.contains('dive-on')) return 'dive';
+  if(b.contains('run-on')) return CR ? 'road' : CO ? 'cloud' : GL ? 'gull' : Q ? (Q.L && Q.L.id) || 'bay' : 'run';
+  if(b.contains('map-on')) return 'map';
+  if(shopOpen) return 'shop';
+  if(mailOpen) return 'mail';
+  if(petMode) return homeMode ? 'home' : 'pet';
+  return 'hosp';
+}
+function statTick(dt){
+  if(document.hidden || performance.now() - statLastIn > STAT_IDLE*1000) return;
+  const where = statPlace();
+  if(!where) return;
+  const st = save.st, day = statDay();
+  if(st.last !== day){ st.days++; st.last = day; if(!st.first) st.first = day; }
+  const g = st.g[where] || (st.g[where] = [0, 0, '']);
+  if(where !== statWas){   // зашли в новое место: +1 заход; вместе — если есть связь с другим устройством
+    g[1]++; statWas = where;
+    if(where !== 'hosp' && where !== 'pet' && where !== 'home' && where !== 'map' && (where === 'visit' || net.conn && net.conn.open)) st.tog++;
+  }
+  g[2] = day;
+  statAcc += Math.min(dt, 1);
+  if(statAcc >= 1){ const s = Math.floor(statAcc); statAcc -= s; st.t += s; g[0] += s; }
+}
+// «📊 Для папы» в настройках: всё время, дни, игры вместе и таблица мест по времени
+function statMin(s){ const m = Math.round(s/60); if(!m) return L('<1 мин', '<1 min'); return m < 60 ? L(`${m} мин`, `${m} min`) : L(`${Math.floor(m/60)} ч ${m % 60} мин`, `${Math.floor(m/60)} h ${m % 60} min`); }
+function renderStats(){
+  const st = save.st, el = $('#statBody');
+  if(!st.t){ el.textContent = L('Пока ничего не набралось: счётчик начал считать с этой версии.', 'Nothing yet: the counter started with this version.'); return; }
+  const rows = Object.entries(st.g).filter(([, g]) => g[0] >= 30 || g[1]).sort((a, b) => b[1][0] - a[1][0]);
+  const esc = t => String(t).replace(/[&<>]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;'})[c]);
+  el.innerHTML = `<p>${esc(L(`Всего: ${statMin(st.t)} · дней: ${st.days} (с ${st.first}) · игр вместе: ${st.tog}`, `Total: ${statMin(st.t)} · days: ${st.days} (since ${st.first}) · games together: ${st.tog}`))}</p>`
+    + `<table><tr><th>${esc(L('Где', 'Where'))}</th><th>${esc(L('Время', 'Time'))}</th><th>${esc(L('Раз', 'Times'))}</th><th>${esc(L('Последний', 'Last'))}</th></tr>`
+    + rows.map(([k, g]) => `<tr><td>${esc(STAT_NAMES[k] ? L(...STAT_NAMES[k]) : k)}</td><td>${esc(statMin(g[0]))}</td><td>${g[1]}</td><td>${esc(g[2].slice(5))}</td></tr>`).join('') + '</table>';
+}
+$('#dadStats').addEventListener('toggle', () => { if($('#dadStats').open) renderStats(); });
+
 // когда вкладку закрывают или прячут, дописываем сохранение (там же «когда навещали малыша»)
 addEventListener('pagehide', persist);
 document.addEventListener('visibilitychange', () => { if(document.hidden) persist(); });
@@ -411,6 +467,7 @@ function frame(ts){
   if(typeof nbTick === 'function') nbTick(t, dt);   // сосед Пинг (js/neighbors.js)   // старый index.html из кеша может ещё не знать про holidays.js
   if(typeof gullIsleTick === 'function') gullIsleTick(t, dt);   // чайка напарника порхает над уголком (js/gull.js)
   if(typeof visitTick === 'function') visitTick(t, dt);   // «Остров в гостях» (js/visit.js)
+  statTick(dt);
   updateParts(dt);
   renderer.render(scene, camera);
 }

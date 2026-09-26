@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -36,7 +36,17 @@ function sanitize(d){
     sea:sanitizeSea(d.sea),      // рыбки моря с рыбалки (js/minigames.js)
     nb:sanitizeNb(d.nb),         // соседи (js/neighbors.js)
     coop:sanitizeCoop(d.coop),   // играем вместе: бой с Большой Тучей (js/coop.js)
-    dive:sanitizeDive(d.dive)};  // подводная бухта (js/dive.js)
+    dive:sanitizeDive(d.dive),   // подводная бухта (js/dive.js)
+    st:sanitizeSt(d.st)};        // тихий счётчик: время в игре и по местам (statTick в js/game.js), для папы и будущей грамоты
+}
+// st = {t — секунд в игре всего (только пока касаются экрана), days — в скольких разных днях играли, first/last — первый и последний день (YYYY-MM-DD),
+//       tog — сколько раз начинали игру вместе (по сети или в гостях), g:{место: [секунд, заходов, последний день]}} — места из statPlace() в js/game.js
+function sanitizeSt(a){
+  a = a && typeof a === 'object' ? a : {};
+  const num = v => Number.isFinite(v) ? Math.max(0, v) : 0, day = v => typeof v === 'string' ? v.slice(0, 10) : '';
+  const g = a.g && typeof a.g === 'object' ? a.g : {}, out = {};
+  for(const k of Object.keys(g).slice(0, 40)) if(Array.isArray(g[k])) out[k.slice(0, 12)] = [num(g[k][0]), num(g[k][1]), day(g[k][2])];
+  return {t:num(a.t), days:num(a.days), first:day(a.first), last:day(a.last), tog:num(a.tog), g:out};
 }
 // dive = {n — сколько раз ныряли, seen:[жители из DV_LIFE, которых сфотографировали], day:{d, cl:[раковины, открытые сегодня]},
 //         garden:[когда посажен росток, мс, или 0 — три грядки], gh:[в какой день грядка последний раз дарила ракушки],
