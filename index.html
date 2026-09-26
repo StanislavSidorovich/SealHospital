@@ -87,6 +87,10 @@
         <span aria-hidden="true" id="mailIc">✉️</span>
         <span class="badge alert" id="mailAlert" hidden>1</span>
       </button>
+      <button class="round book" id="btnStory" aria-label="Книга острова" data-en-aria="Island book">
+        <span aria-hidden="true">📖</span>
+        <span class="badge alert" id="storyAlert" hidden>✨</span>
+      </button>
       <button class="round pet" id="btnPet" aria-label="Мой малыш" data-en-aria="My pup" hidden>
         <span aria-hidden="true" id="petIc">🦭</span>
         <span class="badge alert" id="petAlert" hidden>!</span>
@@ -120,6 +124,7 @@
       </div>
       <div class="row small-row">
         <button class="btn ghost small" id="btnIntroCoop" data-en="💗 Play together">💗 Играть вместе</button>
+        <button class="btn ghost small" id="btnIntroToday" data-en="🗺️ What's today?">🗺️ Что сегодня?</button>
         <button class="btn ghost small" id="btnIntroSet" data-en="⚙️ Settings">⚙️ Настройки</button>
       </div>
       <div class="from" data-en="from Dad ♡">от Dad ♡</div>
@@ -255,6 +260,19 @@
     </div>
   </div>
 
+  <!-- «Книга острова»: карта «Сегодня» и главы истории (js/story.js) -->
+  <div class="overlay" id="story" hidden>
+    <div class="panel story">
+      <button class="close" id="btnStoryClose" aria-label="Закрыть" data-en-aria="Close">✕</button>
+      <h2 class="display" data-en="Island book">Книга острова</h2>
+      <div class="tabs" id="storyTabs">
+        <button data-tab="today" class="on" data-en="🗺️ Today">🗺️ Сегодня</button>
+        <button data-tab="book" data-en="📖 Chapters">📖 Главы</button>
+      </div>
+      <div id="storyBody"></div>
+    </div>
+  </div>
+
   <div class="overlay" id="shop" hidden>
     <div class="panel shop">
       <button class="close" id="btnShopClose" aria-label="Закрыть лавку" data-en-aria="Close the shop">✕</button>
@@ -302,6 +320,7 @@
 <script src="js/gloom.js"></script>
 <script src="js/chase.js"></script>
 <script src="js/visit.js"></script>
+<script src="js/story.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -37,7 +37,18 @@ function sanitize(d){
     nb:sanitizeNb(d.nb),         // соседи (js/neighbors.js)
     coop:sanitizeCoop(d.coop),   // играем вместе: бой с Большой Тучей (js/coop.js)
     dive:sanitizeDive(d.dive),   // подводная бухта (js/dive.js)
-    st:sanitizeSt(d.st)};        // тихий счётчик: время в игре и по местам (statTick в js/game.js), для папы и будущей грамоты
+    st:sanitizeSt(d.st),         // тихий счётчик: время в игре и по местам (statTick в js/game.js), для папы и будущей грамоты
+    story:sanitizeStory(d.story)};   // «Книга острова» и дела на сегодня (js/story.js)
+}
+// story = {open — сколько глав «Книги острова» открыто (1…8), fest:[номера отпразднованных глав], seen — сколько открытых глав уже показали,
+//          pg — сколько было вылечено при прошлой проверке, hd — день, когда лечили (toDateString), td:{d, ok:[дела дня, сделанные сегодня]}} (js/story.js)
+function sanitizeStory(a){
+  a = a && typeof a === 'object' ? a : {};
+  const num = v => Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0, td = a.td && typeof a.td === 'object' ? a.td : {};
+  const open = Math.min(8, Math.max(1, num(a.open)));
+  return {open, fest:[...new Set((Array.isArray(a.fest) ? a.fest : []).filter(i => Number.isInteger(i) && i >= 1 && i <= 8))],
+    seen:Math.min(open, Math.max(1, num(a.seen))), pg:num(a.pg), hd:typeof a.hd === 'string' ? a.hd.slice(0, 20) : '',
+    td:{d:typeof td.d === 'string' ? td.d.slice(0, 20) : '', ok:strList(td.ok).slice(0, 20)}};
 }
 // st = {t — секунд в игре всего (только пока касаются экрана), days — в скольких разных днях играли, first/last — первый и последний день (YYYY-MM-DD),
 //       tog — сколько раз начинали игру вместе (по сети или в гостях), g:{место: [секунд, заходов, последний день]}} — места из statPlace() в js/game.js
