@@ -703,3 +703,30 @@ body.ice-on #corner>:not(#btnSound){display:none!important}
 .co-games.grid button:last-child:nth-child(odd){grid-column:span 2}
 .dv-book-panel .ttl{font-size:22px;margin:0}
 .dv-book-panel .got{margin:2px 0}
+/* «Остров в гостях» (js/visit.js): кнопка в уголке, плашка хозяйки, кнопки гостя */
+.vs-btn{position:fixed;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 132px);z-index:5;min-height:48px;padding:0 16px;
+  background:#F4FAFE;border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);font:800 16px "Nunito",sans-serif;color:var(--ink)}
+.vs-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.vs-chip{position:fixed;left:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 132px);z-index:5;display:flex;align-items:center;gap:6px;max-width:calc(100vw - 20px);
+  background:#F4FAFE;border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);padding:4px 6px 4px 10px}
+.vs-chip .ic{font-size:22px}
+.vs-chip .nm{font-weight:800;font-size:15px;max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vs-chip .round{font-size:20px;line-height:1;width:44px;height:44px;flex:none}
+.vs-chip .co-mic.on,.vs-bar .co-mic.on{background:#DDF5EA}
+.vs-chip.inv .vs-play{background:#FFE3EC;animation:vsPing 1s ease-in-out infinite}
+.vs-chip.ask .vs-play{background:#DDF5EA}
+@keyframes vsPing{50%{transform:scale(1.14)}}
+body:not(.pet-mode) .vs-btn,body.mg-on .vs-btn,body.home-mode .vs-btn,body.run-on .vs-btn,
+body:not(.pet-mode) .vs-chip,body.mg-on .vs-chip,body.home-mode .vs-chip,body.run-on .vs-chip{display:none}
+.vs-bar{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;justify-content:center;gap:10px}
+.vs-bar .round{font-size:24px;line-height:1;width:52px;height:52px}
+body.visit-on #corner>:not(#btnSound):not(#btnRunHome){display:none!important}
+body.visit-on #petCard,body.visit-on #petBar,body.visit-on #card,body.visit-on #tools,body.visit-on .gull-chip{display:none!important}
+/* бой со Мглой (js/gloom.js): сколько несёшь света и сколько мути осталось */
+.gl-hud{position:absolute;left:12px;right:74px;top:calc(env(safe-area-inset-top,0px) + 66px);display:flex;align-items:center;gap:8px;pointer-events:none;max-width:420px}
+.gl-hud .pill{background:#E8FBFF;border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);padding:4px 10px;font-weight:800;font-size:17px;white-space:nowrap}
+.gl-meter{flex:1;display:flex;align-items:center;gap:6px;background:var(--paper);border:2.5px solid var(--ink);border-radius:999px;box-shadow:0 3px 0 var(--ink);padding:4px 10px}
+.gl-meter .ic{font-size:18px}
+.gl-meter .bar{flex:1;height:12px;border:2px solid var(--ink);border-radius:8px;background:#fff;overflow:hidden}
+.gl-meter .bar i{display:block;height:100%;width:100%;background:#4B3F74;transition:width .4s ease-out}
+.dv-book-panel .gl-row{background:#F1ECFF;border:2px solid var(--ink);border-radius:14px;padding:6px 10px;font-size:14px;text-align:left}

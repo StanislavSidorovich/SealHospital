@@ -538,7 +538,7 @@ const CO_GAMES = {
 // какие игры есть (старый кеш мог не отдать новые файлы)
 const coGamesOn = () => Object.keys(CO_GAMES).filter(g => g === 'rescue' ? typeof rescueGame === 'function'
   : g === 'road' ? typeof roadGame === 'function' : g === 'code' ? typeof iceGame === 'function'
-  : g === 'dive' ? typeof diveNet === 'function' && netAvail() : true);   // 🤿 нырнуть вдвоём (js/dive.js) — только по сети
+  : g === 'dive' ? typeof diveNet === 'function' && netAvail() : g === 'visit' ? typeof visitGo === 'function' && netAvail() : true);   // 🤿 нырнуть вдвоём (js/dive.js) и 🏝️ в гости — только по сети
 async function coopMenu(){
   for(;;){
     mgOpen(L('Играем вместе!', 'Let\'s play together!'));
@@ -588,7 +588,12 @@ async function coopMenu(){
 async function coopNet(game){
   mgOpen(L('Здороваемся… 👋', 'Saying hello… 👋'));
   const pal = await coHello(game); mgClose();
+  return coopNetGo(game, pal);
+}
+// уже поздоровались: во что играем (напарник мог позвать чайку или в гости — тогда туда)
+function coopNetGo(game, pal){
   if(pal && pal.want === 'run' && typeof gullFly === 'function') return gullFly(pal);
+  if(pal && pal.want === 'visit' && typeof visitGuest === 'function') return visitGuest(pal);   // напарник позвал к себе на остров (js/visit.js)
   let g = game;
   if(!net.host && pal && CO_GAMES[pal.want] && pal.want !== game && (pal.want !== 'rescue' || typeof rescueGame === 'function')){
     g = pal.want; coGame = g;
@@ -598,6 +603,7 @@ async function coopNet(game){
     : g === 'dive' && typeof diveNet === 'function' ? diveNet(pal) : coopFight('net', pal);
 }
 function coopPlay(pick){
+  if(pick.game === 'visit') return visitGo(pick.mode);   // 🏝️ «Остров в гостях» (js/visit.js)
   if(pick.game === 'code') return iceGame(pick.mode);
   if(pick.mode === 'net') return coopNet(pick.game);
   return pick.game === 'rescue' ? rescueGame(pick.mode) : pick.game === 'road' ? roadGame(pick.mode) : coopFight(pick.mode);
@@ -728,7 +734,7 @@ async function coResultPanel(res){
 FUN_COST.coop = {food:0.2, bath:0.2, sleep:0.2};
 let coGull = false;   // последний раз летали чайкой в чужом забеге (js/gull.js), а не бились с Тучей
 FUN_SAY.coop = () => coGull ? L('Хорошо полетали чайкой! 🐦', 'Great flying as the gull! 🐦')
-  : coGame === 'code' ? L('Какой хитрый код! 🧊', 'What a tricky code! 🧊') : coGame === 'dive' ? L('Хорошо поплавали вместе! 🤿', 'What a swim together! 🤿') : coGame === 'rescue' ? L('Потеряшка нашла маму — мы молодцы! 💗', 'The lost pup found mum — well done us! 💗') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
+  : coGame === 'code' ? L('Какой хитрый код! 🧊', 'What a tricky code! 🧊') : coGame === 'visit' ? L('Как здорово, когда приходят гости! 🏝️', 'It is so nice to have guests! 🏝️') : coGame === 'dive' ? L('Хорошо поплавали вместе! 🤿', 'What a swim together! 🤿') : coGame === 'rescue' ? L('Потеряшка нашла маму — мы молодцы! 💗', 'The lost pup found mum — well done us! 💗') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
 async function coopFromPet(s){
   if(typeof GL !== 'undefined' && GL && GL.home) gullRunEnd(true);   // чайка порхала над уголком — отпускаем: новая игра соединяется заново
   const pick = await coopMenu();
@@ -743,5 +749,6 @@ async function coopFromIntro(){
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
   const pick = await coopMenu();
   if(pick) await coopPlay(pick);
+  if(typeof V !== 'undefined' && V && V.role === 'host'){ started = true; if(!petMode) goPet(true); return; }   // позвала в гости — ждём на своей льдине (js/visit.js)
   $('#intro').hidden = false;
 }

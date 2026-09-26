@@ -21,7 +21,8 @@ const NET_ICE = NET_STUN.concat(NET_TURN.user ? [{
   urls:['turn:global.relay.metered.ca:80', 'turn:global.relay.metered.ca:80?transport=tcp', 'turn:global.relay.metered.ca:443', 'turns:global.relay.metered.ca:443?transport=tcp'],
   username:NET_TURN.user, credential:NET_TURN.pass}] : []);
 const netPeer = id => Promise.resolve().then(() => { const o = {config:{iceServers:NET_ICE}}; return id ? new Peer(id, o) : new Peer(o); });
-const net = {gen:0, peer:null, conn:null, host:false, code:'', on:{}, lastIn:0, hb:null, mic:null, call:null, audio:null, lost:false, onLost:null, onBack:null};
+// keep — «Остров в гостях» (js/visit.js): игры в конце зовут netClose(), но соединение остаётся — после игры все снова на острове
+const net = {gen:0, peer:null, conn:null, host:false, code:'', on:{}, lastIn:0, hb:null, mic:null, call:null, audio:null, lost:false, onLost:null, onBack:null, keep:false};
 
 function netCodeText(code){ return [...code].map(d => NET_EMO[+d]).join(''); }
 function netRandomCode(){ return [0, 1, 2].map(() => Math.floor(Math.random()*NET_EMO.length)).join(''); }
@@ -87,7 +88,7 @@ function netSat(on){
 }
 // создать комнату: ждём, пока подключится второй (cb(ok, why))
 function netHost(cb){
-  netClose(); net.host = true;
+  netClose(true); net.host = true;
   const gen = net.gen;
   const tryCode = async left => {
     const code = netRandomCode(), p = await netPeer(NET_PREFIX + code);
@@ -108,7 +109,7 @@ function netHost(cb){
 }
 // войти по коду
 function netJoin(code, cb){
-  netClose(); net.host = false; net.code = code;
+  netClose(true); net.host = false; net.code = code;
   const gen = net.gen;
   let done = false;
   const fail = why => { if(done) return; done = true; cb('fail', why); };   // после входа ошибки молчат — обрыв чинит netRetry
@@ -124,7 +125,10 @@ function netJoin(code, cb){
     p.on('error', e => fail(e.type));   // peer-unavailable — такой комнаты нет
   });
 }
-function netClose(){
+// force — закрыть по-настоящему; без него в гостях (net.keep) только снимаем обработчики игры, а ниточка остаётся
+function netClose(force){
+  if(net.keep && !force){ net.on = {}; net.onLost = net.onBack = null; return; }
+  net.keep = false;
   net.gen++;
   clearInterval(net.hb); net.hb = null;
   netMicOff(true);
@@ -170,8 +174,9 @@ function netMicOff(all){
 const netWhy = why => why ? `<br><small class="net-why">(${String(why).replace(/[^\w-]/g, '')}${NET_TURN.user ? '' : ', no turn'})</small>` : '';
 
 /* ---------- экран «Играем вместе»: создать комнату или войти по коду ----------
-   Возвращает 'ok' (соединились), или null (передумали). */
-async function netLobby(){
+   Возвращает 'ok' (соединились), или null (передумали). only — 'host' | 'join': сразу создать комнату или ввести код (без выбора). */
+async function netLobby(only){
+  const direct = !!only;
   mgOpen('');
   const panel = mgNode('div', 'mg-panel net-lobby', `
     <p class="ttl display">${L('Играем по сети 🌐', 'Play online 🌐')}</p>
@@ -182,8 +187,8 @@ async function netLobby(){
   const pick = () => new Promise(r => panel.querySelectorAll('[data-k]').forEach(b => { b.onclick = () => { sfx.tap(); r(b.dataset.k); }; }));
   const set = html => { panel.innerHTML = html; };
   for(;;){
-    const k = await pick();
-    if(k === 'no'){ netClose(); mgClose(); return null; }
+    const k = only || await pick(); only = null;
+    if(k === 'no'){ netClose(true); mgClose(); return null; }
     if(k === 'host'){
       set(`<p class="ttl display">${L('Комната', 'Room')}</p><p class="net-code" aria-live="polite">…</p>
         <p class="got net-say">${L('Подключаемся…', 'Connecting…')}</p><button class="btn ghost small" data-k="no">${L('Назад', 'Back')}</button>`);
@@ -196,7 +201,7 @@ async function netLobby(){
         panel.querySelector('[data-k="no"]').onclick = () => { sfx.tap(); r(false); };
       });
       if(ok){ mgClose(); return 'ok'; }
-      netClose(); mgClose(); return netLobby();
+      netClose(true); mgClose(); return direct ? null : netLobby();
     }
     if(k === 'join'){
       let code = '';
@@ -219,7 +224,7 @@ async function netLobby(){
         panel.querySelector('[data-k="no"]').onclick = () => { sfx.tap(); r(false); };
       });
       if(res){ sfx.good(); mgClose(); return 'ok'; }
-      netClose(); mgClose(); return netLobby();
+      netClose(true); mgClose(); return direct ? null : netLobby();
     }
   }
 }

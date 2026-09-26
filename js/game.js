@@ -410,6 +410,7 @@ function frame(ts){
   if(typeof holTick === 'function') holTick(t, dt);
   if(typeof nbTick === 'function') nbTick(t, dt);   // сосед Пинг (js/neighbors.js)   // старый index.html из кеша может ещё не знать про holidays.js
   if(typeof gullIsleTick === 'function') gullIsleTick(t, dt);   // чайка напарника порхает над уголком (js/gull.js)
+  if(typeof visitTick === 'function') visitTick(t, dt);   // «Остров в гостях» (js/visit.js)
   updateParts(dt);
   renderer.render(scene, camera);
 }
@@ -419,6 +420,24 @@ if(save.progress){ const st = $('#introStat'); st.textContent = L(`Ты уже �
 if(save.pet){ $('#introStat').textContent += ` · ${save.pet.name} ${petMissed() ? L(gg('соскучился', 'соскучилась'), 'misses you') : L('ждёт тебя', 'is waiting for you')} 🦭`; $('#btnIntroPet').hidden = false; }
 else if(adoptPending()){ $('#introStat').textContent += L(' · Кто-то ждёт тебя у льдины…', ' · Someone is waiting for you by the ice…'); $('#btnStart').textContent = L('Открыть больницу', 'Open the hospital'); }
 renderPetBtn();
+
+/* ---------------- кнопка «Назад» (телефон): первый раз — спросить, второй — выйти ----------------
+   В истории браузера лежит «сторожевая» запись. «Назад» снимает её (popstate) — показываем подсказку и сохраняемся;
+   если за BACK_WAIT секунд нажали ещё раз, браузер просто уходит со страницы (или закрывает приложение),
+   а если нет — ставим сторожа обратно. Запись ставится после первого касания: без него браузер её пропускает.
+   Во фрейме (Artifact) не трогаем — там «Назад» принадлежит странице вокруг. */
+const BACK_WAIT = 2.5;
+if(window.top === window && history.pushState){
+  let backT = 0;
+  const guard = () => { try{ if(!(history.state && history.state.shGuard)) history.pushState({shGuard:1}, ''); }catch(e){} };
+  addEventListener('pointerdown', guard, {once:true});
+  addEventListener('popstate', () => {
+    if(history.state && history.state.shGuard) return;   // вернулись вперёд на сторожа
+    persist();
+    toast(L('Нажми «Назад» ещё раз — и выйдешь из игры 👋', 'Press “Back” once more to leave the game 👋'), BACK_WAIT*1000);
+    clearTimeout(backT); backT = setTimeout(guard, BACK_WAIT*1000);
+  });
+}
 requestAnimationFrame(loop);
 // ?test=1: скрытая вкладка почти не даёт кадров, поэтому подталкиваем кадры таймером
 if(TEST) setInterval(() => { if(performance.now() - last > 120) frame(performance.now()); }, 60);

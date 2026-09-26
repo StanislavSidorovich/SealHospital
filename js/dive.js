@@ -440,7 +440,7 @@ async function petDive(s, opt = {}){
   // домой: малыш снова в уголке
   if(pal){ netSend({t:'dbye'}); netClose(); }
   mgClose();
-  homeB.remove(); vig.remove(); document.body.classList.remove('run-on', 'dive-on', 'gloom-on'); flash();
+  homeB.remove(); vig.remove(); document.body.classList.remove('run-on', 'dive-on', 'gloom-on', 'gloom-boss'); flash();
   const fresh = DV.fresh;
   if(DV.pal) scene.remove(DV.pal.s.root);
   dvRoot.remove(DV.grp); DV = null;
@@ -545,6 +545,7 @@ function dvPopulate(){
   // Мгла живёт в гроте (пока спит)
   const gm = makeGloom(); gm.visible = false; G.add(gm);
   DV.gl = {o:gm, st:'off', t:DV_GLOOM_T[0] + Math.random()*15, x:DV_LEN + 6, y:-10, dir:-1, fade:0, ch:0, puffT:0, caught:false};
+  if(typeof glPopulate === 'function') glPopulate();   // история Мглы: бочка, светящийся планктон, Клякса (js/gloom.js)
 }
 const DV_MAP_TEX = canvasTex(128, (g, s) => {   // кусочек старой карты: бумага, пунктир и крестик
   g.fillStyle = '#F3E2BC'; g.fillRect(0, 0, s, s);
@@ -582,6 +583,7 @@ function dvControls(){
   mgOn(mgRoot, 'pointerdown', e => {
     if(!DV || (e.target.closest && e.target.closest('.mg-panel, .dv-hud, button'))) return;
     if(DV.pause || DV.mode !== 'swim') return;
+    if(typeof glTap === 'function' && glTap(e.clientX, e.clientY)) return;   // коснулась Мглы — бросить свет (js/gloom.js)
     const hit = dvHit(e.clientX, e.clientY);
     if(hit){ DV.goal = hit; DV.hold = false; DV.tgt = null; sfx.tap(); return; }
     if(DV.grab) dvLetGo();   // держалась за ласту — отпустила и плывёт сама
@@ -654,10 +656,11 @@ function dvStep(dt){
   else { dvSharkMirror(dt); dvGloomMirror(dt); }
   if(D.ping) dvPingStep(dt);
   dvBigStep(dt);
+  if(typeof glStep === 'function') glStep(dt);   // бочка, планктон, бой, Клякса (js/gloom.js)
   if(D.pal0){ dvPalStep(dt); D.sendT -= dt; if(D.sendT <= 0){ D.sendT = 0.1; dvNetSend(); } }
   // свет: в глубине, под навесом грота, темнее; пришла Мгла — темнеет вся бухта
   const cave = Math.max(0, Math.min(1, (D.pos.x - 44)/8));
-  D.dark += ((dvGloomOn() ? 1 : 0) - D.dark)*Math.min(1, dt*0.9);
+  D.dark += ((dvGloomOn() ? (D.gl.boss && typeof glDark === 'function' ? glDark() : 1) : 0) - D.dark)*Math.min(1, dt*0.9);
   const dk = 1 - 0.55*D.dark, gd = D.gl.o.visible ? Math.hypot(D.gl.x - D.pos.x, D.gl.y - D.pos.y) : 99;
   HEMI.intensity = (0.74 - 0.34*cave)*dk; sun.intensity = (0.6 - 0.3*cave)*dk; dvRoot.userData.cauM.opacity = 0.16*(1 - cave*0.85)*dk;
   scene.fog.color.setHex(0x3E8FC0).lerp(DV_DEEP, cave*0.7).lerp(DV_GLOOM_FOG, D.dark*0.65); scene.background.copy(scene.fog.color);
@@ -760,6 +763,7 @@ async function dvBook(){
     <p class="got">${L(`Сфотографировано: ${sv.seen.length} из ${DV_LIFE.length}`, `Photographed: ${sv.seen.length} of ${DV_LIFE.length}`)}${sv.book ? ' ✨' : ''}</p>
     <div class="dv-grid">${DV_LIFE.map(d => { const got = sv.seen.includes(d.id);
       return `<button class="${got ? 'got' : 'no'}" data-id="${d.id}"><img src="${dvThumb(d.id)}" alt=""><span>${got ? d.name : '?'}</span>${d.id === guest ? `<i class="tag">${L('сегодня', 'today')}</i>` : ''}</button>`; }).join('')}</div>
+    ${typeof glBookRow === 'function' ? glBookRow() : ''}
     <p class="got dv-say">${L('Коснись жителя, чтобы прочитать про него. Гости приплывают по одному в день 🌊', 'Tap a friend to read about it. Guests come one per day 🌊')}</p>
     <button class="btn" data-k="ok">${L('Плыть дальше 🫧', 'Keep swimming 🫧')}</button>`);
   const say = panel.querySelector('.dv-say');
@@ -1109,15 +1113,16 @@ function makeGloom(){
   g.userData = {blobs, tents, glows, eyes, puff};
   return g;
 }
-const dvGloomOn = () => !!(DV && DV.gl && DV.gl.st !== 'off' && DV.gl.st !== 'leave');
+const dvGloomOn = () => !!(DV && DV.gl && !DV.gl.gone && DV.gl.st !== 'off' && DV.gl.st !== 'leave');   // gone — Мглу отмыли (js/gloom.js)
 function dvGloomStep(dt){
   const G = DV.gl, D = DV;
   G.t -= dt;
   const mv = (x, y, v) => { const dx = x - G.x, dy = y - G.y, l = Math.hypot(dx, dy); if(l > 0.05){ const k = Math.min(l, v*dt)/l; G.x += dx*k; G.y += dy*k; } if(Math.abs(dx) > 0.3) G.dir = Math.sign(dx); return l; };
   const aim = w => w.k === 'pal' && D.pal ? {pos:D.pal.pos, hid:D.pal.h >= 0 ? DV_HIDE[D.pal.h] : null, safe:D.pal.safe} : {pos:D.pos, hid:dvHidden(), safe:D.safeT > 0 || D.out || D.pause};
   if(G.st === 'off'){
-    // не в первое погружение, не посреди салок и не пока что-то делаешь
-    if(G.t <= 0){ if(save.dive.n >= 2 && D.mode === 'swim' && !['warn', 'hunt', 'sniff'].includes(D.sh.st)) dvGloomCome(); else G.t = 6; }
+    // не в первое погружение, не посреди салок, не пока что-то делаешь — и больше никогда, когда Мглу отмыли (js/gloom.js)
+    if(G.t <= 0){ if(save.dive.n >= 2 && D.mode === 'swim' && !['warn', 'hunt', 'sniff'].includes(D.sh.st) && !(save.dive.gloom.st >= 3)) dvGloomCome(); else G.t = 6; }
+  } else if(G.boss && typeof glBossStep === 'function'){ return glBossStep(dt);   // бой: Мгла не уходит, пока её не отмоют
   } else if(G.st === 'warn'){
     mv(DV_LEN + 1, -9, DV_GLOOM_V[0]);
     if(G.t <= 0){ G.st = 'prowl'; G.t = DV_GLOOM_LONG; }
@@ -1153,31 +1158,35 @@ function dvGloomStep(dt){
 }
 function dvGloomPose(dt){
   const G = DV.gl, o = G.o, u = o.userData;
+  if(G.gone){ o.visible = false; return; }
   G.fade += ((G.st !== 'off' && G.x < DV_LEN + 5 ? 1 : 0) - G.fade)*Math.min(1, dt*1.4);
   o.visible = G.fade > 0.02;
   if(!o.visible) return;
-  o.position.set(G.x, G.y + Math.sin(now*1.3)*0.25, 0.5);
+  const fa = G.fade*(1 - (G.melt || 0));   // melt — муть растворяется (конец боя, js/gloom.js)
+  o.position.set(G.x, G.y + Math.sin(now*1.3)*0.25, 0.5); o.scale.setScalar((G.sc || 1)*(1 - 0.5*(G.melt || 0)));
   const hunt = G.st === 'chase';
-  u.blobs.forEach(b => { const d = b.userData, k = 1 + Math.sin(now*(hunt ? 3.2 : 1.7) + d.ph)*0.12; b.scale.set(d.r*k, d.r*(2 - k), d.r); b.material.opacity = d.op*G.fade; });
-  u.puff.material.opacity = 0.8*G.fade; u.puff.scale.setScalar(6.2 + Math.sin(now*1.1)*0.5);
-  u.tents.forEach((p, i) => { p.rotation.z = Math.sin(now*(hunt ? 4 : 2) + p.userData.ph)*0.4 - G.dir*0.35; p.children[0].material.opacity = 0.8*G.fade; });
+  u.blobs.forEach(b => { const d = b.userData, k = 1 + Math.sin(now*(hunt ? 3.2 : 1.7) + d.ph)*0.12; b.scale.set(d.r*k, d.r*(2 - k), d.r); b.material.opacity = d.op*fa; });
+  u.puff.material.opacity = 0.8*fa*(1 - 0.5*(G.wash || 0)); u.puff.scale.setScalar(6.2 + Math.sin(now*1.1)*0.5);
+  u.tents.forEach((p, i) => { p.rotation.z = Math.sin(now*(hunt ? 4 : 2) + p.userData.ph)*0.4 - G.dir*0.35; p.children[0].material.opacity = 0.8*fa; });
   u.eyes.position.x += (G.dir*0.5 - u.eyes.position.x)*Math.min(1, dt*3);
   const blink = (now*0.31 + 0.2) % 1 > 0.965 ? 0.12 : 1;
   u.eyes.scale.set(1, blink*(hunt ? 1.25 : 1), 1);
-  u.glows.forEach(g => { g.material.opacity = (hunt ? 0.9 : 0.5 + Math.sin(now*2)*0.12)*G.fade; g.scale.setScalar(hunt ? 0.95 : 0.7); });
+  u.glows.forEach(g => { g.material.opacity = (hunt ? 0.9 : 0.5 + Math.sin(now*2)*0.12)*fa; g.scale.setScalar(hunt ? 0.95 : 0.7); });
+  u.eyes.visible = fa > 0.1;
   // за Мглой тянется муть
   G.puffT -= dt;
-  if(G.puffT < 0 && G.fade > 0.5){ G.puffT = 0.16; emit(INK_TEX, dvW(o.position).add(new V3((Math.random() - 0.5)*2, (Math.random() - 0.5)*1.4, -0.4)), {v:new V3(-G.dir*0.5, 0.25, 0), life:1.6, size:1.2, grow:1.2}); }
+  if(G.puffT < 0 && fa > 0.5){ G.puffT = 0.16; emit(INK_TEX, dvW(o.position).add(new V3((Math.random() - 0.5)*2, (Math.random() - 0.5)*1.4, -0.4)), {v:new V3(-G.dir*0.5, 0.25, 0), life:1.6, size:1.2, grow:1.2}); }
 }
 function dvGloomCome(){
   const G = DV.gl, S = DV.sh;
   G.st = 'warn'; G.t = 3.2; G.x = DV_LEN + 7; G.y = -10; G.dir = -1; G.caught = false; G.fade = 0;
+  G.boss = typeof glBossOn === 'function' && glBossOn();   // бой: отмыть Мглу светом (js/gloom.js)
   if(['warn', 'hunt', 'sniff'].includes(S.st)){   // даже акула боится Мглы — удирает
     S.st = 'leave'; S.t = 4; S.dir = -1;
     floatText(L('Ай! Мгла! 😱', 'Eek! The Gloom! 😱'), dvW(new V3(S.x, S.y + 1.2, 0)), '#3B3A4A');
     if(DV.pal) netSend({t:'dev', k:'sleave', f:0});
   }
-  if(DV.pal) netSend({t:'dev', k:'gcome'});
+  if(DV.pal) netSend({t:'dev', k:'gcome', b:G.boss ? 1 : 0});
   dvGloomFx(true);
 }
 function dvGloomLeave(caught){
@@ -1185,11 +1194,13 @@ function dvGloomLeave(caught){
   G.st = 'leave'; G.caught = !!caught;
   if(DV.pal) netSend({t:'dev', k:'gleave', c:caught ? 1 : 0});
   dvGloomFx(false, caught);
+  if(typeof glLeft === 'function') glLeft(caught);   // история: бочка, «хнык…» (js/gloom.js)
 }
 function dvGloomFx(on, caught){   // что видно и слышно (у гостя по сети — по сигналам хозяина)
   const D = DV, sv = save.dive.gloom;
   if(on){
     sv.met++; persist();
+    if(D.gl.boss && typeof glBossFx === 'function') return glBossFx();   // пришла на бой (js/gloom.js)
     sfx.gloom(); document.body.classList.add('gloom-on'); dvRingsOn(true);
     mgHint(sv.met <= 1 ? L('🌑 Из грота выползает Мгла! Её боятся даже акулы. Скорее прячься — в водоросли, в щель между камнями или в кораблик!', '🌑 The Gloom is crawling out of the grotto! Even sharks are scared of it. Quick, hide — in the seaweed, between the rocks or in the boat!')
       : L('🌑 Мгла! Все прячутся — и ты прячься! 🌿', '🌑 The Gloom! Everyone hides — you hide too! 🌿'));
@@ -1200,7 +1211,7 @@ function dvGloomFx(on, caught){   // что видно и слышно (у го�
     }
     return;
   }
-  document.body.classList.remove('gloom-on');
+  document.body.classList.remove('gloom-on', 'gloom-boss');
   if(!['warn', 'hunt', 'sniff'].includes(D.sh.st)) dvRingsOn(false);
   if(D.ping) D.ping.hide = null;
   if(D.out) return;
@@ -1215,15 +1226,17 @@ async function dvGloomGrab(){   // Мгла поймала меня: темно 
   sfx.gloomGrab(); mgHint('');
   const ink = mgNode('div', 'dv-ink', `<p class="display">${L('Ам!', 'Gulp!')}</p>`);
   setTimeout(() => ink.classList.add('on'), 30);
-  if(D.auth) dvGloomLeave(true);
+  const boss = D.gl.boss;
+  if(D.auth){ if(boss && typeof glGrabbed === 'function') glGrabbed(); else dvGloomLeave(true); }   // в бою Мгла не уползает
   await wait(1.6); if(DV !== D) return;
   ink.querySelector('p').textContent = L('Мгла выплюнула тебя наверх!', 'The Gloom spat you out to the surface!');
-  if(!D.pal0){ await wait(1.2); if(DV === D) D.quit('gloom'); return; }
+  if(!D.pal0 && !boss){ await wait(1.2); if(DV === D) D.quit('gloom'); return; }
   D.pos.set(1.6, -1.2, 0); D.cx = 1.6; D.cy = -4; D.s.inner.rotation.x = 0;
   await wait(1); ink.classList.remove('on'); await wait(0.5); ink.remove();
   if(DV !== D) return;
-  D.out = false; D.pause = false; D.safeT = 3;
-  mgHint(L('Брр! Тебя выплюнуло наверх. Ныряй обратно к напарнику 🫧', 'Brr! You were spat out to the surface. Dive back to your partner 🫧'));
+  D.out = false; D.pause = false; D.safeT = boss ? 4 : 3;
+  mgHint(boss ? L('Брр! Тебя выплюнуло наверх. Ныряй обратно — светящийся планктон никуда не делся ✨', 'Brr! You were spat out to the surface. Dive back — the glowing plankton is still there ✨')
+    : L('Брр! Тебя выплюнуло наверх. Ныряй обратно к напарнику 🫧', 'Brr! You were spat out to the surface. Dive back to your partner 🫧'));
 }
 function dvGloomGrabPal(){   // по сети Мгла поймала напарника
   const P = DV.pal, at = dvW(P.pos).add(new V3(0, 1, 0));
@@ -1231,7 +1244,7 @@ function dvGloomGrabPal(){   // по сети Мгла поймала напар
   floatText(L(`Ой! Мгла поймала: ${P.name}`, `Oh no! The Gloom got ${P.name}`), at, '#3B3A4A');
   P.safe = true;
   netSend({t:'dev', k:'gout'});
-  dvGloomLeave(true);
+  if(DV.gl.boss && typeof glGrabbed === 'function') glGrabbed(); else dvGloomLeave(true);
 }
 
 /* ---------- 🦪 большая раковина: открывается только вдвоём (по сети или с Пингом) ---------- */
@@ -1351,10 +1364,11 @@ function dvNetEv(m){
   if(k === 'scome') dvSharkHi();
   else if(k === 'sleave'){ if(m.f){ save.dive.shark.hid++; persist(); } dvSharkBye(!!m.f); }
   else if(k === 'tag') dvTag(true);
-  else if(k === 'gcome') dvGloomFx(true);
-  else if(k === 'gleave') dvGloomFx(false, !!m.c);
+  else if(k === 'gcome'){ DV.gl.boss = !!m.b; dvGloomFx(true); }
+  else if(k === 'gleave'){ dvGloomFx(false, !!m.c); if(typeof glLeft === 'function') glLeft(!!m.c); }
   else if(k === 'gout') dvGloomGrab();
   else if(k === 'bigo') dvBigOpen();
+  else if(typeof glNetEv === 'function') glNetEv(m);   // бой со Мглой (js/gloom.js)
 }
 function dvPalBye(){   // напарник уплыл домой: дальше ныряем одни, акула и Мгла — теперь мои
   const D = DV; if(!D || !D.pal) return;
@@ -1362,7 +1376,7 @@ function dvPalBye(){   // напарник уплыл домой: дальше �
   scene.remove(D.pal.s.root); D.grp.remove(D.pal.lbl); D.pal = null; D.grab = false;
   if(!D.auth){
     D.auth = true; D.net = null;
-    if(dvGloomOn()) dvGloomLeave(false); else if(D.gl.st === 'off') D.gl.t = DV_GLOOM_T[1];
+    if(dvGloomOn() && !D.gl.boss) dvGloomLeave(false); else if(D.gl.st === 'off') D.gl.t = DV_GLOOM_T[1];
     if(D.sh.st === 'off') D.sh.t = DV_SHARK_T[1];
   }
 }

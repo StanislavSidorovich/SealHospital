@@ -41,7 +41,8 @@ function sanitize(d){
 // dive = {n — сколько раз ныряли, seen:[жители из DV_LIFE, которых сфотографировали], day:{d, cl:[раковины, открытые сегодня]},
 //         garden:[когда посажен росток, мс, или 0 — три грядки], gh:[в какой день грядка последний раз дарила ракушки],
 //         turt — черепаху освободили, shark:{hid — сколько раз спрятались, friend — подружились}, map:[найденные кусочки 0–2], chest, book — подарок за всю энциклопедию,
-//         big — в какой день открыли большую раковину (вдвоём), gloom:{met — сколько раз приходила Мгла, hid — спрятались, out — выбросила наверх}}
+//         big — в какой день открыли большую раковину (вдвоём), gloom:{met — сколько раз приходила Мгла, hid — спрятались, out — выбросила наверх,
+//         st — история Мглы (js/gloom.js): 0 — только прятались, 1 — нашли бочку, 2 — услышали, как Мгла плачет (можно спасать), 3 — спасли Кляксу}}
 function sanitizeDive(a){
   a = a && typeof a === 'object' ? a : {};
   const day = a.day && typeof a.day === 'object' ? a.day : {}, sh = a.shark && typeof a.shark === 'object' ? a.shark : {}, gl = a.gloom && typeof a.gloom === 'object' ? a.gloom : {};
@@ -51,13 +52,14 @@ function sanitizeDive(a){
     garden:three(a.garden, num), gh:three(a.gh, v => typeof v === 'string' ? v : ''),
     turt:!!a.turt, shark:{hid:num(sh.hid), friend:!!sh.friend},
     map:Array.isArray(a.map) ? [...new Set(a.map.filter(i => i === 0 || i === 1 || i === 2))] : [], chest:!!a.chest, book:!!a.book,
-    big:typeof a.big === 'string' ? a.big : '', gloom:{met:num(gl.met), hid:num(gl.hid), out:num(gl.out)}};
+    big:typeof a.big === 'string' ? a.big : '', gloom:{met:num(gl.met), hid:num(gl.hid), out:num(gl.out), st:Math.min(3, Math.floor(num(gl.st)))}};
 }
 // coop = {wins — побед над Большой Тучей, tries — боёв, net — побед по сети, day:{d, n} — сколько побед сегодня (ракушки за первые две),
 //         gull:{d, n} — полёты чайкой, resc:{wins, day:{d, n}, lv:{bay, grot}, pearls:{bay:[], grot:[]}} — спасённые потеряшки:
 //         всего, сегодня, по уровням и найденные жемчужинки (номера 0–2),
 //         road — сколько раз добежали «Дорогу к Туче» (js/cloudroad.js),
-//         ice:{wins, day:{d, n}, got:[коды]} — «Ледяной код» (js/icecode.js): разгадано, сегодня (ракушки за первые три), чьи коды уже разгаданы}
+//         ice:{wins, day:{d, n}, got:[коды]} — «Ледяной код» (js/icecode.js): разгадано, сегодня (ракушки за первые три), чьи коды уже разгаданы,
+//         visit:{n, d} — «Остров в гостях» (js/visit.js): сколько раз были в гостях или звали, день последнего фото}
 function sanitizeCoop(a){
   a = a && typeof a === 'object' ? a : {};
   const n = v => Number.isFinite(v) ? Math.max(0, v) : 0, day = a.day && typeof a.day === 'object' ? a.day : {};
@@ -70,6 +72,7 @@ function sanitizeCoop(a){
   return {wins:n(a.wins), tries:n(a.tries), net:n(a.net), day:{d:typeof day.d === 'string' ? day.d : '', n:n(day.n)},
     gull:{d:typeof gl.d === 'string' ? gl.d : '', n:n(gl.n)},
     resc:{wins:n(rs.wins), day:{d:typeof rd.d === 'string' ? rd.d : '', n:n(rd.n)}, lv:lvs, pearls:prl},
+    visit:{n:n(ob(a.visit).n), d:typeof ob(a.visit).d === 'string' ? ob(a.visit).d.slice(0, 20) : ''},   // «Остров в гостях» (js/visit.js): встреч и день фото
     road:n(a.road), rday:typeof a.rday === 'string' ? a.rday.slice(0, 20) : '', ice:{wins:n(ic.wins), day:{d:typeof id.d === 'string' ? id.d : '', n:n(id.n)},
       got:Array.isArray(ic.got) ? ic.got.filter(c => typeof c === 'string' && /^[0-9A-Z]{4}$/.test(c)).slice(-60) : []}};
 }

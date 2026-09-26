@@ -503,6 +503,7 @@ async function petNope(msg){
 // касание малыша: гладить (petStroke) или просто «ар!» (petStrokeEnd), спящего — разбудить
 function petTap(e){
   if(!petSeal || busy || !mgRoot.hidden) return;
+  if(typeof visitTap === 'function' && visitTap(e)) return;   // обнять гостя (js/visit.js)
   if(typeof nbTap === 'function' && nbTap(e, true)) return;   // точно по соседу Пингу (js/neighbors.js)
   if(!petSeal.sleeping && bubbleHit(e)){ const low = petLow(); if(low){ sfx.tap(); return petDo(low); } return wishGo(); }
   if(!petPart(e)){ if(typeof nbTap === 'function' && nbTap(e)) return; if(homeHouseHit(e)) homeEnter(); return; }   // по соседу Пингу (js/neighbors.js)   // мимо малыша, но по иглу — заходим в домик
