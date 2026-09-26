@@ -10,6 +10,12 @@
    🦈 акула-непоседа: приплывает поиграть в салки — прячься в водорослях, в щели между камнями или в кораблике;
       после двух пряток выясняется, что она потеряла мячик — найди его и верни, акула становится подружкой (коврик в иглу).
    Гости дня (калан, белуха, рыба-луна, нарвал) — по одному в день. Проиграть нельзя, воздух не кончается.
+   Часть 2 (Спринт 3, задача 4):
+   🌑 Мгла — тёмное облако с горящими глазами выползает из грота. Её боятся даже акулы: гаснет свет, всё прячется.
+      От неё только прятаться; поймала — выплёвывает наверх (одна — домой, вдвоём — к началу бухты). Про неё потом будет история и бой.
+   🌐 вдвоём по сети («Вместе» → 🤿): плывём рядом, коснись напарника — держишься за его ласту (вдвоём быстрее);
+      🦪 большая раковина в глубине открывается только вдвоём (или с Пингом); акула и Мгла охотятся за обоими.
+      Главный — хозяин комнаты: у него акула и Мгла, гостю приходит, где они. Сохранения у каждого свои.
    Бухта стоит далеко в стороне (DV_POS), камера — runCam, как в забеге. Подключается после icecode.js и до game.js. */
 const DV_POS = new V3(400, 0, 0);
 const DV_SPEED = 4.2, DV_LEN = 64;                  // скорость малыша под водой; длина бухты
@@ -17,6 +23,10 @@ const DV_SHARK_V = 3.0, DV_SHARK_T = [24, 42];      // акула чуть ме�
 const DV_HIDES = 2;                                 // сколько раз спрятаться, чтобы узнать про мячик
 const DV_PEARL = 3, DV_NEW = 3, DV_TURTLE = 15, DV_GARDEN = 4;   // ракушки: жемчужинка, новый житель, черепаха, грядка
 const DV_GROW = [6, 18];                            // росток подрастает через 6 ч и вырастает через 18 ч
+const DV_GLOOM_T = [55, 80];                        // Мгла: первый раз через 55 с после погружения, потом раз в 80 с
+const DV_GLOOM_V = [2.2, 3.6], DV_GLOOM_SEE = 7.5;  // ползёт / гонится (малыш — 4,2, за ласту — быстрее); видит на 7,5 м
+const DV_GLOOM_LONG = 22;                           // сколько секунд Мгла рыщет по бухте, потом уползает в грот
+const DV_BIG = 10, DV_BIG_X = 50.8;                 // большая раковина: ракушки за большую жемчужину (раз в день), где лежит
 const DV_FLOOR = [[-8, -8.2], [6, -8.8], [14, -10], [22, -11.8], [34, -12.4], [42, -13.6], [52, -14.8], [80, -14.8]];
 function dvFloor(x){
   const f = DV_FLOOR; x = Math.max(f[0][0], x);
@@ -282,7 +292,7 @@ function dvBuild(){
   if(dvBuilt) return; dvBuilt = true;
   // вода позади: градиент от светлой поверхности к синей глубине (без тумана)
   const back = new THREE.Mesh(new THREE.PlaneGeometry(300, 70), new THREE.MeshBasicMaterial({map:dvGradTex(), fog:false}));
-  back.position.set(32, -20, -18); dvRoot.add(back);
+  back.position.set(32, -20, -18); dvRoot.add(back); dvRoot.userData.backM = back.material;
   // поверхность снизу: светлая рябь
   const surfTex = canvasTex(256, (g, s) => {
     g.fillStyle = '#CFF1FA'; g.fillRect(0, 0, s, s); g.strokeStyle = '#FFFFFF'; g.lineWidth = 6; g.lineCap = 'round';
@@ -290,7 +300,7 @@ function dvBuild(){
   });
   surfTex.wrapS = surfTex.wrapT = THREE.RepeatWrapping; surfTex.repeat.set(24, 6);
   const surf = new THREE.Mesh(new THREE.PlaneGeometry(300, 60), new THREE.MeshBasicMaterial({map:surfTex, transparent:true, opacity:0.75, side:THREE.DoubleSide, fog:false}));
-  surf.rotation.x = Math.PI/2; surf.position.set(32, 0.02, -10); dvRoot.add(surf); dvRoot.userData.surf = surfTex;
+  surf.rotation.x = Math.PI/2; surf.position.set(32, 0.02, -10); dvRoot.add(surf); dvRoot.userData.surf = surfTex; dvRoot.userData.surfM = surf.material;
   for(const [x, w] of [[-3, 3.2], [21, 2.6], [45, 3.4]]){ const f = dvBlob(dvRoot, 0xD6EAF5, w, 0.4, 2, x, 0.05, -1.5, 1.03); }
   // дно: профиль DV_FLOOR, вытянутый вглубь
   const sh = new THREE.Shape(); sh.moveTo(-40, -24);
@@ -371,7 +381,8 @@ function dvBuild(){
 }
 function dvSway(t){
   for(const k of DV.sway.length ? dvSwayers.concat(DV.sway) : dvSwayers){ const ph = k.userData.ph; k.userData.pivs.forEach((p, i) => p.rotation.z = Math.sin(t*1.1 + ph + i*0.55)*0.075); }
-  dvRays.forEach(m => m.material.opacity = 0.32 + Math.sin(now*0.7 + m.userData.ph)*0.16);
+  const lit = 1 - 0.85*(DV ? DV.dark : 0);   // пришла Мгла — лучи гаснут
+  dvRays.forEach(m => m.material.opacity = (0.32 + Math.sin(now*0.7 + m.userData.ph)*0.16)*lit);
   if(dvRoot.userData.surf) dvRoot.userData.surf.offset.x = now*0.02;
   if(dvRoot.userData.cau) dvRoot.userData.cau.offset.set(now*0.012, Math.sin(now*0.3)*0.03);
 }
@@ -393,7 +404,10 @@ function dvClamp(p){
   return p;
 }
 
-async function petDive(s){
+// s — малыш из уголка; по сети (opt.pal — напарник) из «Вместе» ныряет свой тюлень, а малыш остаётся в уголке (как в бою с Тучей)
+async function petDive(s, opt = {}){
+  const own = !s, pal = opt.pal || null;
+  if(own){ s = coSealOf(coPetDesc()); s.root.scale.setScalar(petScale()); scene.add(s.root); }
   const cam0 = camOffWant.clone(), fog = scene.fog, bg = scene.background, sv = save.dive, today = dvToday();
   if(sv.day.d !== today) sv.day = {d:today, cl:[]};
   sv.n++; persist();
@@ -401,34 +415,43 @@ async function petDive(s){
   dvBuild(); dvRoot.visible = true; runCam.on = true; snow.visible = false;
   scene.fog = new THREE.Fog(0x3E8FC0, 12, 72); scene.background = new THREE.Color(0x3E8FC0);
   document.body.classList.add('run-on', 'dive-on');
-  s.bubble.visible = false; s.swimming = true; s.flap = 0.3; setMood(s, 'happy');
-  DV = {s, pos:new V3(1.6, -1.8, 0), vel:new V3(), tgt:null, hold:false, pid:null, goal:null, face:1, yaw:Math.PI/2, pause:false, mode:'swim',
-    t:0, tumble:0, taps:[], life:[], grp:new THREE.Group(), carry:null, sway:[], fresh:0, ping:null, bubT:0, key:new V3(), cx:1.6, cy:-4, camD:20, rings:[], said:new Set()};
+  if(s.bubble) s.bubble.visible = false; s.swimming = true; s.flap = 0.3; setMood(s, 'happy');
+  DV = {s, own, sc:own ? s.root.scale.x : petScale(), pos:new V3(1.6, -1.8, 0), vel:new V3(), tgt:null, hold:false, pid:null, goal:null, face:1, yaw:Math.PI/2, pause:false, mode:'swim',
+    t:0, tumble:0, taps:[], life:[], grp:new THREE.Group(), carry:null, sway:[], fresh:0, ping:null, bubT:0, key:new V3(), cx:1.6, cy:-4, camD:20, rings:[], said:new Set(),
+    auth:!pal || net.host, pal0:pal, pal:null, grab:false, bigOn:false, sendT:0, dark:0, safeT:0, out:false, net:null};
   dvRoot.add(DV.grp);
   dvPopulate();
+  if(pal) dvPalMake(pal);
   mgOpen('', {hintBottom:true});
   DV.hud = mgNode('div', 'run-hud dv-hud', '');
   dvHud();
   dvControls();
+  if(pal) dvNetUi();
+  const vig = document.createElement('div'); vig.className = 'dv-vig'; canvas.after(vig); DV.vig = vig;   // темнота по краям, когда рядом Мгла (под кнопками)
   const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
   homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#btnSound').after(homeB);
   let done; const fin = new Promise(r => done = r);
   homeB.addEventListener('click', () => { sfx.tap(); if(DV && !DV.pause) done(); else if(DV) toast(L('Сначала закончи то, что начала 🫧', 'Finish what you started first 🫧')); });
   DV.quit = done;
+  if(pal) dvNetWire();
   mgTick(dt => { if(DV) dvStep(dt); });
-  dvIntro();
-  await fin;
+  pal ? dvNetIntro() : dvIntro();
+  const how = await fin;
   // домой: малыш снова в уголке
+  if(pal){ netSend({t:'dbye'}); netClose(); }
   mgClose();
-  homeB.remove(); document.body.classList.remove('run-on', 'dive-on'); flash();
+  homeB.remove(); vig.remove(); document.body.classList.remove('run-on', 'dive-on', 'gloom-on'); flash();
   const fresh = DV.fresh;
+  if(DV.pal) scene.remove(DV.pal.s.root);
   dvRoot.remove(DV.grp); DV = null;
   dvRoot.visible = false; runCam.on = false; homeLights(false); snow.visible = true;
   scene.fog = fog; scene.background = bg;
-  s.swimming = false; s.root.position.copy(PET_SPOT); s.root.rotation.set(0, 0, 0); s.inner.rotation.set(0, 0, 0); s.inner.position.set(0, 0, 0); s.wobble = 0; s.flap = 0;
   camOff.copy(cam0); camOffWant.copy(cam0);
-  s.happyUntil = now + 3; setMood(s, 'happy');
-  diveSay = fresh ? L(`Какое погружение! Новых жителей в энциклопедии: ${fresh} 📖`, `What a dive! New friends in the sea book: ${fresh} 📖`)
+  if(own){ scene.remove(s.root); return {dive:1}; }
+  s.swimming = false; s.root.position.copy(PET_SPOT); s.root.rotation.set(0, 0, 0); s.inner.rotation.set(0, 0, 0); s.inner.position.set(0, 0, 0); s.wobble = 0; s.flap = 0;
+  s.happyUntil = now + 3; setMood(s, how === 'gloom' ? 'ok' : 'happy');
+  diveSay = how === 'gloom' ? L('Брр! Мгла выплюнула нас наверх… Она уже уползла в грот — можно нырнуть снова 🫧', 'Brr! The Gloom spat us out to the surface… It has crawled back into the grotto — we can dive again 🫧')
+    : fresh ? L(`Какое погружение! Новых жителей в энциклопедии: ${fresh} 📖`, `What a dive! New friends in the sea book: ${fresh} 📖`)
     : L(`${gg('Наплавался', 'Наплавалась')}! Солёная водичка — пора купаться 🛁`, 'What a swim! All salty — bath time 🛁');
 }
 async function dvIntro(){
@@ -512,11 +535,16 @@ function dvPopulate(){
   DV.sh = {o:sh, st:sv.shark.friend ? 'friend' : 'off', x:50, y:-5, dir:-1, t:sv.shark.friend ? 0 : DV_SHARK_T[0], ph:0};
   if(sv.shark.friend){ sh.visible = true; DV.sh.x = 40; }
   dvTap({k:'shark', r:1.1, p:() => sh.position.clone(), go:dvSharkTap, on:() => sh.visible});
-  // Пинг ныряет за компанию (если живёт по соседству)
-  if(typeof nbHere === 'function' && nbHere()){
+  // Пинг ныряет за компанию (если живёт по соседству и ныряем не по сети)
+  if(typeof nbHere === 'function' && nbHere() && !DV.pal0){
     const p = makePenguin(PENG); p.root.scale.setScalar(0.8*0.62); p.swimming = true; G.add(p.root);
-    DV.ping = {s:p, pos:new V3(-0.5, -2.4, 0), vel:new V3(), face:1, yaw:Math.PI/2};
+    DV.ping = {s:p, pos:new V3(-0.5, -2.4, 0), vel:new V3(), face:1, yaw:Math.PI/2, hold:false, big:false};
+    dvTap({k:'ping', r:0.7, p:() => DV.ping.pos.clone(), go:dvPingTap});
   }
+  dvBigMake();
+  // Мгла живёт в гроте (пока спит)
+  const gm = makeGloom(); gm.visible = false; G.add(gm);
+  DV.gl = {o:gm, st:'off', t:DV_GLOOM_T[0] + Math.random()*15, x:DV_LEN + 6, y:-10, dir:-1, fade:0, ch:0, puffT:0, caught:false};
 }
 const DV_MAP_TEX = canvasTex(128, (g, s) => {   // кусочек старой карты: бумага, пунктир и крестик
   g.fillStyle = '#F3E2BC'; g.fillRect(0, 0, s, s);
@@ -556,12 +584,13 @@ function dvControls(){
     if(DV.pause || DV.mode !== 'swim') return;
     const hit = dvHit(e.clientX, e.clientY);
     if(hit){ DV.goal = hit; DV.hold = false; DV.tgt = null; sfx.tap(); return; }
+    if(DV.grab) dvLetGo();   // держалась за ласту — отпустила и плывёт сама
     DV.goal = null; DV.hold = true; DV.pid = e.pointerId; DV.tgt = dvClamp(dvPoint(e.clientX, e.clientY));
   });
   mgOn(mgRoot, 'pointermove', e => { if(DV && DV.hold && e.pointerId === DV.pid && !DV.pause) DV.tgt = dvClamp(dvPoint(e.clientX, e.clientY)); });
   for(const ev of ['pointerup', 'pointercancel']) mgOn(mgRoot, ev, e => { if(DV && e.pointerId === DV.pid) DV.hold = false; });
   const keys = {ArrowLeft:[-1, 0], ArrowRight:[1, 0], ArrowUp:[0, 1], ArrowDown:[0, -1]};
-  const kd = e => { if(DV && keys[e.key]){ DV.key.set(...keys[e.key], 0); DV.goal = null; e.preventDefault(); } };
+  const kd = e => { if(DV && keys[e.key]){ DV.key.set(...keys[e.key], 0); DV.goal = null; if(DV.grab) dvLetGo(); e.preventDefault(); } };
   const ku = e => { if(DV && keys[e.key]){ const [x, y] = keys[e.key]; if(DV.key.x === x && DV.key.y === y) DV.key.set(0, 0, 0); } };
   mgOn(window, 'keydown', kd); mgOn(window, 'keyup', ku);
 }
@@ -586,9 +615,16 @@ function dvStep(dt){
       D.tgt = dvClamp(new V3(gp.x + side*(g.r + 0.7), gp.y + 0.15, 0));
       if(D.pos.distanceTo(gp) < g.r + 1.25){ D.goal = null; D.tgt = null; D.vel.multiplyScalar(0.3); D.face = gp.x > D.pos.x ? 1 : -1; g.go(); }
     }
+    // держусь за ласту напарника: плыву за ним чуть позади
+    if(D.grab && D.pal){ const P = D.pal; D.tgt = dvClamp(P.pos.clone().add(new V3(-P.face*1.1, -0.35, 0))); }
+    else if(D.grab) D.grab = false;
   }
+  // вдвоём быстрее: за мою ласту держится напарник или Пинг
+  const boost = (D.pal && D.pal.hd && !D.grab) || (D.ping && D.ping.hold) ? 1.3 : 1, vmax = D.grab ? DV_SPEED*1.7 : DV_SPEED*boost;
   const want = new V3();
-  if(D.tgt && !D.pause){ const d = D.tgt.clone().sub(D.pos), l = d.length(); if(l > 0.12) want.copy(d).multiplyScalar(Math.min(DV_SPEED, l*2.4)/l); else if(!D.hold) D.tgt = null; }
+  if(D.grab && D.pal && D.tgt && !D.pause){   // за ластой: скорость напарника плюс подтяжка к его ласте — не отстаём
+    want.copy(D.pal.v).addScaledVector(D.tgt.clone().sub(D.pos), 4); if(want.length() > vmax) want.setLength(vmax);
+  } else if(D.tgt && !D.pause){ const d = D.tgt.clone().sub(D.pos), l = d.length(); if(l > 0.12) want.copy(d).multiplyScalar(Math.min(vmax, l*2.4)/l); else if(!D.hold && !D.grab) D.tgt = null; }
   D.vel.lerp(want, Math.min(1, dt*(want.lengthSq() ? 3.2 : 1.6)));
   D.pos.addScaledVector(D.vel, dt); dvClamp(D.pos);
   if(Math.abs(D.vel.x) > 0.35) D.face = Math.sign(D.vel.x);
@@ -600,6 +636,9 @@ function dvStep(dt){
   else s.inner.rotation.x += (-pitch - s.inner.rotation.x)*Math.min(1, dt*6);
   const sp = D.vel.length();
   s.flap = 0.15 + Math.min(1, sp/DV_SPEED)*0.75;
+  if(D.own) updateSeal(s, now, dt);   // свой тюлень по сети (малыш из уголка обновляется в pet.js)
+  D.safeT = Math.max(0, D.safeT - dt);
+  if((boost > 1 || D.grab) && sp > 1 && Math.random() < dt*2.5) emit(TEX.heart, worldOf(s, new V3(0, 0.4, -0.6)), {v:new V3(-D.face*0.6, 0.8, 0), life:0.9, size:0.18});
   D.bubT -= dt;
   if(D.bubT < 0){ D.bubT = sp > 1 ? 0.25 : 0.9; emit(TEX.dot, worldOf(s, new V3(0, 0.1, 0.9)), {v:new V3((Math.random() - 0.5)*0.3, 1.3, 0), life:1.4, size:0.12 + Math.random()*0.08, grow:0.3}); }
   if(D.carry){ D.carry.position.copy(worldOf(s, new V3(0, 0.55, 1.05))).sub(DV_POS); D.carry.rotation.z += dt*2; }
@@ -610,12 +649,20 @@ function dvStep(dt){
   for(const c of D.maps) if(!c.got){ c.o.position.y = c.y0 + Math.sin(now*1.6 + c.i)*0.12; c.o.rotation.y = Math.sin(now*0.9 + c.i)*0.5; }
   if(D.chest.gl.visible) D.chest.gl.material.opacity = 0.5 + Math.sin(now*3)*0.3;
   for(const c of D.garden) dvGardenTick(c, dt);
-  if(!D.pause) dvSharkStep(dt);
+  const boss = !D.pal || D.auth;   // акулой и Мглой управляет хозяин комнаты (или я одна)
+  if(boss){ if(!D.pause){ dvSharkStep(dt); dvGloomStep(dt); } else { dvSharkPose(dt); dvGloomPose(dt); } }
+  else { dvSharkMirror(dt); dvGloomMirror(dt); }
   if(D.ping) dvPingStep(dt);
-  // свет: в глубине, под навесом грота, темнее
+  dvBigStep(dt);
+  if(D.pal0){ dvPalStep(dt); D.sendT -= dt; if(D.sendT <= 0){ D.sendT = 0.1; dvNetSend(); } }
+  // свет: в глубине, под навесом грота, темнее; пришла Мгла — темнеет вся бухта
   const cave = Math.max(0, Math.min(1, (D.pos.x - 44)/8));
-  HEMI.intensity = 0.74 - 0.34*cave; sun.intensity = 0.6 - 0.3*cave; dvRoot.userData.cauM.opacity = 0.16*(1 - cave*0.85);
-  scene.fog.color.setHex(0x3E8FC0).lerp(DV_DEEP, cave*0.7); scene.background.copy(scene.fog.color);
+  D.dark += ((dvGloomOn() ? 1 : 0) - D.dark)*Math.min(1, dt*0.9);
+  const dk = 1 - 0.55*D.dark, gd = D.gl.o.visible ? Math.hypot(D.gl.x - D.pos.x, D.gl.y - D.pos.y) : 99;
+  HEMI.intensity = (0.74 - 0.34*cave)*dk; sun.intensity = (0.6 - 0.3*cave)*dk; dvRoot.userData.cauM.opacity = 0.16*(1 - cave*0.85)*dk;
+  scene.fog.color.setHex(0x3E8FC0).lerp(DV_DEEP, cave*0.7).lerp(DV_GLOOM_FOG, D.dark*0.65); scene.background.copy(scene.fog.color);
+  dvRoot.userData.backM.color.setScalar(1 - 0.62*D.dark); dvRoot.userData.surfM.color.setScalar(1 - 0.5*D.dark);   // вода позади не освещается — темним сами
+  if(D.vig) D.vig.style.opacity = (D.dark*0.55 + Math.max(0, 1 - gd/11)*0.45*D.gl.fade).toFixed(3);
   // камера: сбоку и чуть сверху вниз, как в аквариум — дно уходит вдаль. Камера всегда под водой (не выше −0,4)
   const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), d = Math.min(32, Math.max(4.3/(tv*camera.aspect), 4.8/tv)), hw = d*tv*camera.aspect;
   D.camD = d;
@@ -624,6 +671,7 @@ function dvStep(dt){
   runCam.pos.set(DV_POS.x + D.cx, D.cy, d); runCam.look.set(DV_POS.x + D.cx, D.cy - up, 0);
 }
 const DV_DEEP = new THREE.Color(0x1C4468), DV_TILT = Math.tan(0.1);   // камера смотрит вниз на ≈6°
+const DV_GLOOM_FOG = new THREE.Color(0x0E1428);
 function dvLifeStep(c, dt){
   const d = c.def, o = c.o;
   if(c.stuck){   // черепаха в сети: дёргается на месте
@@ -654,9 +702,11 @@ function dvLifeStep(c, dt){
   if(d.id === 'otter') o.rotation.z = Math.sin(now*1.3 + c.ph)*0.08;
 }
 function dvShoalStep(dt){
+  const G = DV.gl, scared = dvGloomOn();
   for(const sh of dvShoals){
     const me = DV.pos, away = sh.c.clone().sub(me); away.z = 0;
-    if(away.length() < 3.2){ sh.c.addScaledVector(away.normalize(), dt*3.2); }   // малыш рядом — стайка отплывает
+    if(scared){ sh.c.x += (sh.c.x < G.x ? -1 : 1)*dt*2.4; sh.c.y += (dvFloor(sh.c.x) + 1.3 - sh.c.y)*dt; sh.c.x = Math.max(-6, Math.min(DV_LEN + 6, sh.c.x)); }   // Мгла — все прячутся
+    else if(away.length() < 3.2){ sh.c.addScaledVector(away.normalize(), dt*3.2); }   // малыш рядом — стайка отплывает
     else sh.c.lerp(sh.home, dt*0.15);
     sh.c.y = Math.max(dvFloor(sh.c.x) + 1.2, Math.min(-1, sh.c.y));
     for(const f of sh.f){
@@ -863,69 +913,102 @@ function dvSharkStep(dt){
   const S = DV.sh, sv = save.dive.shark, o = S.o, me = DV.pos;
   S.t -= dt;
   const moveTo = (x, y, v) => { const dx = x - S.x, dy = y - S.y, l = Math.hypot(dx, dy); if(l > 0.05){ const k = Math.min(l, v*dt)/l; S.x += dx*k; S.y += dy*k; } if(Math.abs(dx) > 0.3) S.dir = Math.sign(dx); return l; };
-  if(S.st === 'off'){ if(S.t <= 0 && DV.mode === 'swim') dvSharkCome(); return; }
-  if(S.st === 'friend'){   // подружка: плавает туда-сюда по бухте
-    S.x += S.dir*1.2*dt; if(S.x > 60) S.dir = -1; if(S.x < 16) S.dir = 1;
-    S.y = -6.5 + Math.sin(now*0.5)*0.8;
+  if(S.st === 'off'){ if(S.t <= 0 && DV.mode === 'swim' && !dvGloomOn()) dvSharkCome(); dvSharkPose(dt); return; }
+  // за кем гоняется: по сети — за ближним из двоих, кто не спрятался
+  const who = dvWho(S.x, S.y), tp = who.pos;
+  if(S.st === 'friend'){   // подружка: плавает туда-сюда по бухте; пришла Мгла — прячется за кораблик
+    if(dvGloomOn()) moveTo(58, -9.5, 3.5);
+    else { S.x += S.dir*1.2*dt; if(S.x > 60) S.dir = -1; if(S.x < 16) S.dir = 1;
+      S.y += (-6.5 + Math.sin(now*0.5)*0.8 - S.y)*Math.min(1, dt*2); }
   } else if(S.st === 'warn'){
-    moveTo(me.x + S.side*9, me.y, 3);
+    moveTo(tp.x + S.side*9, tp.y, 3);
     if(S.t <= 0){ S.st = 'hunt'; S.t = 12; }
   } else if(S.st === 'hunt'){
-    const h = dvHidden();
+    const h = who.hid;
     if(h){
       const l = moveTo(h.x + S.side*(h.r + 1.4), h.y(), DV_SHARK_V);
-      if(l < 0.6){ S.st = 'sniff'; S.t = 2.4; floatText('?', dvW(new V3(S.x, S.y + 0.9, 0)), '#3B3A4A'); sfx.purr(); }
+      if(l < 0.6){ S.st = 'sniff'; S.t = 2.4; S.who = who.k; floatText('?', dvW(new V3(S.x, S.y + 0.9, 0)), '#3B3A4A'); sfx.purr(); }
     } else {
-      const l = moveTo(me.x, me.y, DV_SHARK_V);
-      if(l < 1.3) dvTag();
+      const l = moveTo(tp.x, tp.y, DV_SHARK_V);
+      if(l < 1.3 && !who.safe) who.k === 'pal' ? dvTagPal() : dvTag();
     }
     if(S.st === 'hunt' && S.t <= 0) dvSharkLeave(false);
   } else if(S.st === 'sniff'){
     S.y += Math.sin(now*6)*0.01;
-    if(!dvHidden()){ S.st = 'hunt'; S.t = Math.max(S.t, 5); }
+    const P = S.who === 'pal' ? DV.pal : null;
+    if(P ? P.h < 0 : !dvHidden()){ S.st = 'hunt'; S.t = Math.max(S.t, 5); }
     else if(S.t <= 0){ sv.hid++; persist(); dvSharkLeave(true); }
   } else if(S.st === 'leave'){
     S.x += S.dir*4.5*dt; S.y += (-4 - S.y)*dt;
-    if(S.t <= 0){ S.st = 'off'; S.t = DV_SHARK_T[1]; o.visible = false; dvRingsOn(false); }
-  } else if(S.st === 'sad'){   // потеряла мячик: ждёт рядом
-    const l = moveTo(me.x + S.side*4.2, Math.max(me.y, -9), 1.8);
+    if(S.t <= 0){ S.st = 'off'; S.t = DV_SHARK_T[1]; o.visible = false; if(!dvGloomOn()) dvRingsOn(false); }
+  } else if(S.st === 'sad'){   // потеряла мячик: ждёт рядом (пришла Мгла — прячется за кораблик)
+    const l = dvGloomOn() ? moveTo(58, -9.5, 3.5) : moveTo(me.x + S.side*4.2, Math.max(me.y, -9), 1.8);
     if(DV.carry && Math.hypot(S.x - me.x, S.y - me.y) < 3) dvGiveBall();
   }
+  dvSharkPose(dt);
+}
+function dvSharkPose(dt){   // акула на экране (по сети у гостя — только это: где она, присылает хозяин)
+  const S = DV.sh, o = S.o;
   o.position.set(S.x, S.y + Math.sin(now*2)*0.12, S.st === 'friend' ? -1.2 : 0.3);
   const w = S.dir > 0 ? 0 : Math.PI; o.rotation.y += (w - o.rotation.y)*Math.min(1, dt*3);
   o.userData.fl.forEach(f => f.rotation.y = Math.sin(now*(S.st === 'hunt' ? 9 : 4))*0.4);
   if(S.bub) S.bub.position.set(S.x + 0.5, S.y + 1.3 + Math.sin(now*2)*0.08, 0.3);
 }
+// за кем охотятся (акула и Мгла): я или напарник по сети — кто ближе и не спрятался; hid — где спрятался
+function dvWho(x, y){
+  const me = {k:'me', pos:DV.pos, hid:dvHidden(), safe:DV.safeT > 0 || DV.out}, P = DV.pal;
+  if(!P || P.gone) return me;
+  const pal = {k:'pal', pos:P.pos, hid:P.h >= 0 ? DV_HIDE[P.h] : null, safe:P.safe};
+  if(me.safe) return pal;
+  if(pal.safe) return me;
+  const score = w => Math.hypot(w.pos.x - x, w.pos.y - y) + (w.hid ? 30 : 0);   // спрятавшегося ищут, только если спрятались оба
+  return score(pal) < score(me) ? pal : me;
+}
 function dvSharkCome(){
   const S = DV.sh, sv = save.dive.shark, me = DV.pos;
   S.side = me.x > DV_LEN/2 ? -1 : 1; S.x = me.x + S.side*16; S.y = me.y; S.dir = -S.side; S.o.visible = true;
-  if(sv.hid >= DV_HIDES){   // всё поняли: она ищет мячик
+  if(sv.hid >= DV_HIDES && !DV.pal){   // всё поняли: она ищет мячик (эта история — одной; по сети акула просто играет в салки)
     S.st = 'sad'; S.bub = new THREE.Sprite(new THREE.SpriteMaterial({map:bubbleTex('⚽'), transparent:true, depthWrite:false})); S.bub.scale.setScalar(1.1); DV.grp.add(S.bub);
     sfx.mama(); dvBallOut();
     mgHint(L('Акула грустит… Она потеряла мячик! Поищи его у затонувшего кораблика ⚓', 'The shark looks sad… She lost her ball! Look for it by the sunken boat ⚓'));
     return;
   }
-  S.st = 'warn'; S.t = 2.2; sfx.shark(); dvRingsOn(true);
-  mgHint(L('🦈 Ой, акула! Спрячься в водорослях, в щели между камнями или в кораблике!', '🦈 Oh, a shark! Hide in the seaweed, between the rocks or in the boat!'));
+  S.st = 'warn'; S.t = 2.2; dvSharkHi();
+  if(DV.pal) netSend({t:'dev', k:'scome'});
   if(DV.ping){ const h = DV_HIDE.reduce((a, b) => Math.abs(b.x - me.x) < Math.abs(a.x - me.x) ? b : a); DV.ping.hide = h; floatText(L('Сюда! 🌿', 'Over here! 🌿'), dvW(DV.ping.pos).add(new V3(0, 0.9, 0)), '#3B8F5E'); }
 }
+function dvSharkHi(){   // акула приплыла (у гостя по сети — по сигналу хозяина)
+  sfx.shark(); dvRingsOn(true);
+  mgHint(L('🦈 Ой, акула! Спрячься в водорослях, в щели между камнями или в кораблике!', '🦈 Oh, a shark! Hide in the seaweed, between the rocks or in the boat!'));
+}
 function dvSharkLeave(fooled){
-  const S = DV.sh; S.st = 'leave'; S.t = 4; S.dir = S.x > DV.pos.x ? 1 : -1; dvRingsOn(false);
-  if(DV.ping) DV.ping.hide = null;
+  const S = DV.sh; S.st = 'leave'; S.t = 4; S.dir = S.x > DV.pos.x ? 1 : -1;
+  if(DV.pal) netSend({t:'dev', k:'sleave', f:fooled ? 1 : 0});
+  dvSharkBye(fooled);
+}
+function dvSharkBye(fooled){
+  if(!dvGloomOn()) dvRingsOn(false);
+  if(DV.ping && !dvGloomOn()) DV.ping.hide = null;
   if(fooled){
     const n = save.dive.shark.hid;
     floatText(L('Где же ты? 🤭', 'Where are you? 🤭'), dvW(new V3(S.x, S.y + 1, 0)), '#3B3A4A'); sfx.giggle();
-    mgHint(n >= DV_HIDES ? L('Не нашла! Кажется, акула что-то ищет… 🤔', 'She did not find you! The shark seems to be looking for something… 🤔') : L('Не нашла! Ты хорошо спряталась 🌿', 'She did not find you! Great hiding 🌿'));
+    mgHint(n >= DV_HIDES && !DV.pal0 ? L('Не нашла! Кажется, акула что-то ищет… 🤔', 'She did not find you! The shark seems to be looking for something… 🤔') : L('Не нашла! Ты хорошо спряталась 🌿', 'She did not find you! Great hiding 🌿'));
   } else mgHint(L('Акула уплыла. Уф! 🫧', 'The shark swam away. Phew! 🫧'));
   setTimeout(() => { if(DV && /🌿|🫧|🤔/.test(mgHintEl.textContent)) mgHint(''); }, 3000);
 }
-function dvTag(){   // догнала: это просто салки!
+function dvTag(remote){   // догнала: это просто салки! (remote — по сети догнали меня, акулу ведёт хозяин)
   const S = DV.sh; DV.tumble = 0.8; DV.vel.set(-S.dir*3, 1.5, 0);
   sfx.boing(); sfx.giggle();
   const at = headTop(DV.s); burst(TEX.puff, at, 8, 1.4, 0.3);
   floatText(L('Салки! Ты водишь 😄', 'Tag! You\'re it 😄'), at, '#D9527E');
-  dvSharkLeave(false);
+  if(!remote) dvSharkLeave(false);
   mgHint(L('Акула просто играет в салки! Но прятаться интереснее 🌿', 'The shark just plays tag! But hiding is more fun 🌿'));
+}
+function dvTagPal(){   // по сети акула догнала напарника
+  const P = DV.pal, at = dvW(P.pos).add(new V3(0, 1, 0));
+  sfx.boing(); burst(TEX.puff, at, 8, 1.4, 0.3); floatText(L('Салки! 😄', 'Tag! 😄'), at, '#D9527E');
+  netSend({t:'dev', k:'tag'});
+  dvSharkLeave(false);
 }
 function dvBallOut(){
   if(DV.ball) return;
@@ -970,14 +1053,337 @@ function dvSharkTap(){
 
 /* ---------- Пинг плывёт рядом ---------- */
 function dvPingStep(dt){
-  const P = DV.ping, p = P.s, me = DV.pos, sc = 0.8*0.62;
-  const want = P.hide ? new V3(P.hide.x + 0.6, P.hide.y() + 0.4, 0) : me.clone().add(new V3(-DV.face*1.9, 0.7 + Math.sin(now*1.2)*0.3, 0));
+  const P = DV.ping, p = P.s, me = DV.pos, sc = 0.8*0.62, B = DV.bigC;
+  const want = P.hide ? new V3(P.hide.x + 0.6, P.hide.y() + 0.4, 0)
+    : P.big && B ? B.g.position.clone().add(new V3(DV.pos.x < B.g.position.x ? 1.5 : -1.5, 0.5, -1))   // держит большую раковину с другой стороны
+    : P.hold ? me.clone().add(new V3(-DV.face*1.0, -0.3, 0))   // держится за ласту
+    : me.clone().add(new V3(-DV.face*1.9, 0.7 + Math.sin(now*1.2)*0.3, 0));
   const d = want.sub(P.pos), l = d.length();
   P.vel.lerp(l > 0.3 ? d.multiplyScalar(Math.min(DV_SPEED*1.1, l*1.8)/l) : new V3(), Math.min(1, dt*2.5));
   P.pos.addScaledVector(P.vel, dt); dvClamp(P.pos);
   if(Math.abs(P.vel.x) > 0.3) P.face = Math.sign(P.vel.x);
   P.yaw += (P.face*Math.PI/2 - P.yaw)*Math.min(1, dt*5);
-  p.root.position.copy(P.pos).add(new V3(0, -0.9*sc, 0.4));   // Пинг живёт в группе бухты: координаты бухты, не мира p.root.rotation.set(0, P.yaw, 0);
+  p.root.position.copy(P.pos).add(new V3(0, -0.9*sc, 0.4));   // Пинг живёт в группе бухты: координаты бухты, не мира
+  p.root.rotation.set(0, P.yaw, 0);   // плывёт боком, как малыш
   p.inner.rotation.x = 1.0; p.flap = 0.4 + Math.min(1, P.vel.length()/3)*0.6;
   updateSeal(p, now, dt);
 }
+
+function dvPingTap(){   // коснись Пинга — он держится за твою ласту (вдвоём быстрее); ещё раз — плывёт сам
+  const P = DV.ping, at = dvW(P.pos).add(new V3(0, 0.9, 0));
+  if(P.hide) return floatText(L('Тсс! Прячемся 🤫', 'Shh! We are hiding 🤫'), at, '#3E8DB8');
+  P.hold = !P.hold; P.big = false; sfx.quack();
+  floatText(P.hold ? L('Держусь за ласту! Вдвоём быстрее 💨', 'Holding your flipper! Faster together 💨') : L('Плыву сам 🐧', 'I\'ll swim on my own 🐧'), at, '#3E8DB8');
+}
+
+/* ---------- 🌑 Мгла: тёмное облако из грота. Её боятся даже акулы — от неё только прятаться ----------
+   Не рыба, а расплывчатая клякса: тёмные шары-клубы, мутный ореол, щупальца-струйки и два горящих глаза.
+   Выползает из грота → рыщет по бухте к выходу (DV_GLOOM_LONG с) → уползает обратно. Заметила (ближе DV_GLOOM_SEE) — гонится,
+   чуть медленнее малыша. Спрятался — шарит рядом и ползёт дальше. Поймала — «Ам!», темно, и выплёвывает наверх. */
+const INK_TEX = canvasTex(64, (g, s) => {
+  const gr = g.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+  gr.addColorStop(0, 'rgba(18,14,36,.85)'); gr.addColorStop(0.55, 'rgba(22,18,44,.45)'); gr.addColorStop(1, 'rgba(22,18,44,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, s, s);
+});
+function makeGloom(){
+  const g = new THREE.Group(), blobs = [], tents = [], glows = [];
+  const puff = new THREE.Sprite(new THREE.SpriteMaterial({map:INK_TEX, transparent:true, depthWrite:false, fog:false})); puff.scale.setScalar(6.2); puff.position.z = -0.6; g.add(puff);
+  const mat = (c, op) => new THREE.MeshBasicMaterial({color:c, transparent:true, opacity:op, depthWrite:false, fog:false});
+  [[0, 0, 0, 1.25, 0x15112A, 0.95], [0.9, 0.35, -0.2, 0.8, 0x211A3C, 0.75], [-0.95, 0.2, -0.1, 0.85, 0x1B1533, 0.8], [0.3, 0.9, -0.3, 0.7, 0x2A2148, 0.7],
+   [-0.4, -0.75, 0.1, 0.75, 0x191430, 0.8], [0.7, -0.6, -0.2, 0.6, 0x241C40, 0.7], [-1.4, -0.3, -0.4, 0.55, 0x2A2148, 0.6], [1.45, -0.1, -0.4, 0.5, 0x2A2148, 0.6]]
+    .forEach(([x, y, z, r, c, op], i) => { const m = new THREE.Mesh(SMALL, mat(c, op)); m.position.set(x, y, z); m.scale.setScalar(r); m.userData = {r, op, ph:i*1.7}; g.add(m); blobs.push(m); });
+  // щупальца-струйки снизу и сзади
+  for(let i = 0; i < 7; i++){
+    const p = new THREE.Group(), a = -0.9 + i*0.3; p.position.set(Math.sin(a)*0.9, -0.7, -0.2 + (i % 2)*0.3); g.add(p);
+    const pts = []; for(let j = 0; j <= 6; j++) pts.push(new V3(Math.sin(a)*j*0.18 + Math.sin(j*0.9 + i)*0.12, -j*0.32, 0));
+    const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 14, 0.11 - i%3*0.02, 6), mat(0x1B1533, 0.8)); p.add(t);
+    p.userData = {ph:i*0.9}; tents.push(p);
+  }
+  // глаза: жёлтые щёлки с сиянием, чуть «сердитые»
+  const eyes = new THREE.Group(); eyes.position.set(0, 0.25, 1.15); g.add(eyes);
+  for(const sd of [-1, 1]){
+    const gl = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX, color:0xFFD23F, transparent:true, depthWrite:false, fog:false})); gl.scale.setScalar(0.7); gl.position.set(sd*0.36, 0, -0.05); eyes.add(gl); glows.push(gl);
+    const e = new THREE.Mesh(SMALL, new THREE.MeshBasicMaterial({color:0xFFF0A0, fog:false})); e.scale.set(0.2, 0.1, 0.05); e.position.set(sd*0.36, 0, 0); e.rotation.z = sd*0.3; eyes.add(e);
+    const p = new THREE.Mesh(SMALL, new THREE.MeshBasicMaterial({color:0x2A1E08, fog:false})); p.scale.set(0.035, 0.085, 0.02); p.position.set(sd*0.36, 0, 0.05); eyes.add(p);
+  }
+  g.userData = {blobs, tents, glows, eyes, puff};
+  return g;
+}
+const dvGloomOn = () => !!(DV && DV.gl && DV.gl.st !== 'off' && DV.gl.st !== 'leave');
+function dvGloomStep(dt){
+  const G = DV.gl, D = DV;
+  G.t -= dt;
+  const mv = (x, y, v) => { const dx = x - G.x, dy = y - G.y, l = Math.hypot(dx, dy); if(l > 0.05){ const k = Math.min(l, v*dt)/l; G.x += dx*k; G.y += dy*k; } if(Math.abs(dx) > 0.3) G.dir = Math.sign(dx); return l; };
+  const aim = w => w.k === 'pal' && D.pal ? {pos:D.pal.pos, hid:D.pal.h >= 0 ? DV_HIDE[D.pal.h] : null, safe:D.pal.safe} : {pos:D.pos, hid:dvHidden(), safe:D.safeT > 0 || D.out || D.pause};
+  if(G.st === 'off'){
+    // не в первое погружение, не посреди салок и не пока что-то делаешь
+    if(G.t <= 0){ if(save.dive.n >= 2 && D.mode === 'swim' && !['warn', 'hunt', 'sniff'].includes(D.sh.st)) dvGloomCome(); else G.t = 6; }
+  } else if(G.st === 'warn'){
+    mv(DV_LEN + 1, -9, DV_GLOOM_V[0]);
+    if(G.t <= 0){ G.st = 'prowl'; G.t = DV_GLOOM_LONG; }
+  } else if(G.st === 'prowl'){
+    mv(G.x - 4, Math.max(dvFloor(G.x) + 1.6, Math.min(-1.8, -6 + Math.sin(G.t*0.45)*3.5)), DV_GLOOM_V[0]);
+    const w = dvWho(G.x, G.y), d = Math.hypot(w.pos.x - G.x, w.pos.y - G.y);
+    if(!w.hid && !w.safe && d < DV_GLOOM_SEE){
+      G.st = 'chase'; G.ch = 0; G.who = w.k; sfx.gloomSee();
+      floatText('!', dvW(new V3(G.x, G.y + 1.8, 0)), '#FFD23F');
+      if(w.k === 'me') mgHint(L('Мгла тебя заметила! Плыви и прячься! 🌿', 'The Gloom has seen you! Swim and hide! 🌿'));
+    }
+    if(G.x < -3 || G.t <= 0) dvGloomLeave(false);
+  } else if(G.st === 'chase'){
+    G.ch += dt;
+    const w = aim({k:G.who});
+    if(w.hid || w.safe){ G.st = 'sniff'; G.t2 = 2.6; G.hs = w.hid; floatText('?', dvW(new V3(G.x, G.y + 1.8, 0)), '#FFD23F'); }
+    else {
+      const l = mv(w.pos.x, w.pos.y, DV_GLOOM_V[1]);
+      if(l < 1.5) G.who === 'pal' ? dvGloomGrabPal() : dvGloomGrab();
+      else if(G.ch > 8 || l > 12){ G.st = 'prowl'; if(G.who === 'me') mgHint(L('Оторвалась! Но Мгла ещё тут — спрячься 🌿', 'You got away! But the Gloom is still here — hide 🌿')); }
+    }
+  } else if(G.st === 'sniff'){   // шарит у укрытия; вылезешь рядом — снова погонится
+    G.t2 -= dt;
+    const hs = G.hs; if(hs) mv(hs.x + (G.x < hs.x ? -1 : 1)*(hs.r + 1.3), hs.y() + Math.sin(now*2)*0.4, 1.2);
+    const w = aim({k:G.who});
+    if(!w.hid && !w.safe && Math.hypot(w.pos.x - G.x, w.pos.y - G.y) < DV_GLOOM_SEE*0.7){ G.st = 'chase'; G.ch = 0; sfx.gloomSee(); }
+    else if(G.t2 <= 0){ G.st = 'prowl'; G.x -= 0.5; }
+  } else if(G.st === 'leave'){
+    mv(DV_LEN + 9, -10, 4.5);
+    if(G.x > DV_LEN + 7.5){ G.st = 'off'; G.t = DV_GLOOM_T[1] + Math.random()*20; }
+  }
+  dvGloomPose(dt);
+}
+function dvGloomPose(dt){
+  const G = DV.gl, o = G.o, u = o.userData;
+  G.fade += ((G.st !== 'off' && G.x < DV_LEN + 5 ? 1 : 0) - G.fade)*Math.min(1, dt*1.4);
+  o.visible = G.fade > 0.02;
+  if(!o.visible) return;
+  o.position.set(G.x, G.y + Math.sin(now*1.3)*0.25, 0.5);
+  const hunt = G.st === 'chase';
+  u.blobs.forEach(b => { const d = b.userData, k = 1 + Math.sin(now*(hunt ? 3.2 : 1.7) + d.ph)*0.12; b.scale.set(d.r*k, d.r*(2 - k), d.r); b.material.opacity = d.op*G.fade; });
+  u.puff.material.opacity = 0.8*G.fade; u.puff.scale.setScalar(6.2 + Math.sin(now*1.1)*0.5);
+  u.tents.forEach((p, i) => { p.rotation.z = Math.sin(now*(hunt ? 4 : 2) + p.userData.ph)*0.4 - G.dir*0.35; p.children[0].material.opacity = 0.8*G.fade; });
+  u.eyes.position.x += (G.dir*0.5 - u.eyes.position.x)*Math.min(1, dt*3);
+  const blink = (now*0.31 + 0.2) % 1 > 0.965 ? 0.12 : 1;
+  u.eyes.scale.set(1, blink*(hunt ? 1.25 : 1), 1);
+  u.glows.forEach(g => { g.material.opacity = (hunt ? 0.9 : 0.5 + Math.sin(now*2)*0.12)*G.fade; g.scale.setScalar(hunt ? 0.95 : 0.7); });
+  // за Мглой тянется муть
+  G.puffT -= dt;
+  if(G.puffT < 0 && G.fade > 0.5){ G.puffT = 0.16; emit(INK_TEX, dvW(o.position).add(new V3((Math.random() - 0.5)*2, (Math.random() - 0.5)*1.4, -0.4)), {v:new V3(-G.dir*0.5, 0.25, 0), life:1.6, size:1.2, grow:1.2}); }
+}
+function dvGloomCome(){
+  const G = DV.gl, S = DV.sh;
+  G.st = 'warn'; G.t = 3.2; G.x = DV_LEN + 7; G.y = -10; G.dir = -1; G.caught = false; G.fade = 0;
+  if(['warn', 'hunt', 'sniff'].includes(S.st)){   // даже акула боится Мглы — удирает
+    S.st = 'leave'; S.t = 4; S.dir = -1;
+    floatText(L('Ай! Мгла! 😱', 'Eek! The Gloom! 😱'), dvW(new V3(S.x, S.y + 1.2, 0)), '#3B3A4A');
+    if(DV.pal) netSend({t:'dev', k:'sleave', f:0});
+  }
+  if(DV.pal) netSend({t:'dev', k:'gcome'});
+  dvGloomFx(true);
+}
+function dvGloomLeave(caught){
+  const G = DV.gl; if(G.st === 'leave' || G.st === 'off') return;
+  G.st = 'leave'; G.caught = !!caught;
+  if(DV.pal) netSend({t:'dev', k:'gleave', c:caught ? 1 : 0});
+  dvGloomFx(false, caught);
+}
+function dvGloomFx(on, caught){   // что видно и слышно (у гостя по сети — по сигналам хозяина)
+  const D = DV, sv = save.dive.gloom;
+  if(on){
+    sv.met++; persist();
+    sfx.gloom(); document.body.classList.add('gloom-on'); dvRingsOn(true);
+    mgHint(sv.met <= 1 ? L('🌑 Из грота выползает Мгла! Её боятся даже акулы. Скорее прячься — в водоросли, в щель между камнями или в кораблик!', '🌑 The Gloom is crawling out of the grotto! Even sharks are scared of it. Quick, hide — in the seaweed, between the rocks or in the boat!')
+      : L('🌑 Мгла! Все прячутся — и ты прячься! 🌿', '🌑 The Gloom! Everyone hides — you hide too! 🌿'));
+    if(D.ping){
+      const P = D.ping; P.hold = false; P.big = false;
+      P.hide = DV_HIDE.reduce((a, b) => Math.abs(b.x - P.pos.x) < Math.abs(a.x - P.pos.x) ? b : a);
+      floatText(L('Ой-ой… Прячемся! 🐧', 'Uh-oh… Let\'s hide! 🐧'), dvW(P.pos).add(new V3(0, 0.9, 0)), '#3E8DB8');
+    }
+    return;
+  }
+  document.body.classList.remove('gloom-on');
+  if(!['warn', 'hunt', 'sniff'].includes(D.sh.st)) dvRingsOn(false);
+  if(D.ping) D.ping.hide = null;
+  if(D.out) return;
+  if(caught) mgHint(L('Мгла уползла в грот… Напарника выплюнуло наверх — сейчас вернётся 🫧', 'The Gloom crawled back into the grotto… Your partner was spat out to the surface — they will be back soon 🫧'));
+  else { sv.hid++; persist(); mgHint(L('Уф… Мгла уползла обратно в грот. Не нашла! 🫧', 'Phew… The Gloom crawled back into the grotto. It didn\'t find you! 🫧')); }
+  setTimeout(() => { if(DV && /🫧/.test(mgHintEl.textContent) && /Мгла|Gloom/.test(mgHintEl.textContent)) mgHint(''); }, 4000);
+}
+async function dvGloomGrab(){   // Мгла поймала меня: темно — и наверх (одна — домой, вдвоём — к началу бухты)
+  const D = DV; if(!D || D.out) return;
+  D.out = true; D.pause = true; D.hold = false; D.tgt = null; D.goal = null; D.vel.set(0, 0, 0); D.grab = false; D.bigOn = false;
+  save.dive.gloom.out++; persist();
+  sfx.gloomGrab(); mgHint('');
+  const ink = mgNode('div', 'dv-ink', `<p class="display">${L('Ам!', 'Gulp!')}</p>`);
+  setTimeout(() => ink.classList.add('on'), 30);
+  if(D.auth) dvGloomLeave(true);
+  await wait(1.6); if(DV !== D) return;
+  ink.querySelector('p').textContent = L('Мгла выплюнула тебя наверх!', 'The Gloom spat you out to the surface!');
+  if(!D.pal0){ await wait(1.2); if(DV === D) D.quit('gloom'); return; }
+  D.pos.set(1.6, -1.2, 0); D.cx = 1.6; D.cy = -4; D.s.inner.rotation.x = 0;
+  await wait(1); ink.classList.remove('on'); await wait(0.5); ink.remove();
+  if(DV !== D) return;
+  D.out = false; D.pause = false; D.safeT = 3;
+  mgHint(L('Брр! Тебя выплюнуло наверх. Ныряй обратно к напарнику 🫧', 'Brr! You were spat out to the surface. Dive back to your partner 🫧'));
+}
+function dvGloomGrabPal(){   // по сети Мгла поймала напарника
+  const P = DV.pal, at = dvW(P.pos).add(new V3(0, 1, 0));
+  sfx.gloomGrab(); burst(INK_TEX, at, 10, 1.6, 0.8);
+  floatText(L(`Ой! Мгла поймала: ${P.name}`, `Oh no! The Gloom got ${P.name}`), at, '#3B3A4A');
+  P.safe = true;
+  netSend({t:'dev', k:'gout'});
+  dvGloomLeave(true);
+}
+
+/* ---------- 🦪 большая раковина: открывается только вдвоём (по сети или с Пингом) ---------- */
+function dvBigMake(){
+  const x = DV_BIG_X, g = new THREE.Group(); g.position.set(x, dvFloor(x) + 0.25, 1.2); DV.grp.add(g);
+  const shm = toon(0xF0B6CC);
+  const bot = addOutline(new THREE.Mesh(new THREE.SphereGeometry(1, 24, 10, 0, Math.PI*2, Math.PI/2, Math.PI/2), shm), 1.05); bot.scale.set(1.25, 0.5, 1.0); g.add(bot);
+  const inside = new THREE.Mesh(new THREE.CircleGeometry(1, 24), toon(0xFBE6F0)); inside.rotation.x = -Math.PI/2; inside.scale.set(1.15, 0.9, 1); inside.position.y = 0.005; g.add(inside);
+  const hinge = new THREE.Group(); hinge.position.set(0, 0, -0.9); g.add(hinge);
+  const top = addOutline(new THREE.Mesh(new THREE.SphereGeometry(1, 24, 10, 0, Math.PI*2, 0, Math.PI/2), shm), 1.05); top.scale.set(1.25, 0.55, 1.0); top.position.z = 0.9; hinge.add(top);
+  for(let j = -3; j <= 3; j++){ const r = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.45, 1.5), toon(0xDA8FB0)); r.position.set(j*0.33, 0.22, 0.9); r.rotation.z = -j*0.22; hinge.add(r); }
+  const pearl = new THREE.Mesh(SMALL, new THREE.MeshBasicMaterial({color:0xFFF4FA})); pearl.scale.setScalar(0.3); pearl.position.y = 0.3; g.add(addOutline(pearl, 1.1));
+  const gl = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX, color:0xFFE0F0, transparent:true, depthWrite:false})); gl.scale.setScalar(3); gl.position.y = 0.4; g.add(gl);
+  const icon = new THREE.Sprite(new THREE.SpriteMaterial({map:bubbleTex('🤝'), transparent:true, depthWrite:false})); icon.scale.setScalar(0.95); icon.position.set(0, 1.7, 0); g.add(icon);
+  DV.bigC = {g, hinge, pearl, gl, icon, open:false, got:save.dive.big === dvToday()};
+  dvTap({k:'big', r:1.3, p:() => g.position.clone().add(new V3(0, 0.5, 0)), go:dvBigTap});
+}
+function dvBigTap(){
+  const D = DV, c = D.bigC, at = dvW(c.g.position).add(new V3(0, 1.6, 0));
+  if(c.open) return floatText(L('Открыта! ✨', 'It is open! ✨'), at, '#D9527E');
+  if(c.got && !D.pal0) return floatText(L('Большая жемчужина сегодня уже твоя. Завтра вырастет новая 🦪', 'The big pearl is already yours today. A new one grows by tomorrow 🦪'), at, '#6B6A7E');
+  D.bigOn = true; sfx.lever();
+  floatText(L('Тяжёлая! 💪', 'So heavy! 💪'), at, '#3B3A4A');
+  if(D.ping && !D.ping.hide){ D.ping.big = true; D.ping.hold = false; floatText(L('Помогу! 🐧', 'I\'ll help! 🐧'), dvW(D.ping.pos).add(new V3(0, 0.9, 0)), '#3E8DB8'); }
+  else if(D.pal){ if(!D.pal.b) mgHint(L(`Позови: ${D.pal.name}! Большую раковину открывают вдвоём 🤝`, `Call ${D.pal.name}! The giant clam opens only with two 🤝`)); }
+  else mgHint(L('Одной не открыть! Нужен напарник: сосед Пинг или папа по сети («Вместе» → 🤿) 🤝', 'Too heavy for one! You need a partner: Ping the neighbour, or Dad online (“Together” → 🤿) 🤝'));
+}
+function dvBigStep(dt){
+  const D = DV, c = D.bigC; if(!c) return;
+  c.icon.visible = !c.open; c.icon.position.y = 1.7 + Math.sin(now*2.2)*0.1;
+  if(!c.open) c.gl.material.opacity = 0.4 + Math.sin(now*2.4)*0.25;
+  const cp = c.g.position;
+  if(D.bigOn && (D.pos.distanceTo(cp) > 3.2 || D.out)){ D.bigOn = false; if(D.ping) D.ping.big = false; }
+  if(!c.open) c.hinge.rotation.x = D.bigOn || (D.pal && D.pal.b) ? -0.05 - Math.abs(Math.sin(now*9))*0.05 : 0;   // пытаются приподнять
+  if(c.open || !D.bigOn || (D.pal0 && !D.auth)) return;   // открывает хозяин комнаты
+  const pingOk = D.ping && D.ping.big && D.ping.pos.distanceTo(cp) < 2.6;
+  const palOk = D.pal && D.pal.b && D.pal.pos.distanceTo(cp) < 3.4;
+  if(pingOk || palOk){ if(D.pal) netSend({t:'dev', k:'bigo'}); dvBigOpen(); }
+}
+async function dvBigOpen(){
+  const D = DV, c = D && D.bigC; if(!c || c.open) return;
+  c.open = true; D.bigOn = false; if(D.ping) D.ping.big = false;
+  const at = dvW(c.g.position).add(new V3(0, 1, 0));
+  sfx.lever(); await tween(0.6, k => c.hinge.rotation.x = -0.95*ease.out(k)); if(DV !== D) return;
+  sfx.hug(); burst(TEX.star, at, 16, 2.2, 0.3); burst(TEX.heart, at, 8, 1.8, 0.26);
+  floatText(L('Вместе открыли! 🤝', 'Opened together! 🤝'), at.clone().add(new V3(0, 1, 0)), '#D9527E');
+  const p0 = c.pearl.position.clone();
+  await tween(0.7, k => { c.pearl.position.y = p0.y + Math.sin(k*Math.PI)*1.4 + k*0.4; c.pearl.scale.setScalar(0.3*(1 - k*0.5)); });
+  if(DV !== D) return;
+  c.pearl.visible = false; c.gl.visible = false;
+  if(!c.got){
+    c.got = true; save.dive.big = dvToday(); persist();
+    sfx.coin(); addShells(DV_BIG, toScreen(at));
+    floatText(L(`Большая жемчужина! +${DV_BIG} 🐚`, `A big pearl! +${DV_BIG} 🐚`), at, '#D9527E');
+  } else floatText(L('Твоя сегодня уже есть — эта напарнику 💗', 'You already have yours today — this one is for your partner 💗'), at, '#6B6A7E');
+}
+
+/* ---------- 🌐 вдвоём по сети: напарник плывёт рядом, держимся за ласты ---------- */
+function dvPalMake(pal){
+  const s = coSealOf(pal && pal.coat ? pal : null), sc = STAGES[Math.min(SHINY, Math.max(0, (pal && pal.stage) | 0))].sc;
+  s.root.scale.setScalar(sc); s.swimming = true; if(s.bubble) s.bubble.visible = false; scene.add(s.root);
+  const name = (pal && pal.name) || L('Папа', 'Dad');
+  const lbl = textSprite(name, '#3E8DB8'); lbl.scale.set(0.3 + name.length*0.17, 0.36, 1); DV.grp.add(lbl);
+  DV.pal = {s, sc, name, lbl, pos:new V3(0.2, -3, 0), tgt:new V3(0.2, -3, 0), v:new V3(), face:1, yaw:Math.PI/2, h:-1, hd:false, b:false, safe:false, at:now};
+  dvTap({k:'pal', r:0.9, p:() => DV.pal ? DV.pal.pos.clone() : new V3(0, 99, 0), on:() => !!DV.pal && !DV.grab, go:() => {
+    if(!DV.pal) return;
+    DV.grab = true; DV.bigOn = false; sfx.purr();
+    floatText(L('Держусь за ласту! 🤝', 'Holding the flipper! 🤝'), headTop(DV.s), '#D9527E');
+    if(!tipSeen('diveGrab')){ tipDone('diveGrab'); mgHint(L('Держишься за ласту — плывёте вместе и быстрее! Коснись экрана — отпустишь 🤝', 'You are holding the flipper — you swim together and faster! Tap the screen to let go 🤝')); }
+  }});
+}
+function dvLetGo(){ DV.grab = false; floatText('👋', headTop(DV.s), '#3E8DB8'); }
+function dvPalStep(dt){
+  const P = DV.pal; if(!P) return;
+  const ahead = Math.min(0.25, now - P.at), want = P.tgt.clone().addScaledVector(P.v, ahead);
+  P.pos.lerp(want, Math.min(1, dt*7));
+  P.yaw += (P.face*Math.PI/2 - P.yaw)*Math.min(1, dt*5);
+  const s = P.s, pitch = Math.max(-0.8, Math.min(0.8, Math.atan2(P.v.y, Math.abs(P.v.x) + 0.6)*0.8));
+  s.root.position.copy(dvW(P.pos)).add(new V3(0, -0.72*P.sc, 0)); s.root.rotation.set(0, P.yaw, 0);
+  s.inner.rotation.x += (-pitch - s.inner.rotation.x)*Math.min(1, dt*6);
+  s.flap = 0.15 + Math.min(1, P.v.length()/DV_SPEED)*0.75;
+  updateSeal(s, now, dt);
+  P.lbl.position.set(P.pos.x, P.pos.y + 1.05, 0.3); P.lbl.visible = P.h < 0;   // спрятался — имени не видно
+}
+function dvNetSend(){
+  const D = DV, h = dvHidden(), r = v => Math.round(v*100)/100;
+  netSend({t:'dp', x:r(D.pos.x), y:r(D.pos.y), vx:r(D.vel.x), vy:r(D.vel.y), f:D.face, h:h ? DV_HIDE.indexOf(h) : -1,
+    hd:D.grab ? 1 : 0, b:D.bigOn ? 1 : 0, s:D.pause || D.out || D.safeT > 0 ? 1 : 0});
+  if(D.auth && D.pal){ const S = D.sh, G = D.gl;
+    netSend({t:'dsh', s:{st:S.st, x:r(S.x), y:r(S.y), d:S.dir, v:S.o.visible ? 1 : 0}, g:{st:G.st, x:r(G.x), y:r(G.y), d:G.dir}}); }
+}
+function dvSharkMirror(dt){   // у гостя: акула там, где у хозяина
+  const S = DV.sh, m = DV.net && DV.net.s;
+  if(m){ S.st = m.st; S.o.visible = !!m.v; S.dir = m.d < 0 ? -1 : 1; const k = Math.min(1, dt*8); S.x += (m.x - S.x)*k; S.y += (m.y - S.y)*k; }
+  dvSharkPose(dt);
+}
+function dvGloomMirror(dt){
+  const G = DV.gl, m = DV.net && DV.net.g;
+  if(m){ if(G.st === 'off' && m.st !== 'off'){ G.x = m.x; G.y = m.y; } G.st = m.st; G.dir = m.d < 0 ? -1 : 1; const k = Math.min(1, dt*8); G.x += (m.x - G.x)*k; G.y += (m.y - G.y)*k; }
+  dvGloomPose(dt);
+}
+function dvNetWire(){
+  netOn('dp', m => {
+    const P = DV && DV.pal; if(!P) return;
+    P.tgt.set(+m.x || 0, +m.y || 0, 0); P.v.set(+m.vx || 0, +m.vy || 0, 0); P.face = m.f < 0 ? -1 : 1;
+    P.h = Number.isInteger(m.h) && DV_HIDE[m.h] ? m.h : -1; P.hd = !!m.hd; P.b = !!m.b; P.safe = !!m.s; P.at = now;
+  });
+  netOn('dsh', m => { if(DV && !DV.auth) DV.net = m; });
+  netOn('dev', m => { if(DV) dvNetEv(m); });
+  netOn('emo', () => { if(DV && DV.pal){ burst(TEX.heart, dvW(DV.pal.pos).add(new V3(0, 0.8, 0)), 8, 1.6, 0.3); sfx.purr(); } });
+  netOn('dbye', dvPalBye);
+  net.onLost = () => { if(DV && DV.pal) toast(L('Связь потерялась… Ждём напарника 🫧', 'Lost the connection… Waiting for your partner 🫧')); };
+  net.onBack = () => { if(DV && DV.pal) toast(L('Напарник снова тут! 🫧', 'Your partner is back! 🫧')); };
+}
+function dvNetEv(m){
+  const k = m.k;
+  if(k === 'scome') dvSharkHi();
+  else if(k === 'sleave'){ if(m.f){ save.dive.shark.hid++; persist(); } dvSharkBye(!!m.f); }
+  else if(k === 'tag') dvTag(true);
+  else if(k === 'gcome') dvGloomFx(true);
+  else if(k === 'gleave') dvGloomFx(false, !!m.c);
+  else if(k === 'gout') dvGloomGrab();
+  else if(k === 'bigo') dvBigOpen();
+}
+function dvPalBye(){   // напарник уплыл домой: дальше ныряем одни, акула и Мгла — теперь мои
+  const D = DV; if(!D || !D.pal) return;
+  toast(L(`${D.pal.name} уплывает домой. Пока-пока! 👋`, `${D.pal.name} swims home. Bye-bye! 👋`), 3200);
+  scene.remove(D.pal.s.root); D.grp.remove(D.pal.lbl); D.pal = null; D.grab = false;
+  if(!D.auth){
+    D.auth = true; D.net = null;
+    if(dvGloomOn()) dvGloomLeave(false); else if(D.gl.st === 'off') D.gl.t = DV_GLOOM_T[1];
+    if(D.sh.st === 'off') D.sh.t = DV_SHARK_T[1];
+  }
+}
+function dvNetUi(){
+  const b = mgNode('div', 'co-btns dv-btns', `<button class="round co-mic" aria-label="${L('Микрофон', 'Microphone')}">🎤</button>
+    <button class="round co-heart" aria-label="${L('Сердечко напарнику', 'A heart for your partner')}">💗</button>`);
+  gullMic(b.querySelector('.co-mic'));
+  const hb = b.querySelector('.co-heart');
+  mgOn(hb, 'pointerdown', e => e.stopPropagation());
+  mgOn(hb, 'click', e => { e.stopPropagation(); if(!DV) return; burst(TEX.heart, headTop(DV.s), 8, 1.6, 0.3); sfx.purr(); netSend({t:'emo'}); });
+}
+async function dvNetIntro(){
+  const n = DV.pal ? DV.pal.name : '';
+  mgHint(L(`Ныряем вместе: ${n}! Коснись напарника — возьмёшься за ласту 🤝`, `Diving together with ${n}! Tap your partner to hold their flipper 🤝`));
+  await wait(4.5); if(!DV) return;
+  mgHint(L('В глубине у кораблика — большая раковина. Её открывают только вдвоём 🦪', 'By the boat in the deep there is a giant clam. Only two can open it 🦪'));
+  await wait(4.5); if(DV && mgHintEl.textContent.includes('🦪')) mgHint('');
+}
+// из «Вместе» → 🤿 → «По сети» (js/coop.js, coopNet): ныряет свой тюлень, малыш ждёт в уголке
+function diveNet(pal){ return petDive(null, {pal:pal || {}}); }
+if(typeof CO_GAMES !== 'undefined') CO_GAMES.dive = {ic:'🤿', name:() => L('Нырнуть', 'Dive'),
+  say:() => L('Ныряем вдвоём в подводную бухту! Держитесь за ласты, открывайте большую раковину — и прячьтесь от акулы и Мглы.', 'Dive into the underwater bay together! Hold flippers, open the giant clam — and hide from the shark and the Gloom.'),
+  picks:() => `<button data-k="net" class="wide"><span class="ic">🌐</span><b>${L('По сети', 'Online')}</b><small>${L('с папой или другом', 'with Dad or a friend')}</small></button>
+    <p class="got small-note">${L('Одной или с Пингом — у малыша: ⚽ → 🤿 Нырнуть', 'On your own or with Ping — from the pup: ⚽ → 🤿 Dive')}</p>`};

@@ -111,6 +111,11 @@ const sfx = {
   quack(){ [0, 0.17].forEach((d, i) => { tone(760 - i*60, 0.13, {type:'triangle', vol:0.08, to:520 - i*40, delay:d, att:0.01, vib:0.05, vibHz:28}); tone(1500 - i*120, 0.1, {vol:0.02, to:1040, delay:d, att:0.01}); }); },
   siren(){ [7, 5, 7, 5, 7, 5].forEach((n, i) => bell(pn(n), {vol:0.04, delay:i*0.26, d:0.3})); },   // «скорая»: ти-ду, ти-ду — колокольчики, не вой
   shark(){ [[0, 98], [0.34, 104], [0.62, 98], [0.8, 104]].forEach(([d, f]) => tone(f, 0.22, {type:'triangle', vol:0.1, delay:d, to:f*0.94, att:0.012})); bell(pn(9), {vol:0.03, delay:1.0, d:0.4}); },   // «дуу-дум» акулы — смешно, не страшно
+  // Мгла из грота (подводная бухта): низкий гул с «биением» и шорох, как будто вода темнеет
+  gloom(){ tone(55, 2.2, {type:'triangle', vol:0.13, to:46, att:0.5}); tone(58.3, 2.2, {type:'triangle', vol:0.1, to:49, att:0.6});
+    noise(2.0, {vol:0.1, freq:260, to:90, att:0.6}); bell(pn(-6), {vol:0.025, delay:1.3, d:1.2}); },
+  gloomSee(){ tone(110, 0.5, {type:'triangle', vol:0.12, to:82, att:0.02}); tone(116, 0.5, {type:'triangle', vol:0.08, to:87, att:0.02, delay:0.05}); },   // заметила!
+  gloomGrab(){ tone(160, 0.6, {type:'triangle', vol:0.14, to:55, att:0.02}); noise(0.8, {vol:0.16, freq:900, to:150, att:0.05}); tone(70, 0.9, {vol:0.1, delay:0.2, to:50}); },   // «ам!» — и темно
   giggle(){ [7, 8, 7, 9, 8].forEach((n,i) => squeak(pn(n), pn(n)*1.12, 0.08, {vol:0.05, delay:i*0.085})); },
   whoosh(){ noise(0.4, {vol:0.2, freq:600, to:2200, att:0.12}); },
   pop(){ const f = jit(440); tone(f, 0.09, {vol:0.16, to:f*2.1, att:0.004}); },
@@ -159,6 +164,7 @@ const TUNE_RUN = {
 const TUNE_NIGHT = {   // колыбельная — родня звука sfx.lullaby
   A:mp('C F C G C F G C', '2 . 1 . 0 . | -1 . . . 0 . | 2 . 1 . 0 . | -2 . . . . . | 0 . 1 . 2 . | 3 . 2 . 0 . | 1 . . . -2 . | 0 . . . . .'),
   R:mp('C F G C')};
+const TUNE_GLOOM = {A:mp('Am F Am F', '0 . . . -1 . . . | . . . . . . . . | 0 . . . -2 . . . | . . . . -1 . . .')};   // Мгла: два аккорда и редкие низкие ноты
 // bpm — четверти в минуту, bar — восьмушек в такте, style — аккомпанемент, inst — чем играет мелодия, shift — сдвиг ступеней, vol — громкость MUS
 const TUNES = {
   hosp: {parts:TUNE_HOSP,  seq:'ABAR', bpm:84,  bar:8, style:'box',   inst:'box', shift:0,  vol:0.28},
@@ -167,11 +173,13 @@ const TUNES = {
   run:  {parts:TUNE_RUN,   seq:'AABA', bpm:128, bar:8, style:'run',   inst:'mar', shift:0,  vol:0.3},
   map:  {parts:TUNE_RUN,   seq:'ABAB', bpm:100, bar:8, style:'box',   inst:'box', shift:0,  vol:0.24},
   night:{parts:TUNE_NIGHT, seq:'ARAR', bpm:58,  bar:6, style:'waltz', inst:'box', shift:-5, vol:0.24},
-  sea:  {parts:TUNE_PET,   seq:'BRAR', bpm:72,  bar:6, style:'waltz', inst:'mar', shift:-3, vol:0.24}   // под водой: медленно и мягко
+  sea:  {parts:TUNE_PET,   seq:'BRAR', bpm:72,  bar:6, style:'waltz', inst:'mar', shift:-3, vol:0.24},   // под водой: медленно и мягко
+  gloom:{parts:TUNE_GLOOM, seq:'A',    bpm:50,  bar:8, style:'box',   inst:'box', shift:-10, vol:0.2}    // пришла Мгла: медленно, низко, тревожно
 };
 function musicMood(){
   if(musForce) return musForce;
   const b = document.body.classList;
+  if(b.contains('gloom-on')) return 'gloom';
   if(b.contains('dive-on')) return 'sea';
   if(b.contains('run-on')) return R && R.paused ? 'map' : 'run';
   if(b.contains('map-on')) return 'map';

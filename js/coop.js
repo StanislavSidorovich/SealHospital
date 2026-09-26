@@ -534,7 +534,8 @@ const CO_GAMES = {
 };
 // какие игры есть (старый кеш мог не отдать новые файлы)
 const coGamesOn = () => Object.keys(CO_GAMES).filter(g => g === 'rescue' ? typeof rescueGame === 'function'
-  : g === 'road' ? typeof roadGame === 'function' : g === 'code' ? typeof iceGame === 'function' : true);
+  : g === 'road' ? typeof roadGame === 'function' : g === 'code' ? typeof iceGame === 'function'
+  : g === 'dive' ? typeof diveNet === 'function' && netAvail() : true);   // 🤿 нырнуть вдвоём (js/dive.js) — только по сети
 async function coopMenu(){
   for(;;){
     mgOpen(L('Играем вместе!', 'Let\'s play together!'));
@@ -590,7 +591,8 @@ async function coopNet(game){
     g = pal.want; coGame = g;
     toast(L(`Напарник выбрал «${CO_GAMES[g].name()}» — играем в неё!`, `Your partner picked “${CO_GAMES[g].name()}” — let's play that!`), 3200);
   }
-  return g === 'rescue' ? rescueGame('net', pal) : g === 'road' && typeof roadGame === 'function' ? roadGame('net', pal) : coopFight('net', pal);
+  return g === 'rescue' ? rescueGame('net', pal) : g === 'road' && typeof roadGame === 'function' ? roadGame('net', pal)
+    : g === 'dive' && typeof diveNet === 'function' ? diveNet(pal) : coopFight('net', pal);
 }
 function coopPlay(pick){
   if(pick.game === 'code') return iceGame(pick.mode);
@@ -723,7 +725,7 @@ async function coResultPanel(res){
 FUN_COST.coop = {food:0.2, bath:0.2, sleep:0.2};
 let coGull = false;   // последний раз летали чайкой в чужом забеге (js/gull.js), а не бились с Тучей
 FUN_SAY.coop = () => coGull ? L('Хорошо полетали чайкой! 🐦', 'Great flying as the gull! 🐦')
-  : coGame === 'code' ? L('Какой хитрый код! 🧊', 'What a tricky code! 🧊') : coGame === 'rescue' ? L('Потеряшка нашла маму — мы молодцы! 💗', 'The lost pup found mum — well done us! 💗') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
+  : coGame === 'code' ? L('Какой хитрый код! 🧊', 'What a tricky code! 🧊') : coGame === 'dive' ? L('Хорошо поплавали вместе! 🤿', 'What a swim together! 🤿') : coGame === 'rescue' ? L('Потеряшка нашла маму — мы молодцы! 💗', 'The lost pup found mum — well done us! 💗') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
 async function coopFromPet(s){
   if(typeof GL !== 'undefined' && GL && GL.home) gullRunEnd(true);   // чайка порхала над уголком — отпускаем: новая игра соединяется заново
   const pick = await coopMenu();
