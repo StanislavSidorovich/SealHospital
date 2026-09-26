@@ -132,6 +132,7 @@ const LIST = [
   ['mama', L('«Ма-ма!»', '“Mu-um!”'), L('Потеряшка зовёт маму (спасаем вдвоём)', 'The lost pup calls for mum (rescue together)'), 1],
   ['lever', L('Рычаг', 'Lever'), L('Щёлк — открылась дверь (спасаем вдвоём)', 'Click — a door opened (rescue together)'), 1],
   ['siren', L('Сирена скорой', 'Ambulance siren'), L('Событие «Скорая»: малыш в сети', 'Emergency event: a pup in a net'), 1],
+  ['shark', L('Акула «дуу-дум»', 'Shark “duh-dum”'), L('Акула-непоседа приплыла поиграть в салки (подводная бухта)', 'The playful shark comes to play tag (underwater bay)'), 1],
   ['giggle', L('Хихиканье', 'Giggle'), L('Щекотка', 'Tickles')],
   ['chomp', L('Ам!', 'Chomp'), L('Ест рыбку', 'Eats a fish')],
   ['sneeze', L('Апчхи!', 'Achoo!'), L('Пациент чихает', 'A patient sneezes')],
@@ -163,7 +164,7 @@ $('#btnClear').textContent = L('↺ Заново', '↺ Reset');
 
 // фоновая музыка: у каждой мелодии своя кнопка, ⏹ — тишина
 const TLIST = [['hosp', L('🏥 Больница', '🏥 Hospital')], ['pet', L('🦭 Уголок малыша', '🦭 Pup corner')], ['home', L('🏠 Иглу', '🏠 Igloo')],
-  ['run', L('🏃 Забег', '🏃 Run')], ['map', L('🗺️ Карта островов', '🗺️ Island map')], ['night', L('🌙 Колыбельная', '🌙 Lullaby')]];
+  ['run', L('🏃 Забег', '🏃 Run')], ['map', L('🗺️ Карта островов', '🗺️ Island map')], ['night', L('🌙 Колыбельная', '🌙 Lullaby')], ['sea', L('🤿 Под водой', '🤿 Underwater')]];
 $('#t3').textContent = L('🎵 Музыка', '🎵 Music');
 $('#tunes').innerHTML = TLIST.map(([k, n]) => `<button data-t="${k}">${n}</button>`).join('') + `<button data-t="">⏹</button>`;
 $('#tunes').addEventListener('click', e => {

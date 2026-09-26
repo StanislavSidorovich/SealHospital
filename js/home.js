@@ -47,10 +47,14 @@ const FURN = [
   {id:'win_heart',   slot:'window', name:L('Окно-сердечко', 'Heart window'),   price:35},
   {id:'shelf',       slot:'shelf',  name:L('Полка находок', 'Treasure shelf'), price:0},
   {id:'pic_photo',   slot:'pic',    name:L('Фото в рамке', 'Framed photo'),    price:10},
-  {id:'pic_heart',   slot:'pic',    name:L('Рамка-сердечко', 'Heart frame'),   price:20}
+  {id:'pic_heart',   slot:'pic',    name:L('Рамка-сердечко', 'Heart frame'),   price:20},
+  // подарки из подводной бухты (js/dive.js): не продаются, появляются в выборе, когда получены
+  {id:'lamp_pearl',  slot:'lamp',   name:L('Лампа-жемчужина', 'Pearl lamp'),   price:0, gift:true},
+  {id:'rug_shark',   slot:'rug',    name:L('Коврик-акулёнок', 'Shark rug'),    price:0, gift:true},
+  {id:'pic_sea',     slot:'pic',    name:L('Морские жители', 'Sea friends'),   price:0, gift:true}
 ];
 const furn = id => FURN.find(x => x.id === id);
-const homeHas = id => { const f = furn(id); return !!f && (!f.price || owns(id)); };
+const homeHas = id => { const f = furn(id); return !!f && ((!f.price && !f.gift) || owns(id)); };
 
 /* ---------- комната: пол, купол в разрезе, снежный бортик, снег вокруг ---------- */
 const IGLOO_TEX = canvasTex(512, (g, w, h) => {   // ледяные кирпичики изнутри
@@ -317,6 +321,44 @@ const FURN_MAKE = {
     const hrt = addOutline(new THREE.Mesh(HEART_GEO, toon(0xFF6F95)), 1.1); hrt.scale.setScalar(0.22); hrt.position.set(0.42, 0.42, 0.08); g.add(hrt);
     return g;
   },
+  lamp_pearl(){   // раскрытая раковина, внутри светится жемчужина
+    const g = lampBase(1.05), sm = toon(0xE7B8E6);
+    const bot = addOutline(new THREE.Mesh(new THREE.SphereGeometry(0.55, 24, 10, 0, Math.PI*2, Math.PI/2, Math.PI/2), sm), 1.05); bot.scale.y = 0.45; bot.position.y = 1.2; g.add(bot);
+    const back = new THREE.Group(); back.position.set(0, 1.2, -0.45); back.rotation.x = -1.1; g.add(back);
+    const top = addOutline(new THREE.Mesh(new THREE.SphereGeometry(0.55, 24, 10, 0, Math.PI*2, 0, Math.PI/2), sm), 1.05); top.scale.y = 0.45; top.position.z = 0.45; back.add(top);
+    const pm = new THREE.MeshBasicMaterial({color:0xFFF6FB});
+    const pearl = addOutline(new THREE.Mesh(SMALL, pm), 1.08); pearl.scale.setScalar(0.24); pearl.position.set(0, 1.36, 0.05); g.add(pearl);
+    const gl = glow(0xFFE6F4, 2.4); gl.position.set(0, 1.4, 0.3); g.add(gl);
+    g.userData = {bulb:pm, on:0xFFF6FB, off:0xD9CDD6, glow:gl};
+    return g;
+  },
+  rug_shark(){   // акулёнок-подружка из бухты: серо-голубой, белое пузико, улыбка
+    const g = new THREE.Group();
+    const body = new THREE.Shape(); body.absellipse(0, 0, 1.3, 0.62, 0, Math.PI*2);
+    const tail = new THREE.Shape(); tail.moveTo(-1.1, 0); tail.lineTo(-1.9, 0.72); tail.quadraticCurveTo(-1.62, 0, -1.9, -0.72); tail.closePath();
+    const fin = new THREE.Shape(); fin.moveTo(-0.35, 0.5); fin.lineTo(0.05, 1.12); fin.lineTo(0.35, 0.5); fin.closePath();
+    const belly = new THREE.Shape(); belly.absellipse(0.15, -0.2, 0.95, 0.3, 0, Math.PI*2);
+    for(const [sh, col, y, k, b] of [[body, INK, 0.004, 1.06, true], [tail, INK, 0.004, 1.06, true], [fin, INK, 0.004, 1.08, true],
+      [body, 0x9DB4D6, 0.01, 1, false], [tail, 0x8FA8CC, 0.01, 1, false], [fin, 0x8FA8CC, 0.01, 1, false], [belly, 0xFFFDF8, 0.014, 1, false]]){ const m = flat(sh, col, y, k, b); m.position.x = 0.25; g.add(m); }
+    const eye = new THREE.Mesh(new THREE.CircleGeometry(0.11, 16), inkMat); eye.rotation.x = -Math.PI/2; eye.position.set(1.0, 0.02, -0.16); g.add(eye);
+    const smile = new THREE.Mesh(new THREE.RingGeometry(0.12, 0.17, 16, 1, Math.PI, Math.PI), inkMat); smile.rotation.x = -Math.PI/2; smile.position.set(1.18, 0.022, 0.12); g.add(smile);
+    const bl = new THREE.Mesh(new THREE.CircleGeometry(0.1, 16), new THREE.MeshBasicMaterial({color:0xFFB3C7})); bl.rotation.x = -Math.PI/2; bl.position.set(0.82, 0.02, 0.05); g.add(bl);
+    g.rotation.y = 0.15; return g;
+  },
+  pic_sea(){   // картина за всю энциклопедию моря: бухта с жителями
+    const g = new THREE.Group();
+    const fr = addOutline(new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 0.08), toon(0x8FC7E8)), 1.05); g.add(fr);
+    const tex = canvasTex(256, (c, w, h) => {
+      const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#9EDDF2'); gr.addColorStop(1, '#3E8FC0'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+      c.fillStyle = '#E9D3A8'; c.beginPath(); c.moveTo(0, h*0.82); c.quadraticCurveTo(w/2, h*0.7, w, h*0.85); c.lineTo(w, h); c.lineTo(0, h); c.fill();
+      c.strokeStyle = '#4FA877'; c.lineWidth = 10; c.lineCap = 'round';
+      for(const x of [30, 52, 214]){ c.beginPath(); c.moveTo(x, h*0.84); for(let y = h*0.84; y > h*0.3; y -= 8) c.lineTo(x + Math.sin(y/14)*7, y); c.stroke(); }
+      c.font = '44px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      [['🐢', 128, 70], ['🐙', 190, 160], ['🦀', 90, 170], ['⭐', 150, 175], ['🪼', 70, 90], ['🦈', 190, 60]].forEach(([e, x, y]) => c.fillText(e, x, y));
+    }, 192);
+    const ph = new THREE.Mesh(new THREE.PlaneGeometry(1.04, 0.74), new THREE.MeshBasicMaterial({map:tex})); ph.position.z = 0.045; g.add(ph);
+    return g;
+  },
   pic_heart(){
     const g = new THREE.Group();
     const ph = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), new THREE.MeshBasicMaterial({map:photoTex(true), transparent:true})); ph.position.y = 0.03; g.add(ph);
@@ -522,7 +564,7 @@ for(const ev of ['pointerup', 'pointercancel']) canvas.addEventListener(ev, e =>
 async function homePick(k){
   if(busy || !mgRoot.hidden) return;
   setBusy(true); homeIdleT = 12;
-  const sl = HOME_SLOTS[k], was = homeHas(save.home.s[k]) ? save.home.s[k] : null, list = FURN.filter(f => f.slot === k);
+  const sl = HOME_SLOTS[k], was = homeHas(save.home.s[k]) ? save.home.s[k] : null, list = FURN.filter(f => f.slot === k && (!f.gift || owns(f.id)));
   let sel = was;
   const c = slotWorld(k);
   camGlide(c, sl.floor ? 3.4 : 2.9, 0.6, sl.floor ? 0.95 : 0.85, 0.45);
@@ -539,7 +581,7 @@ async function homePick(k){
       b.classList.toggle('sel', id === sel);
       if(!f){ pr.textContent = was === null ? L('Сейчас', 'Now') : ''; pr.hidden = was !== null; return; }
       pr.className = 'price' + (homeHas(id) ? ' own' : '');
-      pr.textContent = id === was ? L('Стоит ✓', 'Here ✓') : homeHas(id) ? (f.price ? L('Есть ✓', 'Owned ✓') : L('Даром', 'Free')) : `🐚 ${f.price}`;
+      pr.textContent = id === was ? L('Стоит ✓', 'Here ✓') : homeHas(id) ? (f.gift ? L('Подарок 🎁', 'Gift 🎁') : f.price ? L('Есть ✓', 'Owned ✓') : L('Даром', 'Free')) : `🐚 ${f.price}`;
     });
     const f = sel && furn(sel); buy.classList.remove('off');
     if(sel === was) buy.textContent = L('Готово ✓', 'Done ✓');

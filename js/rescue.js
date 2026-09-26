@@ -961,9 +961,10 @@ async function rescueGame(mode, pal0 = null){
   if(mode === 'net') netOn('bye', () => {});
   let again = true, res = null;
   const fog = scene.fog;
-  let homeB = null, quit = null;
+  let homeB = null, quit = null, pend = null;   // pend — «Дальше»: следующий уровень без меню
   while(again){
-    const start = await rsRolePick(mode, palName);
+    const start = pend || await rsRolePick(mode, palName);
+    pend = null;
     if(!start){ if(mode === 'net'){ netSend({t:'bye'}); netClose(); } break; }
     const LV = RS_LVS[start.lv] || RS_LVS.bay;
     LV.build();
@@ -1012,7 +1013,14 @@ async function rescueGame(mode, pal0 = null){
     if(how === 'quit'){ if(Q.mode === 'net') netSend({t:'bye'}); mgClose(); rsClean(); break; }
     mgHint('');
     res = rsResults();
-    again = await rsResultPanel(res);
+    const k = await rsResultPanel(res);
+    again = !!k;
+    if(k && k.nx) pend = k.nx;                                  // гостю хозяин прислал следующий уровень
+    else if(k === 'next'){
+      const lv = rsNextLv(res.lv), seed = Math.floor(Math.random()*1e9);
+      rsLvPick = lv; pend = {role:myRole, seed, lv};
+      if(mode === 'net') netSend({t:'qagain', nx:{role:palRole, seed, lv}});
+    }
     mgClose(); rsClean();
     if(Q === null && mode === 'net' && !netLive()) break;
   }
@@ -1050,11 +1058,13 @@ function rsResults(){
     albumAdd({name:Q.L.photo(), img:photo, d:Date.now()}); renderAlbumCount();
   }catch(e){}
   persist();
-  return {gift, first, photo, mode:Q.mode, pal:Q.pal && !Q.pal.gone && Q.mode !== 'solo' ? Q.pal.name : null, netGone:!!Q.netGone,
+  return {gift, first, photo, mode:Q.mode, lv:id, pal:Q.pal && !Q.pal.gone && Q.mode !== 'solo' ? Q.pal.name : null, netGone:!!Q.netGone,
     ttl:Q.L.endTtl(), say:Q.L.endSay(), pearls:r.pearls[id].length, fresh:fresh.length, all3, paid:first || paid};
 }
-async function rsResultPanel(res){
-  const net1 = res.mode === 'net' && netLive();
+const rsNextLv = id => { const ids = Object.keys(RS_LVS), n = ids[ids.indexOf(id) + 1]; return n && rsLvOpen(n) ? n : null; };
+async function rsResultPanel(res){   // 'home' → false, 'again' → в меню уровней, 'next' → сразу следующий уровень
+  const net1 = res.mode === 'net' && netLive(), nx = rsNextLv(res.lv), lead = !res.netGone && (!net1 || net.host);
+  const allDone = !nx && Object.keys(RS_LVS).every(id => (rsResc().lv[id] || 0) > 0);
   const panel = mgNode('div', 'mg-panel run-end co-end', `
     <p class="ttl display">${res.ttl}</p>
     <p class="got">${res.say}</p>
@@ -1063,8 +1073,10 @@ async function rsResultPanel(res){
     <p class="got rs-pearls">🦪 ${L('Жемчужинки', 'Pearls')}: <b>${res.pearls}/3</b>${res.fresh ? ` · ${L('новых', 'new')}: +${res.fresh}` : ''}${res.all3 ? ` · ${L('все собраны! ✨', 'all found! ✨')}` : ''}</p>
     ${!res.paid ? `<p class="got">${L('Ракушки за спасение на сегодня собраны — завтра будут новые 🌊', 'Today\'s shells for rescues are collected — more tomorrow 🌊')}</p>` : ''}
     <p class="earned display">${res.gift ? `+${res.gift} 🐚` : ''}</p>
+    ${allDone ? `<p class="got">🏆 ${L('Все уровни пройдены! Можно выбрать любой снова', 'All levels done! Pick any one again')}</p>` : ''}
     <p class="got co-wait" hidden></p>
-    <div class="row"><button class="btn" data-k="home">${L('Домой 🏠', 'Home 🏠')}</button>${!res.netGone && (!net1 || net.host) ? `<button class="btn ghost" data-k="again">${L('Ещё раз ↻', 'Again ↻')}</button>` : ''}</div>`);
+    ${lead && nx ? `<button class="btn rs-next" data-k="next">${L('Дальше', 'Next')}: ${RS_LVS[nx].ic} ${RS_LVS[nx].name()} ➡️</button>` : ''}
+    <div class="row"><button class="btn${lead && nx ? ' ghost' : ''}" data-k="home">${L('Домой 🏠', 'Home 🏠')}</button>${lead ? `<button class="btn ghost" data-k="again">${L('Уровни ↻', 'Levels ↻')}</button>` : ''}</div>`);
   if(res.gift) setTimeout(() => addShells(res.gift, {x:innerWidth/2, y:innerHeight*0.4}), 900);
   if(save.pet && typeof petGive === 'function' && petSeal) setTimeout(() => { try{ petGive(5); }catch(e){} }, 1500);
   sfx.hug();
@@ -1072,11 +1084,11 @@ async function rsResultPanel(res){
     panel.querySelectorAll('[data-k]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); }));
     if(net1 && !net.host){
       const w = panel.querySelector('.co-wait'); w.hidden = false; w.textContent = L('Напарник решает: ещё раз или домой…', 'Your partner is deciding: again or home…');
-      netOn('qagain', () => r('again'));
+      netOn('qagain', m => r(m && m.nx ? {nx:m.nx} : 'again'));
     }
-    if(net1) netOn('bye', () => { const w = panel.querySelector('.co-wait'); w.hidden = false; w.textContent = L('Напарник ушёл домой 👋', 'Your partner went home 👋'); const ag = panel.querySelector('[data-k="again"]'); if(ag) ag.remove(); });
+    if(net1) netOn('bye', () => { const w = panel.querySelector('.co-wait'); w.hidden = false; w.textContent = L('Напарник ушёл домой 👋', 'Your partner went home 👋'); panel.querySelectorAll('[data-k="again"],[data-k="next"]').forEach(b => b.remove()); });
   });
   if(net1){ if(k === 'again' && net.host) netSend({t:'qagain'}); if(k === 'home') netSend({t:'bye'}); }
   panel.classList.add('away'); await wait(0.25);
-  return k === 'again';
+  return k === 'home' ? false : k;
 }

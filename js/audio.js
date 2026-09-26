@@ -110,6 +110,7 @@ const sfx = {
   // «кря» пингвина Пинга: гнусавое и смешное, два раза
   quack(){ [0, 0.17].forEach((d, i) => { tone(760 - i*60, 0.13, {type:'triangle', vol:0.08, to:520 - i*40, delay:d, att:0.01, vib:0.05, vibHz:28}); tone(1500 - i*120, 0.1, {vol:0.02, to:1040, delay:d, att:0.01}); }); },
   siren(){ [7, 5, 7, 5, 7, 5].forEach((n, i) => bell(pn(n), {vol:0.04, delay:i*0.26, d:0.3})); },   // «скорая»: ти-ду, ти-ду — колокольчики, не вой
+  shark(){ [[0, 98], [0.34, 104], [0.62, 98], [0.8, 104]].forEach(([d, f]) => tone(f, 0.22, {type:'triangle', vol:0.1, delay:d, to:f*0.94, att:0.012})); bell(pn(9), {vol:0.03, delay:1.0, d:0.4}); },   // «дуу-дум» акулы — смешно, не страшно
   giggle(){ [7, 8, 7, 9, 8].forEach((n,i) => squeak(pn(n), pn(n)*1.12, 0.08, {vol:0.05, delay:i*0.085})); },
   whoosh(){ noise(0.4, {vol:0.2, freq:600, to:2200, att:0.12}); },
   pop(){ const f = jit(440); tone(f, 0.09, {vol:0.16, to:f*2.1, att:0.004}); },
@@ -165,11 +166,13 @@ const TUNES = {
   home: {parts:TUNE_PET,   seq:'BARA', bpm:84,  bar:6, style:'waltz', inst:'mar', shift:-5, vol:0.28},
   run:  {parts:TUNE_RUN,   seq:'AABA', bpm:128, bar:8, style:'run',   inst:'mar', shift:0,  vol:0.3},
   map:  {parts:TUNE_RUN,   seq:'ABAB', bpm:100, bar:8, style:'box',   inst:'box', shift:0,  vol:0.24},
-  night:{parts:TUNE_NIGHT, seq:'ARAR', bpm:58,  bar:6, style:'waltz', inst:'box', shift:-5, vol:0.24}
+  night:{parts:TUNE_NIGHT, seq:'ARAR', bpm:58,  bar:6, style:'waltz', inst:'box', shift:-5, vol:0.24},
+  sea:  {parts:TUNE_PET,   seq:'BRAR', bpm:72,  bar:6, style:'waltz', inst:'mar', shift:-3, vol:0.24}   // под водой: медленно и мягко
 };
 function musicMood(){
   if(musForce) return musForce;
   const b = document.body.classList;
+  if(b.contains('dive-on')) return 'sea';
   if(b.contains('run-on')) return R && R.paused ? 'map' : 'run';
   if(b.contains('map-on')) return 'map';
   if(petMode) return petSeal && petSeal.sleeping ? 'night' : homeMode ? 'home' : 'pet';

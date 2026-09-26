@@ -679,3 +679,21 @@ body.ice-on #corner>:not(#btnSound){display:none!important}
 /* «Метель» (js/blizzard.js): белая пелена, видно только рядом */
 .bz-veil{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .rs-act.look{background:#FFF7DD}
+/* «Потеряшка»: «Дальше» — следующий уровень сразу */
+.rs-next{display:block;width:100%;margin:4px 0 8px}
+/* подводная бухта (js/dive.js) */
+.dv-hud .dv-book{pointer-events:auto;cursor:pointer;font:inherit;font-weight:800;font-size:17px;color:var(--ink);min-height:44px}
+.dv-card{text-align:center}
+.dv-card .dv-img{display:block;width:120px;height:120px;margin:0 auto 2px;object-fit:contain;border-radius:50%;background:#DDF3FA;border:2.5px solid var(--ink)}
+.dv-card .dv-fact{font-size:16px;font-weight:700;line-height:1.35;margin:4px 0 8px}
+.dv-book-panel .dv-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:6px 0}
+.dv-book-panel .dv-grid button{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 2px;min-height:64px;border:2px solid var(--ink);border-radius:12px;background:#EAF7FB;font:inherit;font-size:10.5px;font-weight:800;color:var(--ink);line-height:1.1;cursor:pointer}
+.dv-book-panel .dv-grid img{width:40px;height:40px;object-fit:contain}
+.dv-book-panel .dv-grid .no img{filter:brightness(0) opacity(.35)}
+.dv-book-panel .dv-grid .no{background:#F1F4F7}
+.dv-book-panel .dv-grid .tag{position:absolute;top:-7px;right:-4px;font-style:normal;font-size:9px;background:var(--pink);color:#fff;border:1.5px solid var(--ink);border-radius:8px;padding:0 4px}
+.dv-book-panel .dv-say{font-size:14px;min-height:2.6em;line-height:1.3}
+.target.dv-hide{border-color:#3B8F5E;width:70px;height:70px;margin:-35px 0 0 -35px}
+.dv-card .ttl{font-size:24px;margin:2px 0}
+.dv-book-panel .ttl{font-size:22px;margin:0}
+.dv-book-panel .got{margin:2px 0}
