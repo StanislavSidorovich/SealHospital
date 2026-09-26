@@ -631,7 +631,7 @@ async function coopFight(mode, pal0 = null){   // по сети зовёт coopN
   coopRoot.visible = true; runCam.on = true; HEMI.intensity = 0.62; sun.intensity = 0.58;
   document.body.classList.add('run-on');
   const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
-  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#btnSound').after(homeB);
+  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
   let quit = null;
   homeB.addEventListener('click', () => { sfx.tap(); if(quit) quit(); });
   let again = true, res = null;

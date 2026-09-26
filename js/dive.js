@@ -226,11 +226,13 @@ const DV_MAKE = {
     for(const sd of [-1, 1]){ const t = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.6, 4), toon(c)), 1.08); t.position.set(-0.22, sd*0.26, 0); t.rotation.z = sd > 0 ? 0.7 : Math.PI - 0.7; t.scale.z = 0.3; tail.add(t); }
     for(const sd of [-1, 1]){ const f = dvBlob(g, c, 0.3, 0.05, 0.14, 0.3, -0.3, sd*0.35); f.rotation.set(sd*0.5, 0, -0.6); }
     dvEyes(g, 0.72, 0.12, 0.3, 0.075); dvBlush(g, 0.78, -0.06, 0.33);
+    const mo = [];   // улыбка с клычками: в больнице её прячут, когда акула открывает рот (js/sharktooth.js)
     for(const sd of [-1, 1]){
       const m = new THREE.Mesh(SMALL, inkMat); m.scale.set(0.16, 0.025, 0.02); m.position.set(0.86, -0.17, sd*0.24); m.rotation.set(0, -sd*0.55, 0.25); g.add(m);
       const t = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.06, 4), whiteMat); t.rotation.z = Math.PI; t.position.set(0.86, -0.21, sd*0.26); g.add(t);
+      mo.push(m, t);
     }
-    g.userData.fl = fl; return g;
+    g.userData.fl = fl; g.userData.mo = mo; return g;
   }
 };
 // энциклопедия моря: порядок — как в книжке. mv: still — стоит, crawl — ползёт по дну, swim — плавает туда-сюда,
@@ -429,7 +431,7 @@ async function petDive(s, opt = {}){
   if(pal) dvNetUi();
   const vig = document.createElement('div'); vig.className = 'dv-vig'; canvas.after(vig); DV.vig = vig;   // темнота по краям, когда рядом Мгла (под кнопками)
   const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
-  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#btnSound').after(homeB);
+  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
   let done; const fin = new Promise(r => done = r);
   homeB.addEventListener('click', () => { sfx.tap(); if(DV && !DV.pause) done(); else if(DV) toast(L('Сначала закончи то, что начала 🫧', 'Finish what you started first 🫧')); });
   DV.quit = done;
@@ -918,6 +920,7 @@ function dvSharkStep(dt){
   S.t -= dt;
   const moveTo = (x, y, v) => { const dx = x - S.x, dy = y - S.y, l = Math.hypot(dx, dy); if(l > 0.05){ const k = Math.min(l, v*dt)/l; S.x += dx*k; S.y += dy*k; } if(Math.abs(dx) > 0.3) S.dir = Math.sign(dx); return l; };
   if(S.st === 'off'){ if(S.t <= 0 && DV.mode === 'swim' && !dvGloomOn()) dvSharkCome(); dvSharkPose(dt); return; }
+  if(S.st === 'ride') return dvRideStep(dt);   // катает малыша на спине (js/sharktooth.js)
   // за кем гоняется: по сети — за ближним из двоих, кто не спрятался
   const who = dvWho(S.x, S.y), tp = who.pos;
   if(S.st === 'friend'){   // подружка: плавает туда-сюда по бухте; пришла Мгла — прячется за кораблик
@@ -953,9 +956,9 @@ function dvSharkStep(dt){
 }
 function dvSharkPose(dt){   // акула на экране (по сети у гостя — только это: где она, присылает хозяин)
   const S = DV.sh, o = S.o;
-  o.position.set(S.x, S.y + Math.sin(now*2)*0.12, S.st === 'friend' ? -1.2 : 0.3);
+  o.position.set(S.x, S.y + Math.sin(now*2)*0.12, S.st === 'friend' ? -1.2 : S.st === 'ride' ? -0.25 : 0.3);
   const w = S.dir > 0 ? 0 : Math.PI; o.rotation.y += (w - o.rotation.y)*Math.min(1, dt*3);
-  o.userData.fl.forEach(f => f.rotation.y = Math.sin(now*(S.st === 'hunt' ? 9 : 4))*0.4);
+  o.userData.fl.forEach(f => f.rotation.y = Math.sin(now*(S.st === 'hunt' || S.st === 'ride' ? 9 : 4))*0.4);
   if(S.bub) S.bub.position.set(S.x + 0.5, S.y + 1.3 + Math.sin(now*2)*0.08, 0.3);
 }
 // за кем охотятся (акула и Мгла): я или напарник по сети — кто ближе и не спрятался; hid — где спрятался
@@ -1050,7 +1053,10 @@ async function dvGiveBall(){
 }
 function dvSharkTap(){
   const S = DV.sh, at = dvW(S.o.position).add(new V3(0, 1, 0));
-  if(S.st === 'friend'){ sfx.boing(); burst(TEX.heart, at, 8, 1.4, 0.26); floatText(L('Привет, подружка! 💗', 'Hi, friend! 💗'), at, '#D9527E'); if(!save.dive.seen.includes('shark')) dvPhoto('shark'); return; }
+  if(S.st === 'friend'){
+    if(!save.dive.seen.includes('shark')) return dvPhoto('shark');
+    if(dvRideOk()) return dvRide();   // вылечили зуб — катает на спине (js/sharktooth.js)
+    sfx.boing(); burst(TEX.heart, at, 8, 1.4, 0.26); floatText(L('Привет, подружка! 💗', 'Hi, friend! 💗'), at, '#D9527E'); return; }
   if(S.st === 'sad') return floatText(DV.carry ? L('Подплыви поближе с мячиком ⚽', 'Swim closer with the ball ⚽') : L('Где мой мячик? ⚽', 'Where is my ball? ⚽'), at, '#3B3A4A');
   floatText(L('Прячься! 🌿', 'Hide! 🌿'), at, '#3B3A4A');
 }

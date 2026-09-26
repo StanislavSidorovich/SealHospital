@@ -386,7 +386,7 @@ function vsGuestView(on, v = V){
     vsMic(bar.querySelector('.co-mic'));
     mgOn(mgRoot, 'pointerdown', e => { if(e.target.closest('button, .mg-panel')) return; e.preventDefault(); vsGuestTap(e.clientX, e.clientY); });
     const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
-    homeB.innerHTML = '<span aria-hidden="true">👋</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#btnSound').after(homeB);
+    homeB.innerHTML = '<span aria-hidden="true">👋</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
     homeB.addEventListener('click', vsByeTap); v.homeB = homeB;
     runCam.on = true; homeLights(false);
     const p0 = save.pet; save.pet = {name:v.name}; try{ drawSign(); }finally{ save.pet = p0; }   // на табличке — имя её малыша

@@ -784,7 +784,7 @@ function runBtn(on){
   if(b) return;
   b = document.createElement('button'); b.id = 'btnRunHome'; b.className = 'round home';
   b.innerHTML = '<span aria-hidden="true">🏠</span>'; b.setAttribute('aria-label', L('Пауза и домой', 'Pause and go home'));
-  $('#btnSound').after(b);
+  $('#corner').prepend(b);
   b.addEventListener('click', () => { sfx.tap(); runPause(); });
 }
 async function runPause(){

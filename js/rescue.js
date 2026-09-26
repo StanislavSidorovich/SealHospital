@@ -974,7 +974,7 @@ async function rescueGame(mode, pal0 = null){
       scene.fog = null; runCam.on = true; HEMI.intensity = 0.62; sun.intensity = 0.58;
       document.body.classList.add('run-on');
       homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
-      homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#btnSound').after(homeB);
+      homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
       homeB.addEventListener('click', () => { sfx.tap(); if(quit) quit(); });
     }
     LV.reset();

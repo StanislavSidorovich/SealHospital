@@ -4,7 +4,7 @@
      не сделала — завтра будут новые.
    — «Главы»: 8 глав истории. Пункты глав считаются из того, что уже лежит в сохранении (ничего нового не копим).
      Следующая глава открывается, когда в текущей сделана половина; праздник главы — когда сделано всё.
-     Пункты «скоро» — то, что ещё строим (зуб акулы, потеряшки 4–6, этапы «Дороги», аквариум, Великий шторм):
+     Пункты «скоро» — то, что ещё строим (потеряшки 4–6, этапы «Дороги», аквариум, Великий шторм):
      пока их нет, праздник такой главы впереди.
    Своё в сохранении — save.story (sanitizeStory в data.js):
      open — сколько глав открыто, fest:[номера отпразднованных глав], seen — сколько открытых глав уже показали,
@@ -66,10 +66,12 @@ const STORY = [
     about:L('В бухте живёт акула. Страшная? Посмотрим… И почему она всё время гонится за тобой?', 'A shark lives in the bay. Scary? We\'ll see… And why does it keep chasing you?'),
     end:L('Акула теперь друг и катает тебя на спине 🦈', 'The shark is your friend now and gives you rides 🦈'),
     items:[
-      {ic:'🫣', t:L('Спрячься от акулы в бухте', 'Hide from the shark in the bay'), n:() => [save.dive.shark.hid, 1], go:'dive'},
+      {ic:'🫣', t:L('Спрячься от акулы в бухте', 'Hide from the shark in the bay'), ok:() => save.dive.shark.hid > 0 || save.dive.shark.friend, go:'dive'},
       {ic:'🏁', t:L('Доплыви в «Салках» 3 раза', 'Finish «Tag» 3 times'), n:() => [save.dive.chase.n, 3], go:'chase'},
       {ic:'⭐', t:L('Три звезды в «Салках»', 'Three stars in «Tag»'), n:() => [save.dive.chase.best, 3], go:'chase'},
-      {ic:'🦷', t:L('Акула застряла… Что с ней?', 'The shark is stuck… What is wrong?'), soon:true}
+      {ic:'🦷', t:L('Акула застряла… Что с ней?', 'The shark is stuck… What is wrong?'), ok:() => save.dive.shark.tooth > 0, go:'chase'},
+      {ic:'🩺', t:L('Вылечи акуле зуб в больнице', 'Fix the shark\'s tooth in the hospital'), ok:() => save.dive.shark.tooth > 1, go:'hosp'},
+      {ic:'🌊', t:L('Покатайся на акуле в бухте', 'Ride the shark in the bay'), ok:() => !!save.dive.shark.ride, go:'dive'}
     ]},
   {ic:'🌑', name:L('Мгла', 'Gloom'),
     about:L('Из грота выползает тёмная Мгла, и все прячутся. Но что там за тихий плач?', 'A dark Gloom creeps out of the grotto and everyone hides. But what is that quiet crying?'),
@@ -144,6 +146,10 @@ const TODAY = [
     n:() => { const q = advQuests(); return [q.done.length, q.ids.length || 3]; }, go:'run'},
   {id:'road', ic:'🛣️', t:() => { const T = crTheme(); return L(`Дорога дня${T ? ': ' + T.ic + ' ' + T.name : ''}`, `Road of the day${T ? ': ' + T.ic + ' ' + T.name : ''}`); },
     show:() => !!save.pet, done:() => crTaskDone(), go:'road'},
+  {id:'tooth', ic:'🦷', t:() => L('Акула ждёт в больнице: болит зуб!', 'The shark is waiting in the hospital: toothache!'), show:() => save.dive.shark.tooth === 1,
+    done:() => false, go:'hosp'},
+  {id:'ride', ic:'🌊', t:() => L('Покатайся на акуле в бухте', 'Ride the shark in the bay'), show:() => !!save.pet && save.dive.shark.tooth === 2,
+    done:() => save.dive.shark.ride === dvToday(), go:'dive'},
   {id:'chase', ic:'🦈', t:() => { const T = chTheme(); return L(`Погоня дня${T ? ': ' + T.ic + ' ' + T.name : ''}`, `Chase of the day${T ? ': ' + T.ic + ' ' + T.name : ''}`); },
     show:() => !!save.pet, done:() => save.dive.chase.day.d === stDay() && save.dive.chase.day.n > 0, go:'chase'},
   {id:'garden', ic:'🌱', t:() => L('Рыбка-садовник ждёт с подарком', 'The gardener fish has a gift'), show:() => !!save.pet && stGardenGift(),

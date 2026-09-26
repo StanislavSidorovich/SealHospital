@@ -119,6 +119,7 @@ async function hop(s, h = 0.3, dur = 0.4){
   s.inner.position.y = 0;
 }
 async function spawnPatient(){
+  if(sharkDue()) return spawnShark();   // акула с больным зубом из «Салок» (js/sharktooth.js)
   if(pengDue()) return spawnImpostor();   // иногда вместо тюленя — пингвин в костюме (shift.js)
   const p = patientFor(save.progress);
   const seal = makeSeal(p);
@@ -376,6 +377,17 @@ $('#dadStats').addEventListener('toggle', () => { if($('#dadStats').open) render
 addEventListener('pagehide', persist);
 document.addEventListener('visibilitychange', () => { if(document.hidden) persist(); });
 $('#btnAlbum').addEventListener('click', () => { sfx.tap(); openAlbum(); });
+/* ---------------- 🎒 рюкзак: звук, альбом и настройки ----------------
+   В углу остаются главные кнопки (ракушки, почта, книга, малыш), остальное — в рюкзаке: полоска слева от 🎒.
+   Альбом и настройки закрывают рюкзак, звук — нет (видно, что переключилось); касание мимо — тоже закрывает. */
+const cornerEl = $('#corner'), bagBtn = $('#btnBag'), bagEl = $('#bag');
+function bagToggle(on = !cornerEl.classList.contains('bag-open')){
+  cornerEl.classList.toggle('bag-open', on); bagBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
+  if(on) bagEl.style.top = (bagBtn.offsetTop + bagBtn.offsetHeight/2 - bagEl.offsetHeight/2) + 'px';
+}
+bagBtn.addEventListener('click', () => { sfx.tap(); bagToggle(); });
+for(const id of ['#btnAlbum', '#btnSettings']) $(id).addEventListener('click', () => bagToggle(false));
+addEventListener('pointerdown', e => { if(cornerEl.classList.contains('bag-open') && !cornerEl.contains(e.target)) bagToggle(false); }, {capture:true});
 let albumFromCured = false;
 $('#btnCuredAlbum').addEventListener('click', () => { sfx.tap(); $('#cured').hidden = true; albumFromCured = true; openAlbum(); });
 $('#btnAlbumClose').addEventListener('click', () => {

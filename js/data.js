@@ -61,7 +61,8 @@ function sanitizeSt(a){
 }
 // dive = {n — сколько раз ныряли, seen:[жители из DV_LIFE, которых сфотографировали], day:{d, cl:[раковины, открытые сегодня]},
 //         garden:[когда посажен росток, мс, или 0 — три грядки], gh:[в какой день грядка последний раз дарила ракушки],
-//         turt — черепаху освободили, shark:{hid — сколько раз спрятались, friend — подружились}, map:[найденные кусочки 0–2], chest, book — подарок за всю энциклопедию,
+//         turt — черепаху освободили, shark:{hid — сколько раз спрятались, friend — подружились,
+//         tooth — история зуба (js/sharktooth.js): 0 — ещё нет, 1 — застряла в «Салках», ждёт в больнице, 2 — вылечили, катает; ride — день последнего катания}, map:[найденные кусочки 0–2], chest, book — подарок за всю энциклопедию,
 //         big — в какой день открыли большую раковину (вдвоём), gloom:{met — сколько раз приходила Мгла, hid — спрятались, out — выбросила наверх,
 //         st — история Мглы (js/gloom.js): 0 — только прятались, 1 — нашли бочку, 2 — услышали, как Мгла плачет (можно спасать), 3 — спасли Кляксу},
 //         chase:{n — сколько раз доплыли в «Салках с акулой» (js/chase.js), best — лучшие звёзды, day:{d, n — погонь сегодня (ракушки за первые две), st — звёзды сегодня}}}
@@ -73,7 +74,7 @@ function sanitizeDive(a){
   return {n:num(a.n), seen:[...new Set(strList(a.seen))],
     day:{d:typeof day.d === 'string' ? day.d : '', cl:Array.isArray(day.cl) ? [...new Set(day.cl.filter(i => i === 0 || i === 1 || i === 2))] : []},
     garden:three(a.garden, num), gh:three(a.gh, v => typeof v === 'string' ? v : ''),
-    turt:!!a.turt, shark:{hid:num(sh.hid), friend:!!sh.friend},
+    turt:!!a.turt, shark:{hid:num(sh.hid), friend:!!sh.friend, tooth:Math.min(2, Math.floor(num(sh.tooth))), ride:typeof sh.ride === 'string' ? sh.ride.slice(0, 20) : ''},
     map:Array.isArray(a.map) ? [...new Set(a.map.filter(i => i === 0 || i === 1 || i === 2))] : [], chest:!!a.chest, book:!!a.book,
     big:typeof a.big === 'string' ? a.big : '', gloom:{met:num(gl.met), hid:num(gl.hid), out:num(gl.out), st:Math.min(3, Math.floor(num(gl.st)))},
     chase:{n:num(ch.n), best:Math.min(3, Math.floor(num(ch.best))), day:{d:typeof cd.d === 'string' ? cd.d.slice(0, 20) : '', n:num(cd.n), st:Math.min(3, Math.floor(num(cd.st)))}}};

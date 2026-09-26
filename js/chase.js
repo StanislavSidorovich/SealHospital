@@ -447,7 +447,7 @@ async function chFinish(){
   if(CH.st !== 'go') return;
   CH.st = 'end';
   const S = CH.sh; chWarn(false);
-  if(CH.mode === 'net' && CH.host) netSend({t:'chf'});
+  if(CH.mode === 'net' && CH.host) netSend({t:'chf', tooth:!!CH.tooth});
   sfx.good(); mgHint(L('Скорее в щель! 🪨', 'Quick, into the gap! 🪨'));
   S.st = 'end'; const s0 = CH.S, x0 = s0 + S.off, y0 = S.y, ex = CH_LEN + 2.1;
   await tween(1.5, k => { S.off = x0 + (ex - x0)*k - s0; S.y = y0 + (CH_EXIT.gy - y0)*k; }, ease.io);
@@ -461,6 +461,7 @@ async function chFinish(){
   for(const p of chPals()){ p.face = -1; floatText(L('Хи-хи!', 'Hee-hee!'), chAt(chX(p), p.y + 0.9), '#D9527E'); }
   sfx.giggle();
   await wait(1.4); if(!CH) return;
+  if(CH.tooth) return chToothScene(ex);   // четвёртая погоня: акула застряла по-настоящему — болит зуб (js/sharktooth.js)
   S.st = 'end'; S.off = ex - s0;
   await tween(0.6, k => { S.off = ex - s0 - k*1.4; }, ease.out);
   if(!CH) return;
@@ -479,7 +480,7 @@ function chNetWire(){
   netOn('chk', m => { if(CH) chShell(m.i); });
   netOn('chpl', () => { if(CH) chPearl(); });
   netOn('chr', m => { const o = CH && CH.L.obs[m.i]; if(o && o.k === 'ring') chRingPass(o, 'pal'); });
-  netOn('chf', () => { if(CH) chFinish(); });
+  netOn('chf', m => { if(!CH) return; if(m.tooth) CH.tooth = true; chFinish(); });
   netOn('emo', () => { if(CH && CH.pal){ burst(TEX.heart, chAt(chX(CH.pal), CH.pal.y + 0.8, 0.3), 8, 1.6, 0.3); sfx.purr(); } });
   netOn('bye', () => { if(!CH || !CH.pal) return; CH.pal.gone = true; toast(L('Напарник уплыл домой 👋', 'Your partner went home 👋')); if(!CH.host){ CH.host = true; CH.sh.st = 'follow'; } });
   net.onLost = () => { if(CH && CH.pal){ CH.pal.lost = true; mgHint(L('Связь пропала… плывём дальше 🌊', 'Lost the connection… keep swimming 🌊')); } };
@@ -515,11 +516,11 @@ async function chaseRun(mode, pal0){
   chRoot.visible = true; runCam.on = true; snow.visible = false; HEMI.intensity = 0.74; sun.intensity = 0.6;
   document.body.classList.add('run-on', 'chase-on');
   const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
-  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#btnSound').after(homeB);
+  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
   let done; const fin = new Promise(r => done = r);
   homeB.addEventListener('click', () => { sfx.tap(); done('quit'); });
   const host = mode !== 'net' || net.host, cv = save.dive.chase;
-  CH = {mode, host, st:'ready', S:-2, cx:0, shells:0, paws:0, caught:0, dodges:0, sendT:0, zT:0, first:!cv.n, tips:new Set(), sway:[],
+  CH = {mode, host, st:'ready', S:-2, cx:0, shells:0, paws:0, caught:0, dodges:0, sendT:0, zT:0, first:!cv.n, tips:new Set(), sway:[], tooth:host && chToothDue(),
     grp:new THREE.Group(), L:null, T:null, me:null, pal:null, sh:null, hud:null, end:null, net:null};
   chRoot.add(CH.grp);
   // погоня дня; по сети хозяин шлёт свою (seed и тему)
@@ -612,7 +613,7 @@ async function chaseRun(mode, pal0){
   for(const n of ['3', '2', '1']){ mgHint(n); sfx.tick(); await tick(0.5); }
   if(!CH.end && CH.st === 'ready'){ CH.st = 'go'; mgHint(L('Плывём! 🫧', 'Swim! 🫧')); sfx.arf(); setTimeout(() => { if(CH && mgHintEl.textContent.includes('🫧')) mgHint(''); }, 1100); }
   const how = await fin;
-  const res = how === 'win' ? {shells:CH.shells, total:CH.L.shells.length, pearl:!!CH.L.pearl.got, caught:CH.caught, paws:CH.paws, T,
+  const res = how === 'win' ? {shells:CH.shells, total:CH.L.shells.length, pearl:!!CH.L.pearl.got, caught:CH.caught, paws:CH.paws, T, tooth:!!CH.toothNow,
     pal:CH.pal && !CH.pal.gone ? CH.pal.name : null, photo:null} : null;
   if(how === 'quit' && mode === 'net') netSend({t:'bye'});
   let again = false;
@@ -655,6 +656,7 @@ async function chResultPanel(r, mode){
     <p class="got">🫧 ${r.pearl ? L('Жемчужинка найдена! ✅', 'Pearl found! ✅') : L('Жемчужинка спряталась у самого дна или у поверхности…', 'The pearl hid by the seabed or near the surface…')}</p>
     <p class="got">${r.caught ? `🦈 ${L(`Салки: ${r.caught}`, `Tagged: ${r.caught}`)}` : `🏅 ${L('Акула ни разу не догнала!', 'The shark never caught you!')}`}</p>
     ${r.paws ? `<p class="got">💗 ${L(`«Дай ласту»: ${r.paws}`, `Flippers together: ${r.paws}`)}</p>` : ''}
+    ${r.tooth ? `<p class="got">🦷 ${L('Акула приплывёт к тебе в больницу — начни смену!', 'The shark will come to your hospital — start a shift!')}</p>` : ''}
     ${r.pal ? `<p class="got">💗 ${L(`Ты и ${r.pal} — команда!`, `You and ${r.pal} — a team!`)}</p>` : ''}
     ${r.photo ? `<img class="co-photo" src="${r.photo}" alt=""><p class="got">📷 ${L('Фото — в альбоме', 'The photo is in the album')}</p>` : ''}
     ${!r.paid ? `<p class="got">${L('Ракушки за погоню на сегодня собраны — завтра будет новая погоня 🌊', 'Today\'s shells for the chase are collected — a new chase tomorrow 🌊')}</p>` : ''}

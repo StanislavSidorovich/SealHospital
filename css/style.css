@@ -38,7 +38,17 @@ button:focus-visible{outline:3px solid var(--pink-d);outline-offset:2px}
 .needs .now{background:var(--pink);animation:pulse 1.1s ease-in-out infinite}
 @keyframes pulse{50%{transform:scale(1.07)}}
 
-.corner{display:flex;flex-direction:column;gap:8px;margin-left:auto}
+.corner{display:flex;flex-direction:column;gap:8px;margin-left:auto;position:relative}
+/* 🎒 рюкзак: звук, альбом и настройки выезжают полоской слева от кнопки (game.js, bagToggle) */
+.round.bagbtn{font-size:24px;line-height:1}
+.corner.bag-open .bagbtn{background:#FFE3EC}
+.bag{display:none;position:absolute;right:calc(100% + 10px);flex-direction:row-reverse;gap:10px;padding:8px 10px;
+  background:var(--paper);border:2.5px solid var(--ink);border-radius:30px;box-shadow:0 4px 0 var(--ink);z-index:5}
+.corner.bag-open .bag{display:flex;animation:bagIn .18s ease-out}
+@keyframes bagIn{from{opacity:0;transform:translateX(12px) scale(.9)}}
+/* в забегах, на карте и в «Ледяном коде» из рюкзака виден только звук — в колонке, как раньше */
+body.run-on .bag,body.map-on .bag,body.ice-on .bag,body.visit-on .bag{display:flex!important;position:static;padding:0;border:0;background:none;box-shadow:none;animation:none}
+body.run-on .bag>:not(#btnSound),body.map-on .bag>:not(#btnSound),body.ice-on .bag>:not(#btnSound),body.visit-on .bag>:not(#btnSound){display:none!important}
 .round{width:48px;height:48px;border-radius:50%;border:2.5px solid var(--ink);background:var(--paper);
   box-shadow:0 3px 0 var(--ink);display:grid;place-items:center;position:relative;padding:0}
 .round:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
@@ -176,6 +186,10 @@ body.mg-on:not(.mg-card) #card{display:none!important}
 @keyframes rubhint{0%,100%{translate:-14px 0}50%{translate:14px 0}}
 .target{position:absolute;width:84px;height:84px;margin:-42px 0 0 -42px;border-radius:50%;border:3px dashed var(--pink-d);
   background:rgba(255,155,184,.18);pointer-events:none;animation:pulse 1s ease-in-out infinite}
+/* зубная щётка для акулы (js/sharktooth.js): ездит за пальцем */
+.st-brush{position:absolute;font-size:58px;line-height:1;transform:translate(-25%,-75%) rotate(-30deg);pointer-events:none;
+  filter:drop-shadow(0 3px 0 rgba(59,58,74,.35));z-index:2}
+.mg-panel.st-cured .ttl{font-size:26px;margin:0 0 8px}
 .plaster-drag{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);width:128px;height:46px;margin-left:-64px;
   border-radius:16px;background:#FFB8CB;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);rotate:-10deg;touch-action:none;
   display:grid;place-items:center;cursor:grab}
@@ -537,8 +551,8 @@ body.mg-on #homeCard,body.mg-on #homeBar{display:none!important}
 .run-end .cup{background:#FFF1C9;border:2px solid #C9962E;border-radius:14px;padding:6px 10px}
 .run-end .earned{text-align:center;margin:0 0 10px!important}
 /* пауза в забеге: в углу только звук и 🏠 */
-body.run-on #corner>:not(#btnSound):not(#btnRunHome){display:none!important}
-body.map-on #corner>:not(#btnSound){display:none!important}
+body.run-on #corner>:not(#bag):not(#btnRunHome){display:none!important}
+body.map-on #corner>:not(#bag){display:none!important}
 .isle.soon{min-height:52px}
 .isle.soon .ic{width:auto;padding:0 8px;border-radius:22px;font-size:22px;letter-spacing:2px}
 .isle.soon b{font-size:17px}
@@ -649,7 +663,7 @@ body:not(.pet-mode) .gull-chip,body.mg-on .gull-chip,body.home-mode .gull-chip{d
 /* «Ледяной код» (js/icecode.js) */
 .mg-panel.ice-panel{top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
 .mg-panel.ice-ask,.mg-panel.ice-make{top:auto}
-body.ice-on #corner>:not(#btnSound){display:none!important}
+body.ice-on #corner>:not(#bag){display:none!important}
 .mg-panel.ice-panel .ttl{padding:0 44px}
 .ice-panel .ttl{font-size:26px;margin:2px 0 4px;text-align:center}
 .ice-panel .got{font-size:15px;font-weight:800;margin:0 0 8px;text-align:center}
@@ -726,7 +740,7 @@ body:not(.pet-mode) .vs-btn,body.mg-on .vs-btn,body.home-mode .vs-btn,body.run-o
 body:not(.pet-mode) .vs-chip,body.mg-on .vs-chip,body.home-mode .vs-chip,body.run-on .vs-chip{display:none}
 .vs-bar{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;justify-content:center;gap:10px}
 .vs-bar .round{font-size:24px;line-height:1;width:52px;height:52px}
-body.visit-on #corner>:not(#btnSound):not(#btnRunHome){display:none!important}
+body.visit-on #corner>:not(#bag):not(#btnRunHome){display:none!important}
 body.visit-on #petCard,body.visit-on #petBar,body.visit-on #card,body.visit-on #tools,body.visit-on .gull-chip{display:none!important}
 /* бой со Мглой (js/gloom.js): сколько несёшь света и сколько мути осталось */
 .gl-hud{position:absolute;left:12px;right:74px;top:calc(env(safe-area-inset-top,0px) + 66px);display:flex;align-items:center;gap:8px;pointer-events:none;max-width:420px}

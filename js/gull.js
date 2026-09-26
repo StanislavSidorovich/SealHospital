@@ -311,7 +311,7 @@ async function gullFly(pal){
   runCam.pos.set(RUN_POS.x + 0.3, 5.5, RUN_POS.z + 11); runCam.look.set(RUN_POS.x, 1, RUN_POS.z - 8);
   document.body.classList.add('run-on');
   const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
-  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#btnSound').after(homeB);
+  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
   const fin = new Promise(r => GL.done = r);
   homeB.addEventListener('click', () => { sfx.tap(); if(GL && GL.done) GL.done('quit'); });
   gullFlyWire();

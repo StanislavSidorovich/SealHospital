@@ -402,7 +402,7 @@ async function cloudRoad(mode, pal0){
   crRoot.visible = true; runCam.on = true; HEMI.intensity = 0.62; sun.intensity = 0.58;
   document.body.classList.add('run-on');
   const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
-  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#btnSound').after(homeB);
+  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
   let done; const fin = new Promise(r => done = r);
   homeB.addEventListener('click', () => { sfx.tap(); done('quit'); });
   const host = mode !== 'net' || net.host;
