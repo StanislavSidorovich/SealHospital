@@ -54,13 +54,15 @@ const STORY = [
       {ic:'✨', t:L('Малыш засиял', 'Your pup shines'), n:() => [save.pet ? save.pet.stage : 0, typeof SHINY === 'number' ? SHINY : 4], go:'pet'}
     ]},
   {ic:'🔎', name:L('Потеряшки', 'Lost pups'),
-    about:L('Малыши потерялись в бухте, в гроте и в метели. Их мамы очень волнуются!', 'Little ones got lost in the bay, the grotto and the blizzard. Their mums are so worried!'),
+    about:L('Малыши потерялись в бухте, в гроте, в метели, в тёмной пещере и в подводном лесу. Их мамы очень волнуются!', 'Little ones got lost in the bay, the grotto, the blizzard, a dark cave and a kelp forest. Their mums are so worried!'),
     end:L('Все мамы нашли своих малышей и теперь приходят в гости 💗', 'Every mum found her little one, and now they come to visit 💗'),
     items:[
       {ic:'🌊', t:L('Найди потеряшку в Бухте', 'Find the lost pup in the Bay'), n:() => [stLv('bay'), 1], go:'rescue'},
       {ic:'🕯️', t:L('Найди потеряшку в Гроте', 'Find the lost pup in the Grotto'), n:() => [stLv('grot'), 1], go:'rescue'},
       {ic:'❄️', t:L('Найди потеряшку в Метели', 'Find the lost pup in the Blizzard'), n:() => [stLv('snow'), 1], go:'rescue'},
-      {ic:'✨', t:L('Пещера сияния, подводный уровень и праздник мам', 'The shining cave, an underwater level and the mums\' party'), soon:true}
+      {ic:'✨', t:L('Принеси свет Лучику в Пещеру сияния', 'Bring light to Little Ray in the Shining Cave'), n:() => [stLv('glow'), 1], go:'rescue'},
+      {ic:'🌿', t:L('Спаси калана Пуговку в подводном лесу', 'Save Button the sea otter in the kelp forest'), n:() => [stLv('kelp'), 1], go:'rescue'},
+      {ic:'🎉', t:L('Праздник мам (и кто-то рычит…)', 'The mums\' party (and someone growls…)'), n:() => [stLv('fest'), 1], go:'rescue'}
     ]},
   {ic:'🦈', name:L('Акула', 'Shark'),
     about:L('В бухте живёт акула. Страшная? Посмотрим… И почему она всё время гонится за тобой?', 'A shark lives in the bay. Scary? We\'ll see… And why does it keep chasing you?'),

@@ -30,7 +30,8 @@ const RS_PEARL = 5, RS_PEARLS3 = 15;                // ракушки за но�
 const RS_LVS = {};                                  // уровни по id; Q.L — текущий, Q.W — его подвижные части
 let rsLvPick = 'bay';                               // какой уровень выбран в меню (помним до перезагрузки)
 const rsResc = () => { const c = save.coop, r = c.resc || (c.resc = {wins:0, day:{d:'', n:0}}); r.lv = r.lv || {}; r.pearls = r.pearls || {}; return r; };
-const rsLvOpen = id => id === 'bay' || (id === 'snow' ? (rsResc().lv.grot || 0) > 0 : (rsResc().lv.bay || rsResc().wins) > 0);   // Грот — после Бухты, Метель — после Грота
+const rsLvPrev = id => { const ids = Object.keys(RS_LVS), i = ids.indexOf(id); return i > 0 ? ids[i - 1] : null; };
+const rsLvOpen = id => { const pv = rsLvPrev(id), r = rsResc(); return !pv || (r.lv[pv] || (pv === 'bay' ? r.wins : 0)) > 0; };   // каждый уровень — после победы в предыдущем
 
 /* ---------- уровень «Бухта потеряшки» (x — вдоль, y — вверх, земля y=0) ----------
    0–8 старт · 9–15 плиты и ворота · 16–27 качели и полка с рычагом · 29–36 вода и ледяная стена ·
@@ -943,7 +944,7 @@ async function rsRolePick(mode, palName){
   };
   panel.querySelectorAll('[data-lv]').forEach(b => mgOn(b, 'click', () => {
     const id = b.dataset.lv;
-    if(!rsLvOpen(id)){ sfx.bad(); wiggle(b); toast(id === 'snow' ? L('Сначала найдите Пипу в Гроте 🕯️', 'First find Pipa in the Grotto 🕯️') : L('Сначала спасите малыша в Бухте 🌊', 'First rescue the pup in the Bay 🌊')); return; }
+    if(!rsLvOpen(id)){ sfx.bad(); wiggle(b); const pv = RS_LVS[rsLvPrev(id)]; toast(L(`Сначала пройдите «${pv.name()}» ${pv.ic}`, `First finish «${pv.name()}» ${pv.ic}`)); return; }
     if(id !== rsLvPick){ sfx.tap(); rsLvPick = id; show(); }
   }));
   show();
