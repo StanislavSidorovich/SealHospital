@@ -557,12 +557,15 @@ async function achoo(s, caught){
    Не просто нажать, а подержать пальчик на тюлене и погладить: вокруг заполняется кольцо-сердечко,
    тюлень жмурится, тянется к пальцу и мурлычет, из-под пальца вылетают ♡, телефон чуть вибрирует.
    Просто держать — тоже можно (≈3 с), гладить — быстрее (≈1,5–2 с). Отпустила — кольцо медленно тает, не сбрасывается.
-   e0 — касание, с которого начали (нажали прямо на тюленя): тогда гладим сразу, без второго нажатия. */
+   e0 — касание, с которого начали (нажали прямо на тюленя): тогда гладим сразу, без второго нажатия.
+   o — для не-тюленей (Туча в cloudcure.js): at() — центр, r — радиус в мире, top() — над головой, say — что скажет. */
 const HUG_HOLD = 0.3, HUG_RUB = 0.0008, HUG_FADE = 0.12;   // за секунду держания, за пиксель поглаживания, таяние без пальца
-async function strokeHug(s, e0, hint){
+async function strokeHug(s, e0, hint, o = {}){
   mgOpen(hint || L('Погладь пальчиком и не отпускай ♡', 'Stroke with your finger and hold on ♡'));
-  const at = () => worldOf(s, new V3(0, -0.4, 0));
-  const rad = () => { const a = toScreen(at()), b = toScreen(worldOf(s, new V3(1.3, -0.4, 0))); return Math.max(85, Math.min(170, Math.hypot(b.x - a.x, b.y - a.y))); };
+  const at = o.at || (() => worldOf(s, new V3(0, -0.4, 0))), top = o.top || (() => headTop(s));
+  const edge = o.r ? () => at().add(new V3(o.r, 0, 0)) : () => worldOf(s, new V3(1.3, -0.4, 0));
+  const rad = () => { const a = toScreen(at()), b = toScreen(edge()); return Math.max(85, Math.min(170, Math.hypot(b.x - a.x, b.y - a.y))); };
+  const eyes = s.eyes || [], eye0 = eyes.map(e => e.scale.y), lean0 = s.inner.rotation.z;
   const ring = mgNode('div', 'circle-hint hug-ring'), R = rad();
   ring.style.cssText = `width:${2*R}px;height:${2*R}px;margin:${-R}px 0 0 ${-R}px`;
   const un = pin(ring, at);
@@ -598,20 +601,20 @@ async function strokeHug(s, e0, hint){
       heartT -= dt; purrT -= dt;
       if(heartT <= 0){ heartT = 0.22; heart(last.x, last.y - 20); }
       if(purrT <= 0){ purrT = 0.55; sfx.purr(); buzz(8); }
-      if(!said && p > 0.5){ said = true; floatText(s.p && s.p.peng ? L('Кря-а ♡', 'Qua-ack ♡') : L('Мур-р ♡', 'Purr ♡'), headTop(s), '#D9527E'); }
-      s.eyes.forEach(o => o.scale.y = 0.3); s.blinkT = 2;   // зажмурился от удовольствия
+      if(!said && p > 0.5){ said = true; floatText(o.say || (s.p && s.p.peng ? L('Кря-а ♡', 'Qua-ack ♡') : L('Мур-р ♡', 'Purr ♡')), top(), '#D9527E'); }
+      eyes.forEach((e, i) => e.scale.y = eye0[i]*0.3); s.blinkT = 2;   // зажмурился от удовольствия
       lean += (Math.max(-1, Math.min(1, (last.x - q.x)/R))*-0.18 - lean)*Math.min(1, dt*8);
       s.wobble = Math.sin(now*9)*0.03; s.flap = 0.25;
     } else {
       p = Math.max(0, p - dt*HUG_FADE);
-      s.eyes.forEach(o => o.scale.y = 1);
+      eyes.forEach((e, i) => e.scale.y = eye0[i]);
       lean += (0 - lean)*Math.min(1, dt*6); s.wobble = 0;
     }
-    s.inner.rotation.z = lean;
+    s.inner.rotation.z = lean0 + lean;
     ring.style.setProperty('--p', Math.min(1, p));
     if(p >= 1 && finish) finish();
   });
   await new Promise(r => finish = r);
   finish = null; un(); mgClose(); buzz([20, 40, 30]);
-  s.eyes.forEach(o => o.scale.y = 1); s.inner.rotation.z = 0; s.wobble = 0;
+  eyes.forEach((e, i) => e.scale.y = eye0[i]); s.inner.rotation.z = lean0; s.wobble = 0;
 }

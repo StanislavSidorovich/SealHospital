@@ -352,6 +352,8 @@ async function crFinish(){
   for(const p of crPals()){ p.ln = Math.min(3, Math.max(0, p.ln)); floatText('💪', crAt(CR.z, p.x, 1.3)); }
   mgHint(L('Догнали! ☁️', 'Caught up! ☁️'));
   await wait(1.5); if(!CR) return;
+  const beat = cfRoadBeat();   // история Тучи по дням (js/cloudcure.js)
+  if(beat){ await cfBeatShow(beat, CR.cloud, CR.cloud.position.clone()); if(!CR) return; }
   sfx.grr(); mgHint(L('«Ах, догнали?! Ну держитесь — сейчас засыплю!» ☁️', '“Oh, you caught me?! Hold on — here comes the snow!” ☁️'));
   const c = CR.cloud;
   await tween(1.2, k => { c.rotation.z = Math.sin(k*Math.PI*8)*0.1*(1 - k); c.scale.setScalar(0.9 + k*0.5); }, ease.lin);

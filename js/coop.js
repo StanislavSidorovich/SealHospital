@@ -323,6 +323,7 @@ async function coWin(){
   const c = B.c; sfx.giggle(); mgHint(L('«Хи-хи-хи! Щекотно! Всё, мир!» ☁️🌈', '“Hee-hee-hee! That tickles! Okay, let\'s be friends!” ☁️🌈'));
   await tween(1.2, k => { c.rotation.z = Math.sin(k*Math.PI*12)*0.1*(1 - k); c.position.y = COOP_POS.y + CLOUD_Y - k*1.2; }, ease.lin);
   B.y = CLOUD_Y - 1.2; cloudKind(c, true); sfx.sneeze(); sfx.hug();
+  if(cfSecretDue()){ await cfSecret(c, () => c.position.clone()); if(!CO) return; }   // третий этап дороги: тайна Тучи (js/cloudcure.js)
   const rb = new THREE.Group(); rb.position.copy(coAt(B.x, CLOUD_Y - 2, -1.5)); coopRoot.add(rb); CO.rainbow = rb;
   [0xFF9BB8, 0xFFC56B, 0xFFF08A, 0x9BE3B5, 0x8CC8F2, 0xB9A2F0].forEach((col, i) => {
     const a = new THREE.Mesh(new THREE.TorusGeometry(3.4 - i*0.2, 0.1, 6, 40, Math.PI), new THREE.MeshBasicMaterial({color:col})); rb.add(a);
@@ -709,6 +710,7 @@ async function coResultPanel(res){
     <p class="ttl display">${L('Победа! 🏆', 'Victory! 🏆')}</p>
     <p class="got">${L('Большая Туча больше не ворчит — теперь она подружка ☁️🌈', 'The Big Cloud isn\'t grumpy anymore — now it\'s a friend ☁️🌈')}</p>
     ${res.pal ? `<p class="got">💗 ${L(`Ты и ${res.pal} — команда!`, `You and ${res.pal} — a team!`)}</p>` : ''}
+    ${save.coop.cs.cure === 1 ? `<p class="got">🤧 ${L('Туча прилетит в больницу — вылечи её!', 'The Cloud will fly to the hospital — make her better!')}</p>` : ''}
     ${res.road ? `<p class="got">🛣️ ${L(`С дороги: ${res.road} 🐚`, `From the road: ${res.road} 🐚`)}</p>` : ''}
     ${res.photo ? `<img class="co-photo" src="${res.photo}" alt=""><p class="got">📷 ${L('Фото — в альбоме', 'The photo is in the album')}</p>` : ''}
     ${!res.gift && !res.first ? `<p class="got">${L('Ракушки за бой на сегодня собраны — завтра будут новые 🌊', 'Today\'s shells for the fight are collected — more tomorrow 🌊')}</p>` : ''}

@@ -98,6 +98,7 @@ function sanitizeCoop(a){
     gull:{d:typeof gl.d === 'string' ? gl.d : '', n:n(gl.n)},
     resc:{wins:n(rs.wins), day:{d:typeof rd.d === 'string' ? rd.d : '', n:n(rd.n)}, lv:lvs, pearls:prl},
     visit:{n:n(ob(a.visit).n), d:typeof ob(a.visit).d === 'string' ? ob(a.visit).d.slice(0, 20) : ''},   // «Остров в гостях» (js/visit.js): встреч и день фото
+    cs:{n:Math.min(3, n(ob(a.cs).n)), d:typeof ob(a.cs).d === 'string' ? ob(a.cs).d.slice(0, 20) : '', cure:Math.min(2, n(ob(a.cs).cure)), rain:typeof ob(a.cs).rain === 'string' ? ob(a.cs).rain.slice(0, 20) : ''},   // история Тучи (js/cloudcure.js)
     road:n(a.road), rday:typeof a.rday === 'string' ? a.rday.slice(0, 20) : '', ice:{wins:n(ic.wins), day:{d:typeof id.d === 'string' ? id.d : '', n:n(id.n)},
       got:Array.isArray(ic.got) ? ic.got.filter(c => typeof c === 'string' && /^[0-9A-Z]{4}$/.test(c)).slice(-60) : []}};
 }

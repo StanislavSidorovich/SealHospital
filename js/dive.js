@@ -547,7 +547,8 @@ function dvPopulate(){
   // Мгла живёт в гроте (пока спит)
   const gm = makeGloom(); gm.visible = false; G.add(gm);
   DV.gl = {o:gm, st:'off', t:DV_GLOOM_T[0] + Math.random()*15, x:DV_LEN + 6, y:-10, dir:-1, fade:0, ch:0, puffT:0, caught:false};
-  if(typeof glPopulate === 'function') glPopulate();   // история Мглы: бочка, светящийся планктон, Клякса (js/gloom.js)
+  if(typeof glPopulate === 'function') glPopulate();
+  if(typeof cfRain === 'function') cfRain();   // вылеченная Туча раз в день поливает сад (js/cloudcure.js)   // история Мглы: бочка, светящийся планктон, Клякса (js/gloom.js)
 }
 const DV_MAP_TEX = canvasTex(128, (g, s) => {   // кусочек старой карты: бумага, пунктир и крестик
   g.fillStyle = '#F3E2BC'; g.fillRect(0, 0, s, s);

@@ -91,7 +91,9 @@ const STORY = [
       {ic:'🛣️', t:L('Добеги «Дорогу к Туче»', 'Finish «Road to the Cloud»'), n:() => [save.coop.road, 1], go:'road'},
       {ic:'🎯', t:L('Выполни задание дороги дня', 'Do the task of the road of the day'), ok:() => !!save.coop.rday, go:'road'},
       {ic:'☁️', t:L('Победи Большую Тучу', 'Beat the Big Cloud'), n:() => [save.coop.wins, 1], go:'road'},
-      {ic:'🗺️', t:L('Три этапа дороги: почему Туча ворчит?', 'Three road stages: why does the Cloud grumble?'), soon:true}
+      {ic:'🤧', t:L('Три дня дороги: почему Туча ворчит?', 'Three days of the road: why does the Cloud grumble?'), n:() => [save.coop.cs.n, 3], go:'road'},
+      {ic:'🩺', t:L('Вылечи Тучу в больнице', 'Make the Cloud better in the hospital'), ok:() => save.coop.cs.cure > 1, go:'hosp'},
+      {ic:'🌧️', t:L('Туча поливает подводный сад', 'The Cloud waters the underwater garden'), ok:() => !!save.coop.cs.rain, go:'dive'}
     ]},
   {ic:'🏠', name:L('Дом', 'Home'),
     about:L('У малыша есть своё иглу. Сделай его самым уютным домом на острове!', 'Your pup has its own igloo. Make it the cosiest home on the island!'),
@@ -149,6 +151,10 @@ const TODAY = [
   {id:'road', ic:'🛣️', t:() => { const T = crTheme(); return L(`Дорога дня${T ? ': ' + T.ic + ' ' + T.name : ''}`, `Road of the day${T ? ': ' + T.ic + ' ' + T.name : ''}`); },
     show:() => !!save.pet, done:() => crTaskDone(), go:'road'},
   {id:'tooth', ic:'🦷', t:() => L('Акула ждёт в больнице: болит зуб!', 'The shark is waiting in the hospital: toothache!'), show:() => save.dive.shark.tooth === 1,
+    done:() => false, go:'hosp'},
+  {id:'cloud', ic:'☁️', t:() => L(`Почему Туча ворчит? Этап ${Math.min(3, save.coop.cs.n + 1)} из 3`, `Why does the Cloud grumble? Stage ${Math.min(3, save.coop.cs.n + 1)} of 3`),
+    show:() => !!save.pet && save.coop.cs.n < 3 && save.coop.cs.d !== advDayKey() || save.coop.cs.d === advDayKey() && save.coop.cs.cure === 0, done:() => save.coop.cs.d === advDayKey(), go:'road'},
+  {id:'cloudsick', ic:'🤧', t:() => L('Туча ждёт в больнице: простыла!', 'The Cloud is waiting in the hospital: she has a cold!'), show:() => save.coop.cs.cure === 1,
     done:() => false, go:'hosp'},
   {id:'ride', ic:'🌊', t:() => L('Покатайся на акуле в бухте', 'Ride the shark in the bay'), show:() => !!save.pet && save.dive.shark.tooth === 2,
     done:() => save.dive.shark.ride === dvToday(), go:'dive'},

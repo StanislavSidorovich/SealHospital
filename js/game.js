@@ -119,6 +119,7 @@ async function hop(s, h = 0.3, dur = 0.4){
   s.inner.position.y = 0;
 }
 async function spawnPatient(){
+  if(cloudDue()) return spawnCloud();   // простывшая Туча после третьего этапа дороги (js/cloudcure.js)
   if(sharkDue()) return spawnShark();   // акула с больным зубом из «Салок» (js/sharktooth.js)
   if(pengDue()) return spawnImpostor();   // иногда вместо тюленя — пингвин в костюме (shift.js)
   const p = patientFor(save.progress);

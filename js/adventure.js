@@ -258,12 +258,14 @@ function cloudKind(c, kind){   // превращение: серая ворчу�
 const friendCloud = makeCloud(); cloudKind(friendCloud, true); friendCloud.scale.setScalar(0.42);
 friendCloud.position.copy(PET_POS).add(new V3(-1, 2.6, -2.2)); friendCloud.visible = false; scene.add(friendCloud);
 function advTick(t, dt){
-  friendCloud.visible = (save.adv.best.bay2 || 0) > 0 && !runCam.on && !homeMode;
+  const cured = save.coop.cs.cure === 2;   // вылеченная в больнице Туча (js/cloudcure.js) — тоже здесь и роняет капельки
+  friendCloud.visible = ((save.adv.best.bay2 || 0) > 0 || cured) && !runCam.on && !homeMode;
   if(!friendCloud.visible) return;
   friendCloud.position.y = PET_POS.y + 2.6 + Math.sin(t*0.9)*0.12;   // над льдиной слева, в кадре и на узком телефоне
   friendCloud.position.x = PET_POS.x - 1 + Math.sin(t*0.3)*0.2;
   const blink = (t % 4.2) < 0.12 ? 0.15 : 1;
   friendCloud.userData.eyes.forEach(e => e.scale.y = 0.11*blink);
+  if(cured && Math.random() < dt*2.5) emit(TEX.drop, friendCloud.position.clone().add(new V3((Math.random() - 0.5)*0.7, -0.35, 0.2)), {v:new V3(0, -1.6, 0), life:0.7, size:0.07});
   if(Math.random() < dt*0.25) emit(TEX.star, friendCloud.position.clone().add(new V3((Math.random() - 0.5)*0.8, -0.3, 0.3)), {v:new V3(0, -0.4, 0), life:0.8, size:0.12, spin:3});
 }
 
