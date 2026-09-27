@@ -153,13 +153,8 @@ async function evPup(){
   sfx.arf(); floatText(my ? L('Привет, доктор!', 'Hello, doctor!') : L('Привет!', 'Hello!'), headTop(pup));
   focusCam(worldOf(pup, new V3(0, -0.5, 0)), 2.4*(my ? petK() : 1), 0.1);
   await wait(0.4);
-  mgOpen(my ? L(`${my.name} ${gg('приплыл', 'приплыла')} тебя проведать. Обними!`, `${my.name} swam over to visit you. Give ${gg('him', 'her')} a hug!`) : L('Малыш приплыл в гости. Обними его!', 'A pup swam over to visit. Give it a hug!'));
-  await new Promise(r => mgOn(mgRoot, 'pointerdown', e => {
-    const c = toScreen(worldOf(pup, new V3(0, -0.4, 0)));
-    if(Math.hypot(c.x - e.clientX, c.y - e.clientY) < 130) r();
-    else mgHint(L('Нажми на малыша ♡', 'Tap the pup ♡'));
-  }));
-  mgClose();
+  // обнять = подержать пальчик на малыше и погладить (strokeHug в minigames.js)
+  await strokeHug(pup, null, my ? L(`${my.name} ${gg('приплыл', 'приплыла')} тебя проведать. Погладь пальчиком ♡`, `${my.name} swam over to visit you. Stroke ${gg('him', 'her')} with your finger ♡`) : L('Малыш приплыл в гости. Погладь его пальчиком ♡', 'A pup swam over to visit. Stroke it with your finger ♡'));
   setMood(pup, 'happy'); sfx.hug(); pup.flap = 1;
   burst(TEX.heart, headTop(pup), 14, 2, 0.3);
   await tween(0.8, k => { pup.inner.position.y = Math.sin(k*Math.PI)*0.9; pup.inner.rotation.y = k*Math.PI*2; }, ease.io);

@@ -168,7 +168,7 @@ async function wrong(s, msg){
 }
 async function useTool(k){
   if(!S || S.stage !== 'treat' || busy) {
-    if(S && S.stage === 'hug') toast(L('Лечение закончено. Теперь обними пациента: нажми на тюленя!', 'Treatment is done. Now hug your patient: tap the seal!'));
+    if(S && S.stage === 'hug') toast(L('Лечение закончено. Теперь обними пациента: погладь тюленя пальчиком ♡', 'Treatment is done. Now hug your patient: stroke the seal ♡'));
     return;
   }
   const s = S.seal;
@@ -185,15 +185,17 @@ async function useTool(k){
     S.stage = 'hug'; setMood(s, 'ok');
     await wait(0.5); sfx.arf();
     const well = L(`${S.p.name} ${S.p.f ? 'здорова' : 'здоров'}!`, `${S.p.name} is well!`);
-    if(showWardrobe(s)){ $('#tools').hidden = true; toast(L(`${well} Можно нарядить 🎀 и обнять — нажми на тюленя ♡`, `${well} You can dress up 🎀 and hug — tap the seal ♡`), 4200); }
-    else toast(L(`${well} Осталось обнять — нажми на тюленя ♡`, `${well} Now a hug — tap the seal ♡`), 3600);
+    if(showWardrobe(s)){ $('#tools').hidden = true; toast(L(`${well} Можно нарядить 🎀 и обнять — погладь тюленя ♡`, `${well} You can dress up 🎀 and hug — stroke the seal ♡`), 4200); }
+    else toast(L(`${well} Осталось обнять — погладь тюленя пальчиком ♡`, `${well} Now a hug — stroke the seal with your finger ♡`), 3600);
   }
   renderCard(); setBusy(false);
 }
-async function hug(){
+async function hug(e0){
   if(!S || S.stage !== 'hug' || busy) return;
-  const s = S.seal; setBusy(true); S.stage = 'cured'; renderCard();
-  $('#wardrobe').hidden = true; $('#tools').hidden = true;
+  const s = S.seal; setBusy(true);
+  $('#wardrobe').hidden = true; $('#tools').hidden = true; $('#toast').hidden = true;
+  await strokeHug(s, e0 && e0.type === 'pointerdown' ? e0 : null);   // подержать пальчик и погладить (minigames.js)
+  S.stage = 'cured'; renderCard();
   setMood(s, 'happy'); sfx.hug(); s.flap = 1;
   burst(TEX.heart, headTop(s), 18, 2.4, 0.38);
   await tween(0.9, k => { s.inner.position.y = Math.sin(k*Math.PI)*1.1; s.inner.rotation.y = k*Math.PI*2; }, ease.io);
@@ -254,7 +256,7 @@ canvas.addEventListener('pointerdown', e => {
   ndc.set((e.clientX - rect.left)/rect.width*2 - 1, -((e.clientY - rect.top)/rect.height)*2 + 1);
   ray.setFromCamera(ndc, camera);
   if(!ray.intersectObjects(S.seal.hits, false).length) return;
-  if(S.stage === 'hug') return hug();
+  if(S.stage === 'hug') return hug(e);
   if(S.stage === 'treat'){
     const s = S.seal, peng = S.p.peng; peng ? sfx.quack() : sfx.arf();
     floatText((peng ? L(['Кря!','Кря-кря','Хи-хи','Кря?'], ['Quack!','Quack quack','Hehe','Quack?']) : L(['Ар!','Ур-р','Хи-хи','Ар-ар!'], ['Arf!','Urr','Hehe','Arf arf!']))[Math.floor(Math.random()*4)], headTop(s));

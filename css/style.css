@@ -820,3 +820,13 @@ body.story-on .vs-btn{display:none}   /* пилюля «В гости» лежи
 .st-conf i{position:absolute;top:0;font-style:normal;font-size:22px;animation:stfall 1.8s ease-in forwards;opacity:0}
 @keyframes stfall{0%{opacity:1;transform:translateY(-10px) rotate(0)}100%{opacity:0;transform:translateY(260px) rotate(200deg)}}
 @media (prefers-reduced-motion: reduce){.st-conf{display:none}.st-ch.fest,.st-pin .st-new{animation:none}}
+
+/* объятие-поглаживание (strokeHug в minigames.js): кольцо-сердечко вокруг тюленя и ♡ из-под пальца */
+.circle-hint.hug-ring{border:3px dashed #FF9BB8;animation:hugring 1.6s ease-in-out infinite;
+  background:conic-gradient(from -90deg,#FF9BB8 calc(var(--p,0)*1turn),rgba(255,253,248,.55) 0);
+  -webkit-mask:radial-gradient(closest-side,transparent calc(100% - 16px),#000 calc(100% - 15px));mask:radial-gradient(closest-side,transparent calc(100% - 16px),#000 calc(100% - 15px))}
+@keyframes hugring{50%{scale:1.04}}
+.hug-heart{position:absolute;pointer-events:none;font:700 30px/1 Nunito,sans-serif;color:#D9527E;translate:-50% -50%;
+  text-shadow:0 2px 0 #FFFDF8;animation:hugheart .9s ease-out forwards}
+@keyframes hugheart{from{opacity:1;scale:.6}to{opacity:0;scale:1.3;translate:calc(-50% + var(--dx,0px)) -140px}}
+@media (prefers-reduced-motion:reduce){ .circle-hint.hug-ring{animation:none} }

@@ -552,3 +552,66 @@ async function achoo(s, caught){
   }
   await nod;
 }
+
+/* ---------- Объятие-поглаживание (просьба папы 27.09) ----------
+   Не просто нажать, а подержать пальчик на тюлене и погладить: вокруг заполняется кольцо-сердечко,
+   тюлень жмурится, тянется к пальцу и мурлычет, из-под пальца вылетают ♡, телефон чуть вибрирует.
+   Просто держать — тоже можно (≈3 с), гладить — быстрее (≈1,5–2 с). Отпустила — кольцо медленно тает, не сбрасывается.
+   e0 — касание, с которого начали (нажали прямо на тюленя): тогда гладим сразу, без второго нажатия. */
+const HUG_HOLD = 0.3, HUG_RUB = 0.0008, HUG_FADE = 0.12;   // за секунду держания, за пиксель поглаживания, таяние без пальца
+async function strokeHug(s, e0, hint){
+  mgOpen(hint || L('Погладь пальчиком и не отпускай ♡', 'Stroke with your finger and hold on ♡'));
+  const at = () => worldOf(s, new V3(0, -0.4, 0));
+  const rad = () => { const a = toScreen(at()), b = toScreen(worldOf(s, new V3(1.3, -0.4, 0))); return Math.max(85, Math.min(170, Math.hypot(b.x - a.x, b.y - a.y))); };
+  const ring = mgNode('div', 'circle-hint hug-ring'), R = rad();
+  ring.style.cssText = `width:${2*R}px;height:${2*R}px;margin:${-R}px 0 0 ${-R}px`;
+  const un = pin(ring, at);
+  let p = 0, down = null, last = null, t0 = 0, heartT = 0, purrT = 0, said = false, lean = 0, finish;
+  const on = e => { const q = toScreen(at()); return Math.hypot(e.clientX - q.x, e.clientY - q.y) < rad() + 30; };
+  const buzz = ms => { try{ navigator.vibrate && navigator.vibrate(ms); }catch(err){} };
+  const start = e => {
+    if(!on(e)){ mgHint(L('Тюлень — в кружочке ♡', 'The seal is inside the circle ♡')); return; }
+    down = e.pointerId; last = {x:e.clientX, y:e.clientY}; t0 = now; buzz(12);
+  };
+  const heart = (x, y) => {
+    const h = mgNode('div', 'hug-heart', '♡'); h.style.left = x + 'px'; h.style.top = y + 'px';
+    h.style.setProperty('--dx', (Math.random()*60 - 30) + 'px'); setTimeout(() => h.remove(), 900);
+  };
+  mgOn(mgRoot, 'pointerdown', start);
+  mgOn(window, 'pointermove', e => {
+    if(down === null || e.pointerId !== down) return;
+    if(!on(e)){ last = {x:e.clientX, y:e.clientY}; return; }
+    const d = Math.min(60, Math.hypot(e.clientX - last.x, e.clientY - last.y)); last = {x:e.clientX, y:e.clientY};
+    p += d*HUG_RUB;
+  });
+  const up = e => {
+    if(down === null || e.pointerId !== down) return;
+    if(now - t0 < 0.3 && p < 0.3) mgHint(L('Не отпускай — погладь пальчиком ♡', 'Don\'t let go — stroke with your finger ♡'));
+    down = null;
+  };
+  mgOn(window, 'pointerup', up); mgOn(window, 'pointercancel', up);
+  if(e0 && on(e0)) start(e0);
+  mgTick(dt => {
+    const q = toScreen(at());
+    if(down !== null){
+      p += dt*HUG_HOLD;
+      heartT -= dt; purrT -= dt;
+      if(heartT <= 0){ heartT = 0.22; heart(last.x, last.y - 20); }
+      if(purrT <= 0){ purrT = 0.55; sfx.purr(); buzz(8); }
+      if(!said && p > 0.5){ said = true; floatText(s.p && s.p.peng ? L('Кря-а ♡', 'Qua-ack ♡') : L('Мур-р ♡', 'Purr ♡'), headTop(s), '#D9527E'); }
+      s.eyes.forEach(o => o.scale.y = 0.3); s.blinkT = 2;   // зажмурился от удовольствия
+      lean += (Math.max(-1, Math.min(1, (last.x - q.x)/R))*-0.18 - lean)*Math.min(1, dt*8);
+      s.wobble = Math.sin(now*9)*0.03; s.flap = 0.25;
+    } else {
+      p = Math.max(0, p - dt*HUG_FADE);
+      s.eyes.forEach(o => o.scale.y = 1);
+      lean += (0 - lean)*Math.min(1, dt*6); s.wobble = 0;
+    }
+    s.inner.rotation.z = lean;
+    ring.style.setProperty('--p', Math.min(1, p));
+    if(p >= 1 && finish) finish();
+  });
+  await new Promise(r => finish = r);
+  finish = null; un(); mgClose(); buzz([20, 40, 30]);
+  s.eyes.forEach(o => o.scale.y = 1); s.inner.rotation.z = 0; s.wobble = 0;
+}
