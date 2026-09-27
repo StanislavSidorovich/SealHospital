@@ -194,6 +194,7 @@ async function netLobby(only){
   const panel = mgNode('div', 'mg-panel net-lobby', `
     <p class="ttl display">${L('Играем по сети 🌐', 'Play online 🌐')}</p>
     <p class="got">${L('Один создаёт комнату, второй вводит её код из трёх картинок.', 'One of you makes a room, the other types in its code of three pictures.')}</p>
+    ${save.story ? `<p class="got small-note">📖 ${L(`Играете по истории? Комнату создаёт тот, у кого больше глав: играем в его мире (у тебя открыто глав: ${save.story.open} из 8)`, `Playing the story? The one with more chapters makes the room: you play in their world (you have ${save.story.open} of 8 chapters open)`)}</p>` : ''}
     <div class="row col"><button class="btn" data-k="host">${L('Создать комнату', 'Make a room')}</button>
     <button class="btn ghost" data-k="join">${L('У меня есть код', 'I have a code')}</button></div>
     <button class="btn ghost small" data-k="no">${L('Назад', 'Back')}</button>`);

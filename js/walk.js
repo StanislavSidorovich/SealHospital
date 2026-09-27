@@ -108,6 +108,7 @@ async function funMenu(s){
     </div>
     <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
   if(newFind) panel.querySelector('[data-k="walk"]').classList.add('new');
+  if(typeof stMarkPicks === 'function') stMarkPicks(panel);   // 📖 — куда ведёт история (js/story.js)
   const pb = panel.querySelector('[data-k="ping"]'); if(pb && nbQuest().id === 'ball' && !nbQuest().ok) pb.classList.add('new');   // Пинг сегодня просил
   const k = await new Promise(r => panel.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
   panel.classList.add('away'); await wait(0.25); mgClose();

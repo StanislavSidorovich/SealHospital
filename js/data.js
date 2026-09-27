@@ -71,13 +71,14 @@ function sanitizeStorm(a){
 }
 // story = {open — сколько глав «Книги острова» открыто (1…8), fest:[номера отпразднованных глав], seen — сколько открытых глав уже показали,
 //          pg — сколько было вылечено при прошлой проверке, hd — день, когда лечили (toDateString), td:{d, ok:[дела дня, сделанные сегодня]},
+//          sa — показали ли сцену «Идёт Великий шторм!» (когда открылась глава 8),
 //          fin:{n — сколько раз был праздник острова, g:[кто на каком из 6 мест за столом]} (js/finale.js)} (js/story.js)
 function sanitizeStory(a){
   a = a && typeof a === 'object' ? a : {};
   const num = v => Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0, td = a.td && typeof a.td === 'object' ? a.td : {}, fin = a.fin && typeof a.fin === 'object' ? a.fin : {};
   const open = Math.min(8, Math.max(1, num(a.open)));
   return {open, fest:[...new Set((Array.isArray(a.fest) ? a.fest : []).filter(i => Number.isInteger(i) && i >= 1 && i <= 8))],
-    seen:Math.min(open, Math.max(1, num(a.seen))), pg:num(a.pg), hd:typeof a.hd === 'string' ? a.hd.slice(0, 20) : '',
+    seen:Math.min(open, Math.max(1, num(a.seen))), pg:num(a.pg), hd:typeof a.hd === 'string' ? a.hd.slice(0, 20) : '', sa:a.sa === true,
     td:{d:typeof td.d === 'string' ? td.d.slice(0, 20) : '', ok:strList(td.ok).slice(0, 20)},
     fin:{n:num(fin.n), g:Array.from({length:6}, (x, i) => Array.isArray(fin.g) && typeof fin.g[i] === 'string' ? fin.g[i].slice(0, 12) : '')}};
 }

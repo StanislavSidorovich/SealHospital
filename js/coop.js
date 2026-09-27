@@ -78,7 +78,7 @@ function coPlayer(m, name, kind){
 let CO = null;
 function coEmpty(mode){
   return {mode, host:mode !== 'net' || net.host, me:null, pal:null, B:null, H:[], shots:[], st:'ready', t:0,
-    pendHits:0, hitSendT:0, sendT:0, bSendT:0, keyDir:0, drag:null, hud:null, wipeT:0, end:null, hiT:0, won:false, rainbow:null, gigT:0};
+    pendHits:0, mt:0, bt:0, hitSendT:0, sendT:0, bSendT:0, keyDir:0, drag:null, hud:null, wipeT:0, end:null, hiT:0, won:false, rainbow:null, gigT:0};
 }
 const coHasPal = () => CO.pal && !CO.pal.gone;
 function coHpMax(ph){ return Math.round(BOSS_HP[ph]*(coHasPal() ? 1 : 0.6)); }
@@ -248,10 +248,11 @@ function coDraw(p, dt){
 
 /* ---------- снежки игроков ---------- */
 const CO_SHOT_GEO = new THREE.SphereGeometry(0.14, 10, 8);
+const CO_PING_LEAD = 4;   // на сколько попаданий Пинг может обогнать тебя
 function coShoot(p, mine){
   const o = addOutline(new THREE.Mesh(CO_SHOT_GEO, CO_SNOW_MAT), 1.2); coopRoot.add(o);
   const x = p.x + (Math.random() - 0.5)*0.12, y = p.y + 1.1;
-  o.position.copy(coAt(x, y, 0.15)); CO.shots.push({o, x, y, mine});
+  o.position.copy(coAt(x, y, 0.15)); CO.shots.push({o, x, y, mine, ping:p.kind === 'ping'});
 }
 function coShotsStep(dt){
   const B = CO.B;
@@ -261,6 +262,7 @@ function coShotsStep(dt){
       coopRoot.remove(s.o);
       emit(TEX.puff, coAt(s.x, s.y, 0.6), {v:new V3(0, 0.6, 0), life:0.4, size:0.25});
       B.sq = 1;
+      if(s.mine && B.st === 'go'){ if(s.ping) CO.bt++; else CO.mt++; }
       if(s.mine && B.st === 'go'){ if(CO.host) coBossHit(1); else { CO.pendHits++; B.hp = Math.max(0, B.hp - 1); } }
       return false;
     }
@@ -424,7 +426,12 @@ function coStep(dt){
     for(const p of [me, pal]){
       if(!p || p.gone || p.bub || p.lost) continue;
       p.shotT -= dt;
-      if(p.shotT <= 0){ p.shotT += CO_SHOT_T; coShoot(p, p.kind !== 'net'); }
+      if(p.shotT <= 0){
+        p.shotT += CO_SHOT_T;
+        // Пинг кидает «в ногу»: попал больше тебя на CO_PING_LEAD — ждёт, пока догонишь (Тучу побеждаешь ты, а не он без тебя)
+        if(p.kind === 'ping' && CO.bt >= CO.mt + CO_PING_LEAD){ if(now > (CO.waitT || 0)){ CO.waitT = now + 7; floatText(L('Встань под Тучу — кидаем вместе! ❄️', 'Stand under the Cloud — let’s throw together! ❄️'), coAt(p.x, p.y + 1.6), '#D9527E'); } continue; }
+        coShoot(p, p.kind !== 'net');
+      }
     }
   }
   coShotsStep(dt);
@@ -523,7 +530,7 @@ function coControls(){
 
 /* ---------- во что и с кем играем ----------
    Две игры: ☁️ бой с Большой Тучей (тут) и 🦭 «Спасаем потеряшку» (js/rescue.js). Возвращает {game, mode} или null. */
-let coGame = 'road';
+let coGame = 'road', coStoryPick = false;   // в первый раз за заход меню «Вместе» открывается на игре, куда ведёт история
 let coRoadShells = 0;   // ракушки, собранные по «Дороге к Туче» (js/cloudroad.js), — добавятся к награде за бой
 const CO_GAMES = {
   road:{ic:'🛣️', name:() => L('Дорога', 'Road'),
@@ -545,7 +552,8 @@ async function coopMenu(){
   for(;;){
     mgOpen(L('Играем вместе!', 'Let\'s play together!'));
     const pingOk = typeof pengMet === 'function' && pengMet();
-    const games = coGamesOn();
+    const games = coGamesOn(), story = typeof stCoGames === 'function' ? stCoGames().filter(g => games.includes(g)) : [];
+    if(!coStoryPick && story.length){ coStoryPick = true; coGame = story[0]; }
     if(!games.includes(coGame)) coGame = games[0];
     const panel = mgNode('div', 'mg-panel fun-pick co-pick', `
       ${games.length > 1 ? `<div class="co-games${games.length > 3 ? ' grid' : ''}" role="tablist">${games.map(g => `<button role="tab" data-g="${g}"><span aria-hidden="true">${CO_GAMES[g].ic}</span> ${CO_GAMES[g].name()}</button>`).join('')}</div>` : ''}
@@ -576,6 +584,7 @@ async function coopMenu(){
       const sb = panel.querySelector('[data-k="solo"] small'); if(sb) sb.textContent = coGame === 'rescue' ? L('ведёшь обоих', 'lead both') : L('полегче', 'a bit easier');
     };
     let pickK = null;
+    panel.querySelectorAll('[data-g]').forEach(b => b.classList.toggle('story', story.includes(b.dataset.g)));
     panel.querySelectorAll('[data-g]').forEach(b => mgOn(b, 'click', () => { if(coGame !== b.dataset.g){ sfx.tap(); coGame = b.dataset.g; show(); } }));
     show();
     const k = await new Promise(r => { pickK = r; panel.querySelectorAll('.co-std [data-k], [data-k="no"]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })); });

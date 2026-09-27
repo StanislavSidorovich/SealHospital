@@ -161,6 +161,16 @@ function smBar(k){ return `<span class="bar"><i style="width:${Math.round(Math.m
 const smPart = () => `<span class="pill">${SM_PARTS[SM.part].ic} ${SM.part + 1}/4</span>`;
 // промах: после нескольких сами приходят друзья (SM.D.help)
 function smMiss(){ SM.misses++; if(!SM.helped && SM.D.helpAt && SM.misses >= SM.D.helpAt && SM.host){ SM.helped = true; SM.D.help(); } }
+// Пинг и друзья-помощники идут «в ногу»: делают не больше, чем ты, плюс чуть-чуть (lead). Сидишь без дела —
+// они ждут и зовут тебя, а не проходят часть сами: победа в финале должна быть твоей. Напарник по сети — не бот.
+// SM.P.bt — сколько сделали боты, SM.P.mt — сколько ты.
+const smBot = o => !!o && o !== SM.me && o.kind !== 'net';
+const smBotMay = (lead, add = 0) => (SM.P.bt || 0) + add < (SM.P.mt || 0) + lead;
+function smBotWait(o, ru, en){
+  const P = SM.P; if(P.waitSaid && now < P.waitSaid) return;
+  P.waitSaid = now + 7;
+  floatText(L(ru, en), (o.root ? o.root.getWorldPosition(new V3()) : smAt(o.x, o.z)).add(new V3(0, 1.2, 0)), '#D9527E');
+}
 
 /* =====================================================================================================
    Часть 1. 🚨 Тревога: отведи малышей в иглу-убежище, волны катятся поперёк льдины
@@ -234,6 +244,7 @@ const P1 = {
     // малыши: цепочкой за тем, кто ведёт; кто свободен — дрожит и зовёт маму
     if(SM.host){
       for(const a of p1Leaders()) if(a.o.tumble <= 0 && go) for(const p of P.pups) if(!p.c && !p.inSh && Math.hypot(p.x - a.o.x, p.z - a.o.z) < 0.8){
+        if(p1Bot(a.c) && !p1BotMay()) continue;   // бот не убегает вперёд тебя
         if(P.pups.filter(q => q.c === a.c && !q.inSh).length >= p1Max(a.c)){
           if(a.c === 1 && now > (P.fullT || 0)){ P.fullT = now + 4; floatText(L('Сначала отведи этих двоих! 🏠', 'Take these two home first! 🏠'), smAt(a.o.x, a.o.z, 1.3), '#6B6A7E'); }
           continue;
@@ -279,10 +290,20 @@ function p1Leaders(){
 }
 // сколько малышей может вести: я и напарник по сети — двоих, Пинг и мама-помощница — по одному (главное делаешь ты)
 const p1Max = c => c === 1 || c === 2 && SM.pal && SM.pal.kind === 'net' ? P1_CHAIN : 1;
+// Пинг и мама-помощница ведут малышей «в ногу» с тобой (smBotMay): в домике и на хвостике у ботов — не больше твоих + 2
+const P1_LEAD = 2;
+const p1Bot = c => c === 3 || c === 2 && SM.pal && SM.pal.kind === 'ping';
+const p1Count = bot => SM.P.pups.filter(p => !p.inSh && p.c && p1Bot(p.c) === bot).length;
+const p1BotMay = () => { const P = SM.P; return (P.bt || 0) + p1Count(true) < (P.mt || 0) + p1Count(false) + P1_LEAD; };
 function p1AI(a, dt, c, v){
-  const P = SM.P, mine = P.pups.filter(p => p.c === c && !p.inSh), free = P.pups.filter(p => !p.c && !p.inSh);
+  const P = SM.P, mine = P.pups.filter(p => p.c === c && !p.inSh), bot = a !== SM.me && p1Bot(c);
+  const free = bot && !p1BotMay() ? [] : P.pups.filter(p => !p.c && !p.inSh);
   let tx = a.x, tz = a.z;
-  if(mine.length >= p1Max(c) || (!free.length && mine.length)){ tx = P1_DOOR.x; tz = P1_DOOR.z + 0.6; }
+  if(bot && !free.length && !mine.length && P.pups.some(p => !p.c && !p.inSh)){   // ждёт у убежища и зовёт тебя
+    tx = P1_DOOR.x + (c === 2 ? -1.5 : 1.5); tz = P1_DOOR.z + 1.2;
+    if(c === 2) smBotWait(a, 'Твоя очередь! Приведи малыша 💪', 'Your turn! Bring a little one 💪');
+  }
+  else if(mine.length >= p1Max(c) || (!free.length && mine.length)){ tx = P1_DOOR.x; tz = P1_DOOR.z + 0.6; }
   else if(free.length){
     // ближайший свободный — но не тот, к которому идёт игрок
     const myT = a === SM.me ? null : SM.me.tx != null ? {x:SM.me.tx, z:SM.me.tz} : SM.me;
@@ -344,6 +365,7 @@ function p1Splash(o, dir){
 }
 function p1Home(p){
   const P = SM.P; if(p.inSh) return;
+  if(p1Bot(p.c)) P.bt = (P.bt || 0) + 1; else if(p.c === 1) P.mt = (P.mt || 0) + 1;
   p.inSh = true; p.c = 0; P.inSh++;
   sfx.coin(); floatText(L(`${p.n} в домике! 🏠`, `${p.n} is safe! 🏠`), smAt(P1_DOOR.x, P1_DOOR.z, 1.3), '#D9527E');
   const from = p.root.position.clone(), to = smAt(P1_DOOR.x, P1_DOOR.z - 0.6), s0 = p.root.scale.x;
@@ -379,6 +401,7 @@ function p1HomeFx(p){ sfx.coin(); floatText(L(`${p.n} в домике! 🏠`, `$
    Часть 2. 🛟 Спасаем всех: плывём за плотом акулы по 4 полосам и подбираем соседей
    ===================================================================================================== */
 const P2_LN = 1.1, p2X = l => (l - 1.5)*P2_LN, P2_V = 5, P2_VY = 7.6, P2_G = 21, P2_RAFT = 15;   // плот — на 15 м впереди
+const P2_LEAD = 1;   // Пинг спасает соседей не больше, чем ты, плюс один
 const P2_NB = [
   {n:L('Белый медведь', 'The polar bear'), make(){ const g = feBearMake(); g.scale.setScalar(0.3); return g; }},
   {n:L('Мама-калан', 'Mummy otter'), off:-Math.PI/2, make(){ const g = DV_MAKE.otter(); g.scale.setScalar(0.62); return g; }},
@@ -486,8 +509,8 @@ function p2Swimmer(s, kind, ln){
   SM.grp.add(s.root); s.swimming = true;
   return {root:s.root, seal:s, kind, ln, x:p2X(ln), y:0, vy:0, air:false, tumble:0, nx:p2X(ln), ny:0, aiT:0, gone:false};
 }
-function p2Jump(p){ if(!p.air && p.tumble <= 0 && SM.st === 'go'){ p.air = true; p.vy = P2_VY; if(p === SM.me) sfx.whoosh(); } }
-function p2Lane(p, d){ const n = p.ln + d; if(n < 0 || n > 3){ if(p === SM.me) sfx.tick(); return; } p.ln = n; if(p === SM.me) sfx.tap(); }
+function p2Jump(p){ if(!p.air && p.tumble <= 0 && SM.st === 'go'){ p.air = true; p.vy = P2_VY; if(p === SM.me){ sfx.whoosh(); SM.P.act = now; } } }
+function p2Lane(p, d){ const n = p.ln + d; if(p === SM.me) SM.P.act = now; if(n < 0 || n > 3){ if(p === SM.me) sfx.tick(); return; } p.ln = n; if(p === SM.me) sfx.tap(); }
 function p2Bonk(p){
   if(p.tumble > 0) return;
   p.tumble = 0.7; sfx.plop();
@@ -518,8 +541,11 @@ function p2Gen(){   // хозяин раскладывает впереди: с�
     P.genZ += 6.2 + rnd()*2.2;
     let r;
     if(P.queue.length && P.nbGap >= 3 && P.got + P.rows.filter(q => q.k === 'nb' && !q.got).length < P2_NB.length){
-      r = {k:'nb', n:P.queue.shift(), ln:Math.floor(rnd()*4)}; P.nbGap = 0;
-      if(SM.helped) r.ln = SM.me.ln;
+      // сосед — не в твоей полосе: к нему надо подплыть (иначе можно стоять и собирать всех); после промахов,
+      // если ты плывёшь (недавно меняла полосу или прыгала), — прямо перед тобой
+      const l = Math.floor(rnd()*3);
+      r = {k:'nb', n:P.queue.shift(), ln:l >= SM.me.ln ? l + 1 : l}; P.nbGap = 0;
+      if(SM.helped && now - (P.act || -99) < 8) r.ln = SM.me.ln;
     } else {
       const k = rnd(), help = SM.helped ? 0.5 : 1;
       r = k < 0.36 ? {k:'wave', ln:Math.floor(rnd()*3)} : k < 0.36 + 0.3*help ? {k:'berg', ln:Math.floor(rnd()*4)} : {k:'sh', ln:Math.floor(rnd()*4)};
@@ -542,7 +568,10 @@ function p2Body(p, dt, z0){
       r.hit.add(who);
       if(r.k === 'berg'){ if(p.y < 0.9) p2Bonk(p); }
       else if(r.k === 'sh'){ /* ракушки собираем по одной ниже */ }
-      else if(r.k === 'nb' && !r.got){ if(SM.host) p2Got(r, who === 'me' ? 1 : 2); else netSend({t:'sme', k:'pick', id:r.id}); }
+      else if(r.k === 'nb' && !r.got){
+        if(smBot(p) && !smBotMay(P2_LEAD)){ r.hit.delete(who); continue; }   // Пинг проплывает мимо: этого соседа спасаешь ты
+        if(SM.host) p2Got(r, who === 'me' ? 1 : 2); else netSend({t:'sme', k:'pick', id:r.id});
+      }
     }
   }
   for(const r of P.rows) if(r.k === 'sh' && Math.abs(p2X(r.ln) - p.x) < 0.6 && p.y < 1.1) r.o.children.forEach((s, i) => {
@@ -553,6 +582,7 @@ function p2Body(p, dt, z0){
 function p2Got(r, who){
   const P = SM.P; if(r.got) return;
   r.got = true; P.got++;
+  if(who === 1) P.mt = (P.mt || 0) + 1; else if(smBot(SM.pal)) P.bt = (P.bt || 0) + 1;
   if(SM.mode === 'net' && SM.host) netSend({t:'sme', k:'got', id:r.id, w:who});
   const d = P2_NB[r.n], m = r.m, seat = P.seats[(P.got - 1) % P.seats.length];
   sfx.good(); floatText(L(`${d.n}: спасибо! 💗`, `${d.n}: thank you! 💗`), r.o.position.clone().add(new V3(0, 1.6, 0)), '#D9527E');
@@ -572,15 +602,16 @@ async function p2WinFx(){
 }
 function p2AI(p, dt){
   if(p.tumble > 0) return;
-  const P = SM.P, z = P.z;
+  const P = SM.P, z = P.z, may = !smBot(p) || smBotMay(P2_LEAD);
   if(!p.air && P.rows.some(r => r.k === 'wave' && r.z - z > 1.0 && r.z - z < 1.9 && p.x > p2X(r.ln) - 0.6 && p.x < p2X(r.ln + 1) + 0.6) && Math.random() < 0.95) p2Jump(p);
   if((p.aiT -= dt) > 0) return;
   p.aiT = 0.28 + Math.random()*0.12;
+  if(!may && P.rows.some(r => r.k === 'nb' && !r.got && r.z - z > 0 && r.z - z < 9)) smBotWait(p, 'Твоя очередь — подплыви к соседу! 🛟', 'Your turn — swim to the neighbour! 🛟');
   const score = l => {
     let s = 0;
     for(const r of P.rows){ const d = r.z - z; if(d < 0.3 || d > 9) continue;
       if(r.k === 'berg' && r.ln === l && d < 6) s -= 10;
-      if(r.k === 'nb' && !r.got && r.ln === l) s += 7 - d*0.3;
+      if(r.k === 'nb' && !r.got && r.ln === l) s += may ? 7 - d*0.3 : -2;   // бот впереди тебя — уступает соседа
       if(r.k === 'sh' && r.ln === l) s += 0.8; }
     if(l === SM.me.ln) s -= 1.5;
     return s - Math.abs(l - p.ln)*0.7;
@@ -613,6 +644,7 @@ function p2Net(m){
    ===================================================================================================== */
 const P3_N = 5, p3X = i => (i - 2)*1.18, P3_WZ = -1.3, P3_STAND = 0.35, P3_FIX = 0.45;
 const P3_NEED = [16, 20];   // сколько починок, чтобы шторм ослаб: одной / вдвоём
+const P3_LEAD = 3;   // Пинг и медведь чинят не больше, чем ты, плюс три
 const P3_CRACK = [1, 2].map(lv => canvasTex(128, (g, w, h) => {
   g.lineCap = 'round'; g.lineJoin = 'round';
   for(const [lw, c] of [[lv > 1 ? 16 : 13, '#3B3A4A'], [lv > 1 ? 8 : 6, lv > 1 ? '#5FB8E8' : '#8FD3F5']]){
@@ -706,6 +738,7 @@ function p3AI(o){   // Пинг и медведь: к самой большой 
   if(o.tgt != null || o.fix > 0) return;
   if(o.kind === 'bear' && (o.waitT = (o.waitT || 0) + 1) < 40) return;   // медведь не торопится
   o.waitT = 0;
+  if(!smBotMay(P3_LEAD)){ if(o.kind === 'ping' && SM.P.blocks.some(b => b.lv > 0)) smBotWait(o, 'Твоя очередь! Коснись льдинки с трещиной 🧊', 'Your turn! Tap a cracked block 🧊'); return; }
   const P = SM.P, busy = new Set([SM.me.tgt, SM.pal && SM.pal.tgt, P.bear && P.bear.tgt].filter(v => v != null));
   const c = P.blocks.filter(b => b.lv > 0 && !busy.has(b.i)).sort((a, b) => b.lv - a.lv || Math.abs(p3X(a.i) - o.x) - Math.abs(p3X(b.i) - o.x));
   if(c.length) o.tgt = c[0].i;
@@ -734,6 +767,7 @@ function p3Hit(w){
 function p3Fix(i, o){
   const P = SM.P, b = P.blocks[i]; if(!b || !b.lv) return;
   b.lv--; P.pr++;
+  if(o === SM.me) P.mt = (P.mt || 0) + 1; else if(smBot(o)) P.bt = (P.bt || 0) + 1;
   sfx.thud(); sfx.lever();
   const cube = addOutline(new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.3), toon(0xE6F6FD)), 1.06); cube.position.copy(b.g.position.clone().add(new V3(0, 2.2, 0.4))); SM.grp.add(cube);
   tween(0.3, k => cube.position.y = b.g.position.y + 2.2 - k*1.6, ease.lin).then(() => { if(SM) SM.grp.remove(cube); burst(TEX.star, b.g.position.clone().add(new V3(0, 0.8, 0.4)), 5, 1.2, 0.2); });
@@ -765,6 +799,7 @@ function p3Net(m){
    ===================================================================================================== */
 const P4_R = 1.95, P4_TURNS = 2, P4_H = 7.2, P4_V = 0.052, P4_A0 = 0.35;
 const P4_SPIN = [3, 4];   // сколько оборотов пальцем вокруг лампы: одной / вдвоём (напарник крутит тоже)
+const P4_LEAD = 0.5;   // Пинг крутит лампу, только пока крутишь ты (не дальше твоего + пол-оборота)
 const p4Ang = h => P4_A0 - h*P4_TURNS*Math.PI*2;
 const p4Pos = (h, dr = 0) => { const a = p4Ang(h); return {x:Math.sin(a)*(P4_R + dr), z:Math.cos(a)*(P4_R + dr), y:0.15 + h*(P4_H - 0.15)}; };
 const P4 = {
@@ -825,7 +860,10 @@ const P4 = {
       if(p.h >= 1 && !p.top){ p.top = true; if(p === me){ sfx.good(); smSay(L('Наверху! 🗼', 'At the top! 🗼'), 1600); } }
     }
     if(SM.pal && SM.pal.kind === 'net' && !SM.pal.gone){ const p = SM.pal; p.h += (p.nh - p.h)*Math.min(1, dt*8); }
-    if(SM.pal && SM.pal.kind === 'ping' && p4Spinning()) p4SpinAdd(dt*0.28, true);
+    if(SM.pal && SM.pal.kind === 'ping' && p4Spinning()){   // Пинг крутит вместе с тобой, но не вместо тебя
+      if(smBotMay(P4_LEAD)){ P.bt = (P.bt || 0) + dt*0.28; p4SpinAdd(dt*0.28, true); }
+      else smBotWait(SM.pal, 'Крути со мной — зажжём вместе! 🔄', 'Spin with me — let’s light it together! 🔄');
+    }
     if(!P.tip && me.top && !p4Spinning()){ P.tip = 1; smSay(L('Подожди напарника — зажжём вместе! 💗', 'Wait for your partner — we’ll light it together! 💗'), 2400); }
     if(P.tip < 2 && p4Spinning()){ P.tip = 2; mgHint(L('Крути пальцем по кругу вокруг лампы! 🔄💡', 'Swirl your finger around the lamp! 🔄💡')); }
     // тюлени на лестнице
@@ -874,6 +912,7 @@ function p4Spinning(){ const P = SM.P; return SM.me.top && (!SM.pal || SM.pal.go
 function p4TouchA(e){ const s = toScreen(SM.P.lh.userData.lamp.getWorldPosition(new V3())); return Math.atan2(e.clientY - s.y, e.clientX - s.x); }
 function p4SpinAdd(d, bot){
   const P = SM.P; if(P.lit || SM.st !== 'go') return;
+  if(!bot) P.mt = (P.mt || 0) + d;
   if(!bot && Math.random() < d*6) emit(TEX.star, P.lh.userData.lamp.getWorldPosition(new V3()), {v:new V3((Math.random() - 0.5)*2, 1.2, (Math.random() - 0.5)*2), life:0.6, size:0.2, spin:4});
   if(!SM.host){ P.spin += d; P.sendSpin = (P.sendSpin || 0) + d; if(P.sendSpin > 0.1){ netSend({t:'sme', k:'spin', d:+P.sendSpin.toFixed(3)}); P.sendSpin = 0; } return; }
   const was = Math.floor(P.spin); P.spin += d;

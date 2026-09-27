@@ -28,7 +28,7 @@ const RS_ROLE = {
 if(save.coop && !save.coop.resc) save.coop.resc = {wins:0, day:{d:'', n:0}};   // Pages мог отдать старый data.js
 const RS_PEARL = 5, RS_PEARLS3 = 15;                // ракушки за новую жемчужинку и за все три на уровне
 const RS_LVS = {};                                  // уровни по id; Q.L — текущий, Q.W — его подвижные части
-let rsLvPick = 'bay';                               // какой уровень выбран в меню (помним до перезагрузки)
+let rsLvPick = 'bay', rsLvAuto = false;                               // какой уровень выбран в меню (помним до перезагрузки)
 const rsResc = () => { const c = save.coop, r = c.resc || (c.resc = {wins:0, day:{d:'', n:0}}); r.lv = r.lv || {}; r.pearls = r.pearls || {}; return r; };
 const rsLvPrev = id => { const ids = Object.keys(RS_LVS), i = ids.indexOf(id); return i > 0 ? ids[i - 1] : null; };
 const rsLvOpen = id => { const pv = rsLvPrev(id), r = rsResc(); return !pv || (r.lv[pv] || (pv === 'bay' ? r.wins : 0)) > 0; };   // каждый уровень — после победы в предыдущем
@@ -926,6 +926,11 @@ async function rsRolePick(mode, palName){
   }
   const lvs = Object.values(RS_LVS);
   if(!RS_LVS[rsLvPick] || !rsLvOpen(rsLvPick)) rsLvPick = 'bay';
+  if(!rsLvAuto){   // в первый раз за заход — сразу на первый непройденный уровень (туда ведёт история)
+    rsLvAuto = true;
+    const nx = lvs.find(v => rsLvOpen(v.id) && !(rsResc().lv[v.id] > 0 || v.id === 'bay' && rsResc().wins > 0));
+    if(nx) rsLvPick = nx.id;
+  }
   const pearls = id => (rsResc().pearls[id] || []).length;
   const panel = mgNode('div', 'mg-panel fun-pick rs-roles', `
     <p class="ttl display">🦭 ${L('Спасаем потеряшку', 'Rescue the lost pup')}</p>

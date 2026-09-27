@@ -128,11 +128,65 @@ function stChapter(i){
   const c = STORY[i], done = c.items.filter(stItemDone).length;
   return {c, done, all:c.items.length, full:done === c.items.length, half:done >= Math.ceil(c.items.length/2)};
 }
-// открываем главы по порядку, пока в последней открытой сделана половина
+/* ---------- сквозная линия: шторм надвигается (разбор 27.09) ----------
+   Великий шторм не падает как снег на голову: на него нужна вся команда бывших «страшилок», и у каждого в шторме
+   своя работа (акула тянет плот, Клякса светит, Туча держит ветер, медведь носит льдинки). Пока команда
+   собирается, на карте над морем растёт тёмная туча, небо острова хмурится, а после праздника каждой главы
+   кто-то замечает примету (ST_OMEN). Глава 8 открывается, когда в главе 7 сделана половина И вся команда в сборе. */
+const ST_TEAM = [
+  {ic:'🐻‍❄️', name:L('Медведь', 'Bear'), job:L('принесёт льдинки', 'will bring ice blocks'), ch:2, ok:() => !!save.pt.bear},
+  {ic:'🦈', name:L('Акула', 'Shark'), job:L('потянет плот', 'will tow the raft'), ch:3, ok:() => save.dive.shark.tooth > 1},
+  {ic:'🐙', name:L('Клякса', 'Blot'), job:L('посветит в темноте', 'will shine in the dark'), ch:4, ok:() => save.dive.gloom.st >= 3},
+  {ic:'☁️', name:L('Туча', 'Cloud'), job:L('удержит ветер', 'will hold back the wind'), ch:5, ok:() => save.coop.cs.cure > 1}
+];
+const stFriend = f => { try{ return !!f.ok(); }catch(e){ return false; } };
+const stTeamN = () => ST_TEAM.filter(stFriend).length;
+const stTeamReady = () => stTeamN() === ST_TEAM.length;
+const stTeamIcons = () => ST_TEAM.map(f => `<i class="${stFriend(f) ? 'y' : ''}" title="${stEsc(f.name)}">${f.ic}</i>`).join('');
+// примета после праздника главы 1…7 (видна и потом, на странице прочитанной главы)
+const ST_OMEN = [
+  L('Чайка принесла весть: далеко в море собираются тёмные тучи…', 'The gull brought news: far out at sea, dark clouds are gathering…'),
+  L('Пинг чешет затылок: «Льдина что-то покачивается… Это к непогоде».', 'Ping scratches his head: “The ice is rocking a bit… Bad weather is coming.”'),
+  L('Мамы шепчутся: «Малыши потерялись, потому что море стало беспокойным…»', 'The mums whisper: “The little ones got lost because the sea got restless…”'),
+  L('Акула: «В глубине неспокойно, идёт что-то большое. Если что — я сильная, потяну плот!»', 'The shark: “It’s restless in the deep, something big is coming. If anything happens — I’m strong, I’ll tow a raft!”'),
+  L('Клякса: «Бочку принесло волнами издалека — там уже бушует шторм. Станет темно — я посвечу!»', 'Blot: “The waves brought the barrel from far away — a storm is already raging there. If it gets dark, I’ll shine!”'),
+  L('Туча: «Я чувствую погоду… Идёт Великий шторм! Но ветер я удержу».', 'The Cloud: “I can feel the weather… The Great Storm is coming! But I’ll hold back the wind.”'),
+  L('Иглу крепкое и тёплое: если придёт большая вода, здесь спрячутся все малыши.', 'The igloo is strong and warm: if high water comes, all the little ones can hide here.')
+];
+// открываем главы по порядку, пока в последней открытой сделана половина; шторм (глава 8) ждёт всю команду
 function stOpenUp(){
   const st = save.story; let grew = false;
-  while(st.open < STORY.length && stChapter(st.open - 1).half){ st.open++; grew = true; }
+  while(st.open < STORY.length && stChapter(st.open - 1).half && (st.open < STORY.length - 1 || stTeamReady() || save.storm.st > 0)){ st.open++; grew = true; }
   return grew;
+}
+// «Дальше по истории» (до двух шагов из разных глав): сначала — к другу, которого не хватает в команде для шторма
+// (глава 7 уже открыта, а шторм ждёт), потом самая новая открытая глава, потом самая ранняя недочитанная
+function stNextSteps(){
+  const out = [], seen = new Set(), st = save.story;
+  const next = i => STORY[i].items.find(it => !it.soon && !stItemDone(it));
+  const add = i => { if(out.length >= 2 || i < 0 || i >= st.open || seen.has(i) || st.fest.includes(i + 1)) return; const it = next(i); if(it){ seen.add(i); out.push({i, it}); } };
+  if(st.open === STORY.length - 1) ST_TEAM.filter(f => !stFriend(f)).forEach(f => add(f.ch));
+  add(st.open - 1);
+  for(let i = 0; i < st.open; i++) add(i);
+  return out;
+}
+// какие игры «Поиграть» и «Вместе» ведут по истории (значок 📖 на плитке)
+const ST_PICK = {walk:'walk', run:'run', dive:'dive', chase:'chase', slide:'slide', road:'coop', rescue:'coop', storm:'coop'};
+function stMarkPicks(panel){
+  for(const {it} of stNextSteps()){
+    const b = panel.querySelector(`.picks [data-k="${ST_PICK[it.go]}"]`);
+    if(b && !b.querySelector('.st-bk')) b.insertAdjacentHTML('beforeend', `<span class="st-bk" aria-label="${stEsc(L('по истории', 'story'))}">📖</span>`);
+  }
+}
+const stCoGames = () => stNextSteps().map(x => x.it.go).filter(g => g === 'road' || g === 'rescue' || g === 'storm');
+// небо острова хмурится, пока идёт к шторму; во время шторма (глава 8) — грозовое
+const ST_FOG = scene.fog;
+function stSky(){
+  const b = document.body.classList, s = save.storm.st;
+  const on = typeof smOn === 'function' && smOn() && s < 4;
+  const near = !on && s < 4 && (stTeamN() >= 2 || save.story.open >= 7);
+  b.toggle('sky-storm', on); b.toggle('sky-omen', near);
+  if(ST_FOG && ST_FOG.color) ST_FOG.color.setHex(on ? 0xBAC3D3 : near ? 0xDCE8EF : 0xE2F3F9);
 }
 const stFestReady = i => i < save.story.open && !save.story.fest.includes(i + 1) && stChapter(i).full;
 const stNews = () => save.story.open > save.story.seen || STORY.some((c, i) => stFestReady(i));
@@ -207,11 +261,33 @@ function stCheck(){
   if(save.progress < st.pg) st.pg = save.progress;   // загрузили другой код сохранения
   const grew = stOpenUp();
   if(grew) persist();
+  stSky();
   const news = stNews();
   const b = $('#storyAlert'); if(b) b.hidden = !news;
   const calm = started && $('#intro').hidden && $('#story').hidden && mgRoot.hidden && !busy;
+  // глава 8 открылась — шторм приходит на остров сценой, а не только строчкой в книжке (один раз, в уголке малыша)
+  if(st.open >= STORY.length && !st.sa){
+    if(save.storm.st > 0){ st.sa = true; persist(); }
+    else if(calm && petMode && !homeMode && save.pet){ stToldNews = true; stStormArrive(); return; }
+  }
   if(news && !stToldNews && calm){ stToldNews = true; toast(L('📖 В Книге острова что-то новое! Нажми на книжку', '📖 Something new in the Island book! Tap the book'), 3400); }
   if(!news) stToldNews = false;
+}
+async function stStormArrive(){
+  save.story.sa = true; persist();
+  setBusy(true); sfx.grr(); flash();
+  mgOpen('');
+  const panel = mgNode('div', 'mg-panel fun-pick st-arrive', `
+    <p class="ttl display">🌩️ ${L('Идёт Великий шторм!', 'The Great Storm is coming!')}</p>
+    <p class="got">${L('Небо над морем почернело, волны всё выше. Чайка кричит: «Шторм! Большая вода!»', 'The sky over the sea has turned black and the waves keep rising. The gull cries: “Storm! High water!”')}</p>
+    <ul class="st-crew">${ST_TEAM.map(f => `<li><span aria-hidden="true">${f.ic}</span><b>${stEsc(f.name)}</b><small>${stEsc(f.job)}</small></li>`).join('')}</ul>
+    <p class="got">${L('Вся команда в сборе. Спасём остров вместе!', 'The whole team is here. Let’s save the island together!')}</p>
+    <div class="row col"><button class="btn" data-k="go">🌪️ ${L('Спасать остров!', 'Save the island!')}</button>
+    <button class="btn ghost small" data-k="no">${L('Чуть позже', 'A bit later')}</button></div>`);
+  const k = await new Promise(r => panel.querySelectorAll('[data-k]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
+  panel.classList.add('away'); await wait(0.2); mgClose(); setBusy(false);
+  if(k === 'go') stGo('storm');
+  else toast(L('Шторм ждёт в Книге острова 📖 — глава 8', 'The storm waits in the Island book 📖 — chapter 8'), 3200);
 }
 
 /* ---------- книжка ---------- */
@@ -231,9 +307,13 @@ function stRender(){
   body.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => { sfx.tap(); stGo(b.dataset.go); }));
   body.querySelectorAll('[data-ch]').forEach(b => b.addEventListener('click', () => {
     const i = +b.dataset.ch; sfx.tap();
+    if(i >= save.story.open && i === STORY.length - 1)   // шторм: кого ещё не хватает в команде
+      return stOmenToast(save.story.open < i ? L('Это последняя глава. ', 'This is the last chapter. ')
+        : stChapter(i - 1).half ? '' : L(`Сначала — половина главы «${STORY[i - 1].name}». `, `First, half of «${STORY[i - 1].name}». `));
     if(i >= save.story.open) return toast(L(`Эта глава откроется, когда в главе «${STORY[i - 1].name}» будет сделана половина`, `This chapter opens when half of «${STORY[i - 1].name}» is done`), 3200);
     stCh = i; stRender(); $('#story').scrollTop = 0;
   }));
+  body.querySelectorAll('[data-omen]').forEach(b => b.addEventListener('click', () => { sfx.tap(); stOmenToast(); }));
   const back = body.querySelector('#stBack'); if(back) back.addEventListener('click', () => { sfx.tap(); stCh = -1; stRender(); });
   const fest = body.querySelector('#stFest'); if(fest) fest.addEventListener('click', () => stFest(stCh));
   body.querySelectorAll('[data-fin]').forEach(b => b.addEventListener('click', () => { sfx.tap(); b.dataset.fin === 'dip' ? stDiploma() : fnGo(); }));
@@ -260,7 +340,14 @@ function stTodayHtml(){
   const rows = today.map(({it, done, n}) => `<li class="${done ? 'done' : ''}">
     <span class="ic" aria-hidden="true">${it.ic}</span><span class="t">${stEsc(it.t())}${n && !done ? ` <small>${n[0]}/${n[1]}</small>` : ''}</span>
     ${done ? '<span class="ok" aria-label="Готово">✓</span>' : `<button class="go" data-go="${it.go}">${L('Идём', 'Go')} ▶</button>`}</li>`).join('');
-  return `<div class="st-map">${ST_MAP_SVG}${pins}</div>
+  // туча над морем растёт, пока собирается команда; шторм идёт — это метка 🌪️; прошёл — радуга
+  const s = save.storm.st, k = (1 + stTeamN())/(ST_TEAM.length + 1);
+  const cloud = s >= 4 ? `<span class="st-cloud rb" aria-hidden="true">🌈</span>`
+    : !(typeof smOn === 'function' && smOn()) ? `<button class="st-cloud" data-omen="1" style="--k:${k.toFixed(2)}" aria-label="${stEsc(L('Туча над морем', 'A cloud over the sea'))}">🌩️</button>` : '';
+  const story = stNextSteps().map(({i, it}) => `<li><span class="ic" aria-hidden="true">${it.ic}</span><span class="t">${stEsc(it.t)}<small class="ch">${L(`Глава ${i + 1} · ${STORY[i].name}`, `Chapter ${i + 1} · ${STORY[i].name}`)}</small></span>
+    ${it.go ? `<button class="go" data-go="${it.go}">${L('Идём', 'Go')} ▶</button>` : ''}</li>`).join('');
+  return `<div class="st-map">${ST_MAP_SVG}${cloud}${pins}</div>
+    ${story ? `<p class="st-sub display">📖 ${L('Дальше по истории', 'Next in the story')}</p><ul class="st-todo st-next">${story}</ul>` : ''}
     <p class="st-sub display">${left ? L(`Сегодня на острове: ${left} ${plural(left, 'дело', 'дела', 'дел', 'thing', 'things')}`, `Today on the island: ${left} ${plural(left, '', '', '', 'thing', 'things')}`) : L('Всё на сегодня сделано! Завтра будет новое ♡', 'All done for today! Something new tomorrow ♡')}</p>
     <ul class="st-todo">${rows}</ul>`;
 }
@@ -270,10 +357,11 @@ function stBookHtml(){
     const open = i < st.open, s = stChapter(i), fest = stFestReady(i), was = st.fest.includes(i + 1);
     const cls = !open ? 'lock' : fest ? 'fest' : was ? 'done' : '';
     const dots = c.items.map(it => `<i class="${stItemDone(it) ? 'y' : it.soon ? 's' : ''}"></i>`).join('');
-    return `<button class="st-ch ${cls}" data-ch="${i}">
-      <span class="ic" aria-hidden="true">${open ? c.ic : '🔒'}</span>
+    const storm = !open && i === STORY.length - 1;   // последняя глава не прячется за замком: над ней гроза и команда, которую надо собрать
+    return `<button class="st-ch ${cls}${storm ? ' omen' : ''}" data-ch="${i}">
+      <span class="ic" aria-hidden="true">${open ? c.ic : storm ? '🌩️' : '🔒'}</span>
       <small>${L(`Глава ${i + 1}`, `Chapter ${i + 1}`)}</small><b>${open ? stEsc(c.name) : '???'}</b>
-      ${open ? `<span class="dots">${dots}</span>` : ''}${fest ? `<span class="tag">🎉 ${L('Праздник!', 'Party!')}</span>` : was ? '<span class="tag ok">✓</span>' : ''}</button>`;
+      ${open ? `<span class="dots">${dots}</span>` : storm ? `<span class="st-team">${stTeamIcons()}</span>` : ''}${fest ? `<span class="tag">🎉 ${L('Праздник!', 'Party!')}</span>` : was ? '<span class="tag ok">✓</span>' : ''}</button>`;
   }).join('');
   const got = st.fest.length;
   if(st.fest.includes(8)) return `<p class="st-sub display">🌈 ${L('История прочитана! Но остров живёт дальше — заходи каждый день ♡', 'The story is finished! But the island lives on — come back every day ♡')}</p>
@@ -296,8 +384,18 @@ function stChapterHtml(i){
     <p class="st-about">${stEsc(c.about)}</p>
     <ul class="st-todo">${rows}</ul>
     ${fest ? `<button class="btn" id="stFest">🎉 ${i === 7 ? L('Большой праздник!', 'The big party!') : L('Праздник главы!', 'Chapter party!')}</button>`
-      : was ? `<p class="st-end display">🎉 ${stEsc(c.end)}</p>${i === 7 ? stFinBtns() : ''}`
-      : `<p class="st-note">${next && !s.half ? L(`Сделай ещё ${Math.ceil(s.all/2) - s.done} — и откроется следующая глава`, `Do ${Math.ceil(s.all/2) - s.done} more and the next chapter opens`) + ' · ' : ''}${c.items.some(it => it.soon) ? L('Пункты «скоро» ещё впереди ✨', 'The «soon» steps are still ahead ✨') : L('Сделай всё — и будет праздник 🎉', 'Do everything for a party 🎉')}</p>`}`;
+      : was ? `<p class="st-end display">🎉 ${stEsc(c.end)}</p>${ST_OMEN[i] && save.storm.st < 4 ? `<p class="st-omen">🌩️ ${stEsc(ST_OMEN[i])}</p>` : ''}${i === 7 ? stFinBtns() : ''}`
+      : `<p class="st-note">${next && !s.half ? L(`Сделай ещё ${Math.ceil(s.all/2) - s.done} — и откроется следующая глава`, `Do ${Math.ceil(s.all/2) - s.done} more and the next chapter opens`) + ' · ' : ''}${c.items.some(it => it.soon) ? L('Пункты «скоро» ещё впереди ✨', 'The «soon» steps are still ahead ✨') : L('Сделай всё — и будет праздник 🎉', 'Do everything for a party 🎉')}</p>`}
+    ${i === STORY.length - 2 && save.story.open < STORY.length ? `<p class="st-note">🌩️ ${L('Глава 8 ждёт всю команду:', 'Chapter 8 needs the whole team:')} <span class="st-team">${stTeamIcons()}</span></p>` : ''}`;
+}
+
+// кто ещё не в команде для шторма (туча на карте, закрытая глава 8)
+function stOmenToast(pre = ''){
+  const miss = ST_TEAM.filter(f => !stFriend(f)), n = ST_TEAM.length - miss.length, all = ST_TEAM.length;
+  toast(`🌩️ ${pre}` + (miss.length
+    ? L(`Над морем собираются тучи… Против шторма нужна вся команда (${n} из ${all}). Подружись: ${miss.map(f => f.ic + ' ' + f.name).join(', ')}`,
+        `Clouds are gathering over the sea… To face the storm you need the whole team (${n} of ${all}). Make friends with: ${miss.map(f => f.ic + ' ' + f.name).join(', ')}`)
+    : L('Вся команда в сборе! Шторм совсем близко…', 'The whole team is here! The storm is very close…')), 5200);
 }
 
 /* ---------- после истории: праздник ещё раз и грамота (js/finale.js) ---------- */
@@ -321,6 +419,7 @@ function stFest(i){
     <span class="big" aria-hidden="true">${c.ic}</span>
     <h3 class="display">${L(`Глава «${stEsc(c.name)}» прочитана!`, `Chapter «${stEsc(c.name)}» is finished!`)}</h3>
     <p>${stEsc(c.end)}</p>
+    ${ST_OMEN[i] && save.storm.st < 4 ? `<p class="st-omen">🌩️ ${stEsc(ST_OMEN[i])}</p>` : ''}
     <p class="earned display">+${gift} 🐚</p>
     <button class="btn" id="stPartyOk">${L('Ура! ♡', 'Hooray! ♡')}</button></div>`;
   const ok = body.querySelector('#stPartyOk'), r = ok.getBoundingClientRect();
