@@ -22,7 +22,7 @@ const fnSeal = (c, sc, s) => { const m = rsSealLook({c}, sc, s); return {root:m.
 const fnDv = (k, s, off = -Math.PI/2) => { const r = DV_MAKE[k](); r.scale.setScalar(s); return {root:r, off}; };
 const FN_GUESTS = [
   {id:'ping', ic:'🐧', name:L('Пинг', 'Ping'), make:() => { const m = makePenguin(PENG); m.root.scale.setScalar(0.26); return {root:m.root, seal:m}; },
-    say:() => L('Я принёс к столу рыбку! 🐟', 'I brought a fish for the table! 🐟')},
+    say:() => L(`В шторм ты ${pg('подбодрил', 'подбодрила')} меня — и я стал храбрым! А к столу я принёс рыбку 🐟`, 'In the storm you cheered me up — and I became brave! And I brought a fish for the table 🐟')},
   {id:'pipa', ic:'🐧', name:L('Пипа', 'Pipa'), make:() => { const m = makePenguin({name:'', f:true, color:0x5C6FA6}); m.root.scale.setScalar(0.22); return {root:m.root, seal:m}; },
     say:() => L(`Спасибо, что ${pg('нашёл', 'нашла')} мою маму! 💗`, 'Thank you for finding my mum! 💗')},
   {id:'ray', ic:'✨', name:L('Лучик', 'Little Ray'), make:() => fnSeal(0xFFFFFF, '#FFD66B', 0.24),

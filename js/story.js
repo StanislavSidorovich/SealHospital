@@ -27,7 +27,7 @@ const ST_PLACES = {
   dive:  {ic:'🤿', name:L('Бухта', 'Bay'),             x:28, y:86, pet:true},
   chase: {ic:'🦈', name:L('Салки', 'Tag'),             x:66, y:88, pet:true},
   slide: {ic:'🛷', name:L('Горка', 'Slide'),           x:64, y:27, pet:true, show:() => typeof slideGame === 'function'},   // js/slide.js
-  storm: {ic:'🌪️', name:L('Шторм', 'Storm'),          x:90, y:86, pet:true, show:() => typeof smOn === 'function' && smOn()}   // глава 8 (js/storm.js)
+  storm: {ic:'🌪️', name:L('Шторм', 'Storm'),          x:90, y:86, pet:true, show:() => typeof smPlay === 'function' && smPlay()}   // глава 8 или «Все игры открыты» (js/storm.js)
 };
 
 /* ---------- главы ----------
@@ -146,7 +146,7 @@ const stTeamIcons = () => ST_TEAM.map(f => `<i class="${stFriend(f) ? 'y' : ''}"
 // примета после праздника главы 1…7 (видна и потом, на странице прочитанной главы)
 const ST_OMEN = [
   L('Чайка принесла весть: далеко в море собираются тёмные тучи…', 'The gull brought news: far out at sea, dark clouds are gathering…'),
-  L('Пинг чешет затылок: «Льдина что-то покачивается… Это к непогоде».', 'Ping scratches his head: “The ice is rocking a bit… Bad weather is coming.”'),
+  L('Пинг чешет затылок: «Моя льдинка с домиком что-то покачивается… Это к непогоде».', 'Ping scratches his head: “My little floe with my house is rocking a bit… Bad weather is coming.”'),
   L('Мамы шепчутся: «Малыши потерялись, потому что море стало беспокойным…»', 'The mums whisper: “The little ones got lost because the sea got restless…”'),
   L('Акула: «В глубине неспокойно, идёт что-то большое. Если что — я сильная, потяну плот!»', 'The shark: “It’s restless in the deep, something big is coming. If anything happens — I’m strong, I’ll tow a raft!”'),
   L('Клякса: «Бочку принесло волнами издалека — там уже бушует шторм. Станет темно — я посвечу!»', 'Blot: “The waves brought the barrel from far away — a storm is already raging there. If it gets dark, I’ll shine!”'),
@@ -184,7 +184,7 @@ function stMarkPicks(panel){
 const ST_GATE = {rescue:2, dive:3, chase:3, road:5, fight:5, coop:-1};
 function stGate(k){
   const i = ST_GATE[k];
-  if(i == null || i < 0 || save.story.open > i) return -1;
+  if(i == null || i < 0 || save.story.open > i || save.free) return -1;   // 🔓 «Все игры открыты» в ⚙️
   return typeof TEST !== 'undefined' && TEST && !/lock/.test(location.search) ? -1 : i;
 }
 const stGateSay = i => L(`🔒 Откроется в главе ${i + 1} «${STORY[i].name}» 📖`, `🔒 Opens in chapter ${i + 1} «${STORY[i].name}» 📖`);

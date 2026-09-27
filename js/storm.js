@@ -24,6 +24,7 @@ const SM_SC = 0.42;                          // размер тюленей
 const SM_GIFT = [15, 15, 20, 30], SM_AGAIN = 5;   // ракушки за часть в первый раз; повтор — раз в день
 const smDay = () => new Date().toDateString();
 const smOn = () => save.story.open >= 8 || save.storm.st > 0;   // глава 8 открыта — шторм идёт
+const smPlay = () => smOn() || save.free;   // 🔓 «Все игры открыты» (⚙️): до главы 8 шторм — тренировка, сюжет не двигается
 const SM_PARTS = [
   {ic:'🚨', name:L('Тревога', 'The alarm')},
   {ic:'🛟', name:L('Спасаем всех', 'Save everyone')},
@@ -408,7 +409,14 @@ const P2_NB = [
   {n:L('Черепаха', 'The turtle'), off:-Math.PI/2, make(){ const g = DV_MAKE.turtle(); g.scale.setScalar(0.5); return g; }},
   {n:L('Мама Лучика', 'Little Ray’s mum'), make(){ const s = rsSealLook({c:0xE3E9F2}, '#FFD66B', 0.3); return s.root; }},
   {n:L('Крабик', 'The crab'), make(){ const g = DV_MAKE.crab(); g.scale.setScalar(0.7); return g; }},
-  {n:L('Пингвинёнок', 'The penguin chick'), make(){ const s = makePenguin({name:'', f:true, color:0x7C8DB5}); s.root.scale.setScalar(0.26); return s.root; }}
+  {n:L('Пингвинёнок', 'The penguin chick'), make(){ const s = makePenguin({name:'', f:true, color:0x7C8DB5}); s.root.scale.setScalar(0.26); return s.root; }},
+  // маленькая история Пинга: его льдину с домиком уносит, он боится прыгать — малыш подбадривает (p2PingMeet)
+  {n:L('Пинг', 'Ping'), ping:true, make(){ const s = makePenguin(PENG); s.root.scale.setScalar(0.28); return s.root; }}
+];
+const P2_CHEER = [   // малыш подбадривает — Пинг отвечает
+  [L('Пинг, я здесь! Не бойся!', 'Ping, I’m here! Don’t be scared!'), L('Правда? Ты рядом?..', 'Really? You’re here?..')],
+  [L('Ты самый храбрый пингвин на острове!', 'You’re the bravest penguin on the island!'), L('Я… я храбрый!', 'I… I am brave!')],
+  [L('Прыгай — мы тебя поймаем! Раз, два…', 'Jump — we’ll catch you! One, two…'), L('…ТРИ! Уф! Спасибо, друг! 💙', '…THREE! Phew! Thank you, friend! 💙')]
 ];
 const P2 = {
   helpAt:3,
@@ -443,13 +451,15 @@ const P2 = {
     mgOn(mgRoot, 'pointermove', e => {
       if(!g || g.used || e.pointerId !== g.id || !ok()) return;
       const dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if(SM.P.cheer) return;
       if(Math.abs(dx) > 28 && Math.abs(dx) > Math.abs(dy)){ g.used = true; p2Lane(SM.me, Math.sign(dx)); }
       else if(dy < -34 && -dy > Math.abs(dx)){ g.used = true; p2Jump(SM.me); }
     });
-    mgOn(mgRoot, 'pointerup', e => { if(!g || e.pointerId !== g.id) return; const t = g; g = null; if(!t.used && ok()) p2Jump(SM.me); });
+    mgOn(mgRoot, 'pointerup', e => { if(!g || e.pointerId !== g.id) return; const t = g; g = null; if(!t.used && ok()){ if(SM.P.cheer) p2Cheer(1); else p2Jump(SM.me); } });
     mgOn(mgRoot, 'pointercancel', () => g = null);
     mgOn(window, 'keydown', e => {
       if(!ok() || e.repeat) return;
+      if(SM.P.cheer){ if(e.key === 'ArrowUp' || e.key === ' '){ e.preventDefault(); p2Cheer(1); } return; }
       if(e.key === 'ArrowLeft'){ e.preventDefault(); p2Lane(SM.me, -1); }
       else if(e.key === 'ArrowRight'){ e.preventDefault(); p2Lane(SM.me, 1); }
       else if(e.key === 'ArrowUp' || e.key === ' '){ e.preventDefault(); p2Jump(SM.me); }
@@ -459,7 +469,7 @@ const P2 = {
   step(dt){
     const P = SM.P, go = SM.st === 'go' || SM.st === 'end';
     if(go){
-      const want = SM.st === 'end' ? 0 : P2_V*(SM.helped ? 0.84 : 1);
+      const want = SM.st === 'end' || P.cheer ? 0 : P2_V*(SM.helped ? 0.84 : 1);
       P.sp += (want - P.sp)*Math.min(1, dt*(SM.st === 'end' ? 1.5 : 1.2));
       const z0 = P.z; P.z += P.sp*dt;
       if(SM.st === 'go'){
@@ -472,14 +482,18 @@ const P2 = {
     // мимо соседа проплыли — вернётся позже; позади — убираем
     P.rows = P.rows.filter(r => {
       if(r.z < P.z - 4){
-        if(r.k === 'nb' && !r.got && SM.host && SM.st === 'go'){ P.queue.unshift(r.n); P.nbGap = 0; floatText(L('Вернёмся за ним! 🔄', 'We’ll come back! 🔄'), smAt(p2X(r.ln), -P.z, 1.2), '#2E6FA8'); }
+        if(r.k === 'nb' && !r.got && SM.host && SM.st === 'go'){ P.queue.unshift(r.n); P.nbGap = 0; floatText(r.ping ? L('Пинг, держись! Мы вернёмся! 🔄', 'Hold on, Ping! We’ll come back! 🔄') : L('Вернёмся за ним! 🔄', 'We’ll come back! 🔄'), smAt(p2X(r.ln), -P.z, 1.2), '#2E6FA8'); }
         if(r.o) SM.grp.remove(r.o); return false;
       }
       return true;
     });
+    if(P.cheer && P.cheer.r.o){ const r = P.cheer.r; r.z += (P.z + 2.6 - r.z)*Math.min(1, dt*3); r.o.position.z = smAt(0, -r.z).z; }   // льдина Пинга ждёт чуть впереди — её видно из-за малыша
     for(const r of P.rows){
+      if(r.ping && r.o && !r.said && r.z < (P.rz || 99) - 1.2){ r.said = true; p2PingSwept(); smSay(SM.mode === 'ping' ? L('Пинг кинулся к своему домику — и льдину уносит вместе с ним! Плыви к нему!', 'Ping rushed to his little house — and now the floe is drifting away with him! Swim to him!')
+        : L('Смотри, это домик Пинга! Его льдину уносит в море! Плыви к нему!', 'Look, it’s Ping’s little house! His floe is drifting out to sea! Swim to him!'), 3600); }
       if(r.o){ const show = r.z < (P.rz || 99) - 1.2; if(show && !r.o.visible){ r.o.visible = true; r.o.scale.setScalar(0.3); tween(0.3, k => { if(r.o) r.o.scale.setScalar(0.3 + 0.7*k); }, ease.back); } else if(!show) r.o.visible = false; }
-      if(r.k === 'nb' && r.o && !r.got){ r.o.position.y = smAt(0, 0, -0.18 + Math.sin(now*2 + r.z)*0.05).y; r.o.rotation.z = Math.sin(now*1.6 + r.z)*0.05; }
+      if(r.k === 'nb' && r.o && !r.got){ r.o.position.y = smAt(0, 0, -0.18 + Math.sin(now*2 + r.z)*0.05).y; r.o.rotation.z = Math.sin(now*1.6 + r.z)*0.05;
+        if(r.ping && r.m){ const f = P.cheer && P.cheer.r === r ? 1 - P.cheer.n/P2_CHEER.length : 1; r.m.rotation.z = Math.sin(now*22)*0.07*f; } }   // Пинг дрожит, пока боится
       if(r.k === 'wave' && r.o) r.o.position.y = smAt(0, 0, -0.05 + Math.sin(now*3 + r.z)*0.04).y;
       if(r.k === 'sh' && r.o) r.o.children.forEach(c => { if(c.visible) c.rotation.y += dt*3; });
     }
@@ -523,6 +537,11 @@ function p2Row(r){
     const fl = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.7, 0.3, 14), toon(0xE6F2FA)), 1.05); g.add(fl);
     const d = P2_NB[r.n], m = d.make(); m.position.y = 0.15; m.rotation.y = d.off || 0; g.add(m); r.m = m;
     const sp = smSprite('🆘', '#D9527E'); sp.position.y = 1.4; sp.scale.multiplyScalar(0.8); g.add(sp);
+    if(d.ping){   // льдина Пинга: пошире, с его голубым домиком и флажком-рыбкой (js/neighbors.js)
+      r.ping = true; fl.scale.set(1.35, 1, 1.2); m.position.x = 0.32;
+      const h = nbHouse(); h.scale.setScalar(0.55); h.position.set(-0.38, 0.15, -0.1); h.rotation.y = 0.5; g.add(h);
+      sp.position.y = 1.55;
+    }
     g.position.copy(smAt(p2X(r.ln), -r.z, -0.18));
   } else if(r.k === 'wave'){
     const w = smRoll(P2_LN*2 - 0.1, 0.3); g.add(w); g.position.copy(smAt((p2X(r.ln) + p2X(r.ln + 1))/2, -r.z, -0.05));
@@ -546,6 +565,7 @@ function p2Gen(){   // хозяин раскладывает впереди: с�
       const l = Math.floor(rnd()*3);
       r = {k:'nb', n:P.queue.shift(), ln:l >= SM.me.ln ? l + 1 : l}; P.nbGap = 0;
       if(SM.helped && now - (P.act || -99) < 8) r.ln = SM.me.ln;
+
     } else {
       const k = rnd(), help = SM.helped ? 0.5 : 1;
       r = k < 0.36 ? {k:'wave', ln:Math.floor(rnd()*3)} : k < 0.36 + 0.3*help ? {k:'berg', ln:Math.floor(rnd()*4)} : {k:'sh', ln:Math.floor(rnd()*4)};
@@ -569,7 +589,8 @@ function p2Body(p, dt, z0){
       if(r.k === 'berg'){ if(p.y < 0.9) p2Bonk(p); }
       else if(r.k === 'sh'){ /* ракушки собираем по одной ниже */ }
       else if(r.k === 'nb' && !r.got){
-        if(smBot(p) && !smBotMay(P2_LEAD)){ r.hit.delete(who); continue; }   // Пинг проплывает мимо: этого соседа спасаешь ты
+        if(smBot(p) && (r.ping || !smBotMay(P2_LEAD))){ r.hit.delete(who); continue; }   // Пинг проплывает мимо: этого соседа спасаешь ты
+        if(r.ping){ if(SM.host) p2PingMeet(r); else netSend({t:'sme', k:'pick', id:r.id}); continue; }
         if(SM.host) p2Got(r, who === 'me' ? 1 : 2); else netSend({t:'sme', k:'pick', id:r.id});
       }
     }
@@ -584,6 +605,7 @@ function p2Got(r, who){
   r.got = true; P.got++;
   if(who === 1) P.mt = (P.mt || 0) + 1; else if(smBot(SM.pal)) P.bt = (P.bt || 0) + 1;
   if(SM.mode === 'net' && SM.host) netSend({t:'sme', k:'got', id:r.id, w:who});
+  if(r.ping) return p2PingSaved(r);
   const d = P2_NB[r.n], m = r.m, seat = P.seats[(P.got - 1) % P.seats.length];
   sfx.good(); floatText(L(`${d.n}: спасибо! 💗`, `${d.n}: thank you! 💗`), r.o.position.clone().add(new V3(0, 1.6, 0)), '#D9527E');
   const from = m.getWorldPosition(new V3()); r.o.remove(m); SM.grp.add(m); m.position.copy(from);
@@ -593,6 +615,61 @@ function p2Got(r, who){
     m.position.lerpVectors(from, to, k); m.position.y += Math.sin(k*Math.PI)*1.6;
   }, ease.lin).then(() => { if(!SM || SM.P !== P) return; SM.grp.remove(m); m.position.set(seat[0], 0.2, seat[1]); m.rotation.y = (d.off || 0) + Math.PI; P.raft.add(m); burst(TEX.heart, P.raft.position.clone().add(new V3(0, 0.8, 0)), 6, 1.4, 0.25); });
   if(P.got >= P2_NB.length && SM.host) p2Win();
+}
+/* ---------- маленькая история Пинга ----------
+   Последний сосед — сам Пинг: шторм оторвал его льдинку с домиком. Он дрожит и боится прыгать; подплыви — плот
+   и все останавливаются, а ты касаешься экрана и подбадриваешь (3 раза: малыш говорит, Пинг отвечает). Храбрый Пинг
+   спасён, акула цепляет его льдинку с домиком к плоту. С Пингом-напарником: волна уносит его к домику прямо в пути.
+   По сети решает хозяин: встретили (cm), подбодрили (cn), спасли (got). */
+function p2PingSwept(){
+  const p = SM.pal; if(!p || p.kind !== 'ping' || p.gone) return;
+  p2Bonk(p); floatText(L('Мой домик! Его уносит!', 'My little house! It’s drifting away!'), smAt(p.x, -SM.P.z, 1.4), '#D9527E');
+  setTimeout(() => { if(SM && SM.pal === p) p.gone = true; }, 600);
+}
+function p2PingMeet(r){
+  const P = SM.P; if(P.cheer || r.got || !r.o) return;
+  P.cheer = {r, n:0, t:0};
+  if(SM.mode === 'net' && SM.host) netSend({t:'sme', k:'cm', id:r.id});
+  const sp = r.o.children.find(c => c.isSprite); if(sp) sp.visible = false;
+  sfx.bad();
+  floatText(L('Моя льдина уплывает… Мне страшно прыгать! 😰', 'My floe is drifting away… I’m scared to jump! 😰'), smAt(0, -r.z, 1.8), '#2E6FA8');
+  mgHint(L('Пинг боится! Нажимай — подбодри его 💗', 'Ping is scared! Tap to cheer him up 💗'));
+}
+function p2Cheer(who){
+  const P = SM.P, c = P.cheer; if(!c || SM.st !== 'go') return;
+  if(who === 1) P.act = now;
+  if(!SM.host){ if(now - c.t < 0.5) return; c.t = now; netSend({t:'sme', k:'cheer'}); sfx.purr(); return; }
+  if(now - c.t < 0.9 || c.n >= P2_CHEER.length){ sfx.purr(); if(c.r.o) burst(TEX.heart, c.r.o.position.clone().add(new V3(0, 0.9, 0)), 3, 1, 0.2); return; }   // сердечки летят, а слова — по одному
+  c.t = now; c.n++;
+  if(SM.mode === 'net') netSend({t:'sme', k:'cn', n:c.n, w:who});
+  p2CheerFx(c.n, who);
+  if(c.n >= P2_CHEER.length) setTimeout(() => { if(SM && SM.P === P && P.cheer === c) p2Got(c.r, who); }, 1400);
+}
+function p2CheerFx(n, who){
+  const P = SM.P, c = P.cheer; if(!c || !c.r.o) return;
+  c.n = n; c.t = now;
+  const [me, ping] = P2_CHEER[n - 1], p = who === 2 && SM.pal && !SM.pal.gone ? SM.pal : SM.me;
+  sfx.purr(); floatText(me, smAt(0, -P.z, p.y + 1.2), '#D9527E');   // реплики — по центру: с крайней полосы их срезает край экрана
+  burst(TEX.heart, c.r.o.position.clone().add(new V3(0, 0.9, 0)), 6, 1.4, 0.25);
+  setTimeout(() => { if(SM && SM.P === P && c.r.o) floatText(ping, smAt(0, -c.r.z, 1.9), '#2E6FA8'); }, 800);
+  mgHint(n < P2_CHEER.length ? L(`Ещё! 💗 ${n}/${P2_CHEER.length}`, `More! 💗 ${n}/${P2_CHEER.length}`) : '');
+}
+function p2PingSaved(r){
+  const P = SM.P;
+  P.cheer = null; P.rows = P.rows.filter(q => q !== r);
+  sfx.good(); sfx.arf();
+  // Пинг-напарник спрыгивает к тебе в воду, а льдинку с домиком акула цепляет к плоту
+  const pal = SM.pal;
+  if(pal && pal.kind === 'ping' && pal.gone){ if(r.m) r.o.remove(r.m); r.m = null; pal.gone = false; pal.ln = r.ln; pal.x = p2X(r.ln); pal.air = true; pal.vy = P2_VY*0.7; pal.y = 0.4; }
+  else if(r.m){ const m = r.m; tween(0.5, k => { m.position.y = 0.15 + Math.sin(k*Math.PI)*0.7; }, ease.lin); m.rotation.z = 0; }   // прыгает от радости
+  const o = r.o; if(!o) return;
+  burst(TEX.heart, o.position.clone().add(new V3(0, 1, 0)), 12, 2, 0.35);
+  const from = o.position.clone(); r.o = null;
+  mgHint(L('Пинг спасён! Акула прицепит его домик к плоту 🏠🦈', 'Ping is saved! The shark will hook his little house to the raft 🏠🦈'));
+  setTimeout(() => { if(SM && SM.P === P && /Пинг спасён|Ping is saved/.test(mgHintEl.textContent)) mgHint(''); }, 2600);
+  tween(1.4, k => { const to = P.raft.localToWorld(new V3(2.1, 0, 0.2)); o.position.lerpVectors(from, to, ease.out(k)); }, ease.lin)
+    .then(() => { if(!SM || SM.P !== P) return; SM.grp.remove(o); o.position.set(2.1, 0, 0.2); o.rotation.set(0, 0, 0); P.raft.add(o); });
+  if(P.got >= P2_NB.length && SM.host) setTimeout(() => { if(SM && SM.P === P) p2Win(); }, 1500);
 }
 function p2Win(){ if(SM.st !== 'go') return; SM.st = 'end'; if(SM.mode === 'net') netSend({t:'sme', k:'win'}); p2WinFx(); }
 async function p2WinFx(){
@@ -634,7 +711,10 @@ function p2Net(m){
   const P = SM.P;
   if(m.k === 'row' && !SM.host){ const r = Object.assign({hit:new Set()}, m.r); p2Row(r); }
   else if(m.k === 'z2' && !SM.host){ const d = m.z - P.z; if(Math.abs(d) > 4) P.z = m.z; else P.z += d*0.5; }
-  else if(m.k === 'pick' && SM.host){ const r = P.rows.find(q => q.id === m.id); if(r && r.k === 'nb' && !r.got) p2Got(r, 2); }
+  else if(m.k === 'pick' && SM.host){ const r = P.rows.find(q => q.id === m.id); if(r && r.k === 'nb' && !r.got){ if(r.ping) p2PingMeet(r); else p2Got(r, 2); } }
+  else if(m.k === 'cm' && !SM.host){ const r = P.rows.find(q => q.id === m.id); if(r) p2PingMeet(r); }
+  else if(m.k === 'cheer' && SM.host) p2Cheer(2);
+  else if(m.k === 'cn' && !SM.host) p2CheerFx(m.n, m.w);
   else if(m.k === 'got' && !SM.host){ const r = P.rows.find(q => q.id === m.id); if(r) p2Got(r, m.w); else P.got++; }
   else if(m.k === 'win' && !SM.host) p2WinFx();
 }
@@ -1125,11 +1205,11 @@ async function stormRun(mode, pal0, part){
 /* ---------- награда и итоги части ---------- */
 function smResults(){
   const s = save.storm, part = SM.part, today = smDay();
-  const first = SM.host && s.st <= part;
+  const first = SM.host && s.st <= part && smOn();   // тренировка до главы 8 сюжет не двигает
   let gift = 0;
   if(first){ s.st = part + 1; gift = SM_GIFT[part]; }
   else if(s.d !== today) gift = SM_AGAIN;
-  if(part === 3 && SM.host) s.n++;
+  if(part === 3 && SM.host && smOn()) s.n++;
   s.d = today; if(SM.mode === 'net') s.net++;
   let photo = null;
   if(part === 3 && SM.P.photo){ photo = SM.P.photo; albumAdd({name:SM.mode === 'net' ? L('Мы вместе: радуга', 'Together: the rainbow') : L('Радуга после шторма', 'Rainbow after the storm'), img:photo, d:Date.now()}); renderAlbumCount(); }
@@ -1174,12 +1254,12 @@ async function smPanel(r){
 
 /* ---------- какую часть играть: следующую по сюжету; шторм уже пройден — выбрать ---------- */
 async function smPickPart(){
-  const st = save.storm.st;
-  if(st < 4) return st;
+  const st = save.storm.st, drill = !smOn();
+  if(st < 4 && !drill) return st;
   mgOpen('');
   const panel = mgNode('div', 'mg-panel fun-pick sm-pick', `
     <p class="ttl display">🌪️ ${L('Великий шторм', 'The Great Storm')}</p>
-    <p class="got">${L('Какую часть сыграем ещё раз?', 'Which part shall we play again?')}</p>
+    <p class="got">${drill ? L('Тренировка! Настоящий шторм придёт в главе 8. Какую часть сыграем?', 'Practice! The real storm comes in chapter 8. Which part shall we play?') : L('Какую часть сыграем ещё раз?', 'Which part shall we play again?')}</p>
     <div class="picks">${SM_PARTS.map((p, i) => `<button data-k="${i}"><span class="ic">${p.ic}</span><b>${p.name}</b></button>`).join('')}</div>
     <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
   const k = await new Promise(r => panel.querySelectorAll('[data-k]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
@@ -1202,6 +1282,7 @@ async function stormGame(mode, pal0 = null){
 }
 if(typeof CO_GAMES !== 'undefined') CO_GAMES.storm = {ic:'🌪️', name:() => L('Шторм', 'Storm'),
   say:() => { const st = save.storm.st;
+    if(!smOn()) return L('Тренировка шторма: выбери любую часть! Настоящий шторм придёт в главе 8 📖', 'Storm practice: pick any part! The real storm comes in chapter 8 📖');
     return st >= 4 ? L('Шторм позади — но можно сыграть любую часть ещё раз, с Пингом или с папой!', 'The storm is over — but you can play any part again, with Ping or with Dad!')
       : L(`Идёт Великий шторм! Все друзья вместе спасают остров. Часть ${st + 1} из 4: ${SM_PARTS[st].ic} ${SM_PARTS[st].name}`, `The Great Storm is coming! All the friends save the island together. Part ${st + 1} of 4: ${SM_PARTS[st].ic} ${SM_PARTS[st].name}`); },
   wins:() => save.storm.st ? SM_PARTS.map((p, i) => i < save.storm.st ? p.ic : '▫️').join(' ') : ''};

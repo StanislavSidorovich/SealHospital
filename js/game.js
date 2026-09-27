@@ -281,6 +281,15 @@ for(const b of document.querySelectorAll('#musicSeg button')) b.addEventListener
   if(save.music && save.muted){ save.muted = false; renderMute(); }
   persist(); renderMusic(); sfx.tap();
 });
+// 🔓 «Все игры открыты» (⚙️, для игры с папой): замки глав и уровней не мешают выбрать любую игру; сюжет не сбивается —
+// шторм до главы 8 идёт как тренировка (js/storm.js), главы открываются как обычно
+function renderFree(){ document.querySelectorAll('#freeSeg button').forEach(b => b.classList.toggle('on', (b.dataset.f === '1') === save.free)); }
+for(const b of document.querySelectorAll('#freeSeg button')) b.addEventListener('click', () => {
+  const on = b.dataset.f === '1'; if(on === save.free) return;
+  save.free = on; persist(); renderFree(); sfx.tap();
+  toast(on ? L('🔓 Все игры и уровни открыты!', '🔓 All games and levels are open!') : L('📖 Игры снова открываются по главам', '📖 Games unlock by chapter again'), 2600);
+});
+renderFree();
 /* ---------------- код сохранения (настройки) ---------------- */
 const codeBox = $('#codeBox'), codeMsg = $('#codeMsg');
 let codeNew = null;   // прочитанный код, который ждёт «Да, загрузить»

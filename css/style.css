@@ -394,6 +394,7 @@ body:not(.pet-mode) .night{opacity:0}
 .picks b{font-family:"Pangolin","Comic Sans MS",cursive;font-size:21px;font-weight:400}
 .picks small{font-size:11.5px;font-weight:800;color:var(--soft);line-height:1.2}
 .picks .new{background:#FFF7DD}
+.picks .dice{background:var(--pink)!important;transform:scale(1.06)}   /* 🎲 «Любая» в «Поиграть» (walk.js) */
 .picks .new small{color:#B07E12}
 .picks .new::after{content:"✨";position:absolute;top:-10px;right:-6px;font-size:20px;animation:pulse 1.1s ease-in-out infinite}
 .fun-pick .btn.small,.trick-pick .btn.small{margin-top:8px}
@@ -477,6 +478,8 @@ body:not(.pet-mode) .night{opacity:0}
 .lang button+button,.seg button+button{border-left:2.5px solid var(--ink)}
 .lang button.on,.seg button.on{background:var(--pink)}
 .panel.settings .lang,.panel.settings .seg{margin:0 auto 14px}
+#freeSeg button{white-space:nowrap;padding:6px 12px}
+.set-note{font-size:14px!important;color:var(--soft);margin:-6px 0 12px!important;line-height:1.3!important}
 .set-lbl{font-size:22px!important;color:var(--pink-d);margin:6px 0 6px!important;line-height:1.1!important}
 
 /* ---------------- «Кто играет?» (Фаза 11, часть 1, js/game.js) ---------------- */

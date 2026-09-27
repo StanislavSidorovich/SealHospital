@@ -31,7 +31,7 @@ const RS_LVS = {};                                  // уровни по id; Q.L
 let rsLvPick = 'bay', rsLvAuto = false;                               // какой уровень выбран в меню (помним до перезагрузки)
 const rsResc = () => { const c = save.coop, r = c.resc || (c.resc = {wins:0, day:{d:'', n:0}}); r.lv = r.lv || {}; r.pearls = r.pearls || {}; return r; };
 const rsLvPrev = id => { const ids = Object.keys(RS_LVS), i = ids.indexOf(id); return i > 0 ? ids[i - 1] : null; };
-const rsLvOpen = id => { const pv = rsLvPrev(id), r = rsResc(); return !pv || (r.lv[pv] || (pv === 'bay' ? r.wins : 0)) > 0; };   // каждый уровень — после победы в предыдущем
+const rsLvOpen = id => { const pv = rsLvPrev(id), r = rsResc(); return !pv || save.free || (r.lv[pv] || (pv === 'bay' ? r.wins : 0)) > 0; };   // 🔓 ⚙️ — все сразу   // каждый уровень — после победы в предыдущем
 
 /* ---------- уровень «Бухта потеряшки» (x — вдоль, y — вверх, земля y=0) ----------
    0–8 старт · 9–15 плиты и ворота · 16–27 качели и полка с рычагом · 29–36 вода и ледяная стена ·

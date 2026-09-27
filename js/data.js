@@ -33,6 +33,7 @@ function sanitize(d){
     progress:Number.isFinite(d.progress) ? d.progress : 0,
     muted:!!d.muted,
     music:d.music !== false,   // фоновая музыка (js/audio.js); 🔇 в углу выключает и её
+    free:!!d.free,             // 🔓 «Все игры открыты» (⚙️): замки глав и уровней не мешают, сюжет идёт своим чередом (stGate в js/story.js)
     fish:Number.isFinite(d.fish) ? d.fish : 0,     // рыбки в ведре (Фаза 1, рыбалка)
     shells:Number.isFinite(d.shells) ? Math.max(0, d.shells) : 0,   // ракушки — валюта (Фаза 2)
     owned:strList(d.owned),    // купленное в лавке (id из SHOP)

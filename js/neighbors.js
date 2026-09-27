@@ -64,14 +64,20 @@ WEAR.pingcap = () => {   // тёмно-синяя шапочка-пингвин:
 const nbRoot = new THREE.Group(); nbRoot.position.copy(NB_POS); nbRoot.visible = false; scene.add(nbRoot);
 { const fl = addOutline(new THREE.Mesh(floeGeo, floe.material), 1.03); fl.position.y = -0.05; fl.scale.set(0.37, 1, 0.37); fl.rotation.y = 0.8; nbRoot.add(fl);
   const fm = new THREE.Mesh(foam.geometry, foam.material); fm.rotation.x = -Math.PI/2; fm.position.y = 0.1; fm.scale.setScalar(0.37); nbRoot.add(fm);
-  const h = new THREE.Group(); h.position.set(-0.45, 0.25, -0.3); h.rotation.y = 0.35;
+  const h = nbHouse(); h.position.set(-0.45, 0.25, -0.3); h.rotation.y = 0.35;
+  nbRoot.userData.flag = h.userData.flag;
+  nbRoot.add(h);
+}
+// домик Пинга (его же уносит в шторме, js/storm.js)
+function nbHouse(){
+  const h = new THREE.Group();
   h.add(addOutline(new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 12, 0, Math.PI*2, 0, Math.PI/2), toon(0xDDEEFF)), 1.04));
   const tunnel = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.3, 16, 1, false, -Math.PI/2, Math.PI), toon(0xDDEEFF)), 1.06);
   tunnel.rotation.x = Math.PI/2; tunnel.position.set(0, 0, 0.47); h.add(tunnel);
   const door = new THREE.Mesh(new THREE.CircleGeometry(0.15, 16, 0, Math.PI), new THREE.MeshBasicMaterial({color:0x46557A})); door.position.set(0, 0, 0.625); h.add(door);
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6), inkMat); pole.position.set(0.25, 0.75, 0); h.add(pole);
-  const flag = makeFish(0xFFA552); flag.scale.setScalar(0.55); flag.position.set(0.25 + 0.2, 0.95, 0); h.add(flag); nbRoot.userData.flag = flag;
-  nbRoot.add(h);
+  const flag = makeFish(0xFFA552); flag.scale.setScalar(0.55); flag.position.set(0.25 + 0.2, 0.95, 0); h.add(flag); h.userData.flag = flag;
+  return h;
 }
 let ping = null;   // модель Пинга-соседа (makePenguin из seal.js)
 const PING_TEX = {gift:bubbleTex('🎁'), zzz:bubbleTex('💤')};

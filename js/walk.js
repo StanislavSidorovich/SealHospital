@@ -106,14 +106,28 @@ async function funMenu(s){
       ${typeof nbHere === 'function' && nbHere() ? `<button data-k="ping" class="wide"><span class="ic">🐧</span><b>${L('Мяч с Пингом', 'Ball with Ping')}</b><small>${L('втроём', 'all three')}</small></button>` : ''}
       ${typeof coopFromPet === 'function' ? `<button data-k="coop" class="wide"><span class="ic">☁️</span><b>${L('Вместе', 'Together')}</b><small>${L('с папой, другом или Пингом', 'with Dad, a friend or Ping')}</small></button>` : ''}
     </div>
-    <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button>`);
+    <div class="row"><button class="btn ghost small" data-k="dice">🎲 ${L('Любая', 'Surprise me')}</button><button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button></div>`);
   if(newFind) panel.querySelector('[data-k="walk"]').classList.add('new');
   if(typeof stMarkPicks === 'function') stMarkPicks(panel);   // 📖 — куда ведёт история (js/story.js)
   if(typeof stLockPicks === 'function') stLockPicks(panel);   // 🔒 — до этих игр история ещё не дошла
   const pb = panel.querySelector('[data-k="ping"]'); if(pb && nbQuest().id === 'ball' && !nbQuest().ok) pb.classList.add('new');   // Пинг сегодня просил
-  const k = await new Promise(r => panel.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
+  let k = await new Promise(r => panel.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
+  if(k === 'dice') k = await funDice(panel);
   panel.classList.add('away'); await wait(0.25); mgClose();
   return k;
+}
+// 🎲 «Любая»: огонёк бежит по открытым плиткам и останавливается на случайной игре
+async function funDice(panel){
+  const bs = [...panel.querySelectorAll('.picks [data-k]:not(.st-lock)')].filter(b => b.dataset.k !== 'coop');
+  panel.querySelectorAll('button').forEach(b => b.disabled = true);
+  const pick = Math.floor(Math.random()*bs.length), steps = bs.length*2 + pick;
+  for(let i = 0; i <= steps; i++){
+    const b = bs[i % bs.length]; b.classList.add('dice'); sfx.tick();
+    await wait(0.06 + 0.16*(i/steps)**2);
+    if(i < steps) b.classList.remove('dice');
+  }
+  sfx.star(); await wait(0.6);
+  return bs[pick].dataset.k;
 }
 // что меняется после игры: гуляли — проголодался и испачкался сильнее
 const FUN_COST = {ball:{food:0.12, bath:0.25}, ping:{food:0.15, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}, run:{food:0.2, bath:0.3, sleep:0.2}, dive:{food:0.25, bath:0.15, sleep:0.2}, chase:{food:0.25, bath:0.15, sleep:0.2}, slide:{food:0.2, bath:0.3, sleep:0.2}};

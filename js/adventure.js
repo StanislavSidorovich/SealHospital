@@ -667,7 +667,7 @@ async function advMap(){
   const secOf = id => save.adv.sec.includes(id) ? `<i class="sec on" title="${L('Секрет найден', 'Secret found')}">✨</i>` : `<i class="sec" title="${L('Где-то спрятан секрет', 'A secret is hidden somewhere')}">?</i>`;
   const starsOf = n => '★'.repeat(n) + '☆'.repeat(3 - n);
   const lvBtn = (is, id) => {
-    const lv = LEVELS[id], open = !lv.after || advStars(lv.after) > 0;
+    const lv = LEVELS[id], open = !lv.after || advStars(lv.after) > 0 || save.free;   // 🔓 ⚙️ «Все игры открыты»
     return open
       ? `<button class="isle on" data-lv="${id}"><span class="ic" aria-hidden="true">${lv.chase ? '☁️' : is.ic}</span><span class="t"><b>${levelName(id)}</b><small>${is.name}</small></span><span class="st" aria-label="${L('звёзды', 'stars')}">${starsOf(advStars(id))}${secOf(id)}</span></button>`
       : `<div class="isle lock"><span class="ic" aria-hidden="true">${lv.chase ? '☁️' : is.ic}</span><span class="t"><b>${levelName(id)}</b><small>${L(`Сначала пробеги «${levelName(lv.after)}» 🔒`, `First finish “${levelName(lv.after)}” 🔒`)}</small></span></div>`;
