@@ -602,13 +602,14 @@ function coopNetGo(game, pal){
     toast(L(`Напарник выбрал «${CO_GAMES[g].name()}» — играем в неё!`, `Your partner picked “${CO_GAMES[g].name()}” — let's play that!`), 3200);
   }
   return g === 'rescue' ? rescueGame('net', pal) : g === 'road' && typeof roadGame === 'function' ? roadGame('net', pal)
-    : g === 'dive' && typeof diveNet === 'function' ? diveNet(pal) : g === 'storm' && typeof stormGame === 'function' ? stormGame('net', pal) : g === 'chase' && typeof chaseGame === 'function' ? chaseGame('net', pal) : coopFight('net', pal);
+    : g === 'dive' && typeof diveNet === 'function' ? diveNet(pal) : g === 'storm' && typeof stormGame === 'function' ? stormGame('net', pal) : g === 'chase' && typeof chaseGame === 'function' ? chaseGame('net', pal) : g === 'slide' && typeof slideGame === 'function' ? slideGame('net', pal) : coopFight('net', pal);
 }
 function coopPlay(pick){
   if(pick.game === 'visit') return visitGo(pick.mode);   // 🏝️ «Остров в гостях» (js/visit.js)
   if(pick.game === 'code') return iceGame(pick.mode);
   if(pick.mode === 'net') return coopNet(pick.game);
-  if(pick.game === 'chase') return chaseGame(pick.mode);   // 🦈 салки с акулой (js/chase.js)
+  if(pick.game === 'chase') return chaseGame(pick.mode);
+  if(pick.game === 'slide') return slideGame(pick.mode === 'ping' ? 'race' : 'time');   // 🛷 ледяная горка (js/slide.js)   // 🦈 салки с акулой (js/chase.js)
   if(pick.game === 'storm') return stormGame(pick.mode);   // 🌪️ Великий шторм (js/storm.js)
   return pick.game === 'rescue' ? rescueGame(pick.mode) : pick.game === 'road' ? roadGame(pick.mode) : coopFight(pick.mode);
 }

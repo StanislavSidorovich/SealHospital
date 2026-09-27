@@ -329,7 +329,7 @@ const STAT_IDLE = 60;
 const STAT_NAMES = {hosp:['🏥 Больница', '🏥 Hospital'], pet:['🦭 Малыш', '🦭 Pup'], home:['🏠 Иглу', '🏠 Igloo'], map:['🗺️ Карта забегов', '🗺️ Run map'],
   run:['🏃 Забег', '🏃 Run'], road:['☁️ Дорога к Туче', '☁️ Road to the Cloud'], cloud:['⛈️ Бой с Тучей', '⛈️ Cloud battle'], gull:['🕊️ Чайка', '🕊️ Gull'],
   bay:['🌊 Потеряшка: Бухта', '🌊 Lost pup: Bay'], grot:['🕯️ Потеряшка: Грот', '🕯️ Lost pup: Grotto'], snow:['❄️ Потеряшка: Метель', '❄️ Lost pup: Blizzard'],
-  dive:['🤿 Бухта под водой', '🤿 Underwater bay'], chase:['🦈 Салки с акулой', '🦈 Shark tag'], gloom:['🌑 Мгла', '🌑 Gloom'],
+  dive:['🤿 Бухта под водой', '🤿 Underwater bay'], chase:['🦈 Салки с акулой', '🦈 Shark tag'], slide:['🛷 Ледяная горка', '🛷 Ice slide'], gloom:['🌑 Мгла', '🌑 Gloom'],
   ice:['🧊 Ледяной код', '🧊 Ice code'], visit:['🏝️ Остров в гостях', '🏝️ Island visit'], shop:['🛍️ Лавка', '🛍️ Shop'], mail:['✉️ Почта', '✉️ Mail'], book:['📖 Книга острова', '📖 Island book'], storm:['🌪️ Великий шторм', '🌪️ The Great Storm'], party:['🎉 Праздник острова', '🎉 Island party']};
 let statLastIn = -1e9, statAcc = 0, statWas = null;
 ['pointerdown', 'keydown'].forEach(e => addEventListener(e, () => statLastIn = performance.now(), {capture:true, passive:true}));
@@ -344,6 +344,7 @@ function statPlace(){
   if(b.contains('visit-on')) return 'visit';
   if(b.contains('ice-on')) return 'ice';
   if(b.contains('chase-on')) return 'chase';
+  if(b.contains('slide-on')) return 'slide';
   if(b.contains('dive-on')) return 'dive';
   if(b.contains('run-on')) return CR ? 'road' : CO ? 'cloud' : GL ? 'gull' : Q ? (Q.L && Q.L.id) || 'bay' : 'run';
   if(b.contains('map-on')) return 'map';

@@ -900,3 +900,14 @@ body.fn-dip-on #corner{visibility:hidden}
 .st-fin .btn{margin-top:0;flex:1 1 0;min-width:0;padding-left:8px;padding-right:8px;font-size:20px}
 .st-fin{flex-wrap:nowrap}
 @media (prefers-reduced-motion:reduce){.fn-seat.want,.fn-cake{animation:none}}
+/* 🛷 Ледяная горка (js/slide.js) */
+.sl-hud{gap:4px}
+.sl-hud .pill{padding:3px 7px;font-size:15px}
+.sl-hud .bar{min-width:36px}
+.sl-dot{position:absolute;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#7FD1A8;border:2px solid var(--ink)}
+.sl-dot.net{background:#8CC8F0}
+.sl-end .res-stars{text-align:center;font-size:30px;margin:0 0 6px}
+.sl-podium{display:flex;flex-direction:column;gap:3px;margin:0 0 8px;font-weight:800}
+.sl-podium span{background:#fff;border:2px solid var(--ink);border-radius:12px;padding:3px 10px}
+.sl-podium span.me{background:#FFE3EC}
+.sl-podium small{font-weight:600;opacity:.7}

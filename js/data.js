@@ -49,7 +49,16 @@ function sanitize(d){
     dive:sanitizeDive(d.dive),   // подводная бухта (js/dive.js)
     st:sanitizeSt(d.st),         // тихий счётчик: время в игре и по местам (statTick в js/game.js), для папы и будущей грамоты
     story:sanitizeStory(d.story),   // «Книга острова» и дела на сегодня (js/story.js)
-    storm:sanitizeStorm(d.storm)};  // 🌪️ Великий шторм (js/storm.js)
+    storm:sanitizeStorm(d.storm),   // 🌪️ Великий шторм (js/storm.js)
+    sl:sanitizeSlide(d.sl)};        // 🛷 Ледяная горка (js/slide.js)
+}
+// sl = {n — сколько раз скатились, bt — лучшее время (секунды, 0 — ещё нет), st — лучшие звёзды, win — сколько раз приехали первыми в гонке,
+//       gold — нашли золотую ракушку, flips — кувырков всего, net — сколько раз вместе, day:{d, n — спусков сегодня (ракушки за первые два), st — звёзды сегодня}} (js/slide.js)
+function sanitizeSlide(a){
+  a = a && typeof a === 'object' ? a : {};
+  const num = v => Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0, dy = a.day && typeof a.day === 'object' ? a.day : {};
+  return {n:num(a.n), bt:Number.isFinite(a.bt) && a.bt > 0 ? Math.round(a.bt*10)/10 : 0, st:Math.min(3, num(a.st)), win:num(a.win), gold:!!a.gold, flips:num(a.flips), net:num(a.net),
+    day:{d:typeof dy.d === 'string' ? dy.d.slice(0, 20) : '', n:num(dy.n), st:Math.min(3, num(dy.st))}};
 }
 // storm = {st — сколько частей шторма пройдено (0…4), n — сколько раз прошли весь шторм, d — день последней игры (toDateString), net — сколько раз вместе} (js/storm.js)
 function sanitizeStorm(a){

@@ -26,6 +26,7 @@ const ST_PLACES = {
   rescue:{ic:'🔎', name:L('Потеряшки', 'Lost pups'),   x:62, y:64, pet:true},
   dive:  {ic:'🤿', name:L('Бухта', 'Bay'),             x:28, y:86, pet:true},
   chase: {ic:'🦈', name:L('Салки', 'Tag'),             x:66, y:88, pet:true},
+  slide: {ic:'🛷', name:L('Горка', 'Slide'),           x:64, y:27, pet:true, show:() => typeof slideGame === 'function'},   // js/slide.js
   storm: {ic:'🌪️', name:L('Шторм', 'Storm'),          x:90, y:86, pet:true, show:() => typeof smOn === 'function' && smOn()}   // глава 8 (js/storm.js)
 };
 
@@ -51,6 +52,7 @@ const STORY = [
       {ic:'🐾', t:L('Малыш подрос', 'Your pup grows up'), n:() => [save.pet ? save.pet.stage : 0, 1], go:'pet'},
       {ic:'🎁', t:L('Найди 3 находки на прогулке', 'Find 3 treasures on walks'), n:() => [save.pet ? save.pet.finds.length : 0, 3], go:'walk'},
       {ic:'🎓', t:L('Выучи трюк на три звезды', 'Learn a trick to three stars'), ok:() => !!save.pet && Object.values(save.pet.tricks).some(v => v >= 3), go:'pet'},
+      {ic:'🛷', t:L('Скатись с Ледяной горки Пинга', 'Ride Ping\'s Ice Slide'), n:() => [save.sl.n, 1], go:'slide'},
       {ic:'✨', t:L('Малыш засиял', 'Your pup shines'), n:() => [save.pet ? save.pet.stage : 0, typeof SHINY === 'number' ? SHINY : 4], go:'pet'}
     ]},
   {ic:'🔎', name:L('Потеряшки', 'Lost pups'),
@@ -161,6 +163,8 @@ const TODAY = [
     done:() => save.dive.shark.ride === dvToday(), go:'dive'},
   {id:'chase', ic:'🦈', t:() => { const T = chTheme(); return L(`Погоня дня${T ? ': ' + T.ic + ' ' + T.name : ''}`, `Chase of the day${T ? ': ' + T.ic + ' ' + T.name : ''}`); },
     show:() => !!save.pet, done:() => save.dive.chase.day.d === stDay() && save.dive.chase.day.n > 0, go:'chase'},
+  {id:'slide', ic:'🛷', t:() => { const T = typeof slTheme === 'function' && slTheme(); return L(`Горка дня${T ? ': ' + T.ic + ' ' + T.name : ''}`, `Slide of the day${T ? ': ' + T.ic + ' ' + T.name : ''}`); },
+    show:() => !!save.pet && typeof slideGame === 'function', done:() => save.sl.day.d === stDay() && save.sl.day.n > 0, go:'slide'},
   {id:'garden', ic:'🌱', t:() => L('Рыбка-садовник ждёт с подарком', 'The gardener fish has a gift'), show:() => !!save.pet && stGardenGift(),
     done:() => !stGardenGift(), go:'dive'},
   {id:'guest', ic:'🤿', t:() => { const d = dvDef(dvGuest()); return L(`Гость бухты: ${d ? d.ic + ' ' + d.name : ''}`, `Bay guest: ${d ? d.ic + ' ' + d.name : ''}`); },

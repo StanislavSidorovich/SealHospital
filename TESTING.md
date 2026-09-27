@@ -77,3 +77,12 @@
 - Вход: `$('#btnIntroPet').click()`, через 2 с `fnGo()` (или книга → глава 8 → `#stFest`). Состояние — `FN` (`seats` — 6 мест `{id, m}`, `sel`, `party`), камера — `FN_CAM` (можно подкручивать на лету).
 - Рассадка: карточка `.fn-card[data-id]` — `pointerdown`+`pointerup` (два раза — на первое свободное место), место — `.fn-seat` `.click()`; перетаскивание — `pointermove` по карточке > 14px и `pointerup` над местом. `.fn-go` — «Праздник!» (от 2 гостей).
 - Дальше ждать `.fn-cake` (≈15 с на 6 тостов) → `.click()` → `.fn-end [data-k="dip"]` → `.fn-dip [data-k="ok"]` → конверт письма (`#envelope`). Проверено 27.09 на 375×812: рассадка, тосты, свечки, фото, грамота (формы слов по числу), письмо, повтор из книги, выход 🏠.
+
+## 🛷 Ледяная горка (`js/slide.js`)
+
+- **Без окна, 60 кадров/с:** headless Edge через `playwright-core` из кеша npx (`%LOCALAPPDATA%/npm-cache/_npx/*/node_modules/playwright-core`), `chromium.launch({channel:'msedge', headless:true, args:['--enable-gpu','--use-angle=d3d11','--ignore-gpu-blocklist']})` — с этими флагами WebGL идёт на видеокарте (без них ≈11 кадров/с). Экран `{width:375, height:812}`. Так видно настоящую скорость игры, свой цикл шагов не нужен.
+- Подготовка: `save.who.asked = true; save.pet = sanitizePet({name:'Тюпа', f:true, coat:PET_COATS[2].id, stage:2}); persist()` и перезагрузка. Сброс горки: `save.sl = sanitizeSlide()` и убрать `sl_*` из `save.adv.tips` (тогда первый спуск: без перемешивания кусков, обучение с замедлением).
+- Запуск сразу: `$('#intro').hidden = true; slideGame('race' | 'time')`. Тема дня: `advDayKey = () => 'Tue Sep 29 2026'` (27 — ☀️, 28 — 🌅, 29 — 🌌, 30 — ❄️).
+- Автопилот своего малыша: `SL.me.ai = {pace:1, skill:1, show:1, mult:1, line:0, ph:0, lead:0, did:new Set()}` и `mgTick(dt => SL && SL.st === 'go' && slAI(SL.me, dt))` — весь спуск ≈58 с, 3 звезды и золотая ракушка.
+- Касания: `pointerdown`/`pointerup` на `#mg` без движения — прыжок (в полёте — кувырок); `pointerdown` → `pointermove` на ±80 px → `pointerup` — сдвиг по жёлобу.
+- Состояние: `SL.st` (`ready`/`go`/`end`), `SL.me.s` (м от старта, финиш `SL.L.fin` ≈517), `SL.shells_`/`SL.total`, `SL.flips`, `SL.bots[i].s`.
