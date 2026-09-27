@@ -618,6 +618,8 @@ body.map-on #corner>:not(#bag){display:none!important}
 .co-btns .co-mic.on{background:#DDF5EA}
 .co-jump{width:84px;height:84px;border-radius:50%;border:2.5px solid var(--ink);background:var(--pink);box-shadow:0 5px 0 var(--ink);font-size:38px;line-height:1;touch-action:none}
 .co-jump:active{transform:translateY(3px);box-shadow:0 2px 0 var(--ink)}
+.co-throw{width:72px;height:72px;border-radius:50%;border:2.5px solid var(--ink);background:#EAF7FB;box-shadow:0 5px 0 var(--ink);font-size:34px;line-height:1;touch-action:none}
+.co-throw:active{transform:translateY(3px);box-shadow:0 2px 0 var(--ink)}
 .co-photo{display:block;width:120px;height:120px;border-radius:50%;border:2.5px solid var(--ink);margin:0 auto 6px;object-fit:cover}
 .co-end .ttl{font-size:28px;margin:2px 0 10px;text-align:center}
 /* чайка-помощник (js/gull.js) */
@@ -844,6 +846,9 @@ body.sky-storm{--sky1:#8390AB;--sky2:#C3CBDA}
 .st-todo small.ch{display:block;font-size:11px;white-space:normal;margin-top:1px}
 .st-next li{background:#FFF7DD}
 .picks .st-bk{position:absolute;top:-10px;left:-6px;font-size:17px;background:var(--paper);border:2px solid var(--ink);border-radius:10px;padding:0 3px;line-height:1.3}
+.picks button.st-lock{background:#EEF0F4;opacity:.72;box-shadow:0 2px 0 var(--ink)}
+.picks button.st-lock .ic{filter:grayscale(1)}
+.picks button.st-lock small{font-weight:800}
 .co-games button.story::after{content:" 📖";font-size:13px}
 .st-crew{list-style:none;margin:6px 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .st-crew li{border:2px solid var(--ink);border-radius:14px;background:#fff;padding:4px 6px;display:flex;flex-direction:column;align-items:center}

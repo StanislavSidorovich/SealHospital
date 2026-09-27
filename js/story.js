@@ -178,6 +178,25 @@ function stMarkPicks(panel){
     if(b && !b.querySelector('.st-bk')) b.insertAdjacentHTML('beforeend', `<span class="st-bk" aria-label="${stEsc(L('по истории', 'story'))}">📖</span>`);
   }
 }
+// с какой главы (номер с нуля) игра открывается в «Поиграть», «Вместе» и на карте (разбор 27.09: всё было открыто сразу,
+// «Салки» раньше главы «Акула» — и игра казалась набором случайных уровней). Закрытая плитка в «Поиграть» — с 🔒 и главой.
+// ?test=1 открывает всё (для проверок), ?test=1&lock=1 — как у игрока
+const ST_GATE = {rescue:2, dive:3, chase:3, road:5, fight:5, coop:-1};
+function stGate(k){
+  const i = ST_GATE[k];
+  if(i == null || i < 0 || save.story.open > i) return -1;
+  return typeof TEST !== 'undefined' && TEST && !/lock/.test(location.search) ? -1 : i;
+}
+const stGateSay = i => L(`🔒 Откроется в главе ${i + 1} «${STORY[i].name}» 📖`, `🔒 Opens in chapter ${i + 1} «${STORY[i].name}» 📖`);
+// закрытые плитки в «Поиграть»: вместо подписи — глава; касание — подсказка, а не игра (вызывать до mgOn на кнопках)
+function stLockPicks(panel){
+  panel.querySelectorAll('.picks [data-k]').forEach(b => {
+    const i = stGate(b.dataset.k); if(i < 0) return;
+    b.classList.add('st-lock'); b.setAttribute('aria-disabled', 'true');
+    const sm = b.querySelector('small'); if(sm) sm.textContent = L(`🔒 глава ${i + 1}: ${STORY[i].name}`, `🔒 chapter ${i + 1}: ${STORY[i].name}`);
+    b.addEventListener('click', e => { e.stopImmediatePropagation(); sfx.bad(); toast(stGateSay(i), 3000); });
+  });
+}
 const stCoGames = () => stNextSteps().map(x => x.it.go).filter(g => g === 'road' || g === 'rescue' || g === 'storm');
 // небо острова хмурится, пока идёт к шторму; во время шторма (глава 8) — грозовое
 const ST_FOG = scene.fog;
@@ -242,7 +261,7 @@ function stTodayList(){
   for(const it of TODAY){
     let show = false, done = false, n = null;
     try{
-      show = it.show() || td.ok.includes(it.id);
+      show = (it.show() && stGate(it.go) < 0) || td.ok.includes(it.id);   // дела закрытых игр ждут своей главы
       if(!show) continue;
       if(it.n){ n = it.n(); done = n[0] >= n[1]; } else done = !!it.done();
     }catch(e){ continue; }
@@ -270,7 +289,7 @@ function stCheck(){
     if(save.storm.st > 0){ st.sa = true; persist(); }
     else if(calm && petMode && !homeMode && save.pet){ stToldNews = true; stStormArrive(); return; }
   }
-  if(news && !stToldNews && calm){ stToldNews = true; toast(L('📖 В Книге острова что-то новое! Нажми на книжку', '📖 Something new in the Island book! Tap the book'), 3400); }
+  if(news && !stToldNews && calm && nudge(L('📖 В Книге острова что-то новое! Нажми на книжку', '📖 Something new in the Island book! Tap the book'))) stToldNews = true;
   if(!news) stToldNews = false;
 }
 async function stStormArrive(){
@@ -333,7 +352,7 @@ function stPinBadge(k, today){
 }
 function stTodayHtml(){
   const today = stTodayList(), left = today.filter(x => !x.done).length;
-  const pins = Object.entries(ST_PLACES).filter(([k, p]) => !p.show || p.show()).map(([k, p]) => {
+  const pins = Object.entries(ST_PLACES).filter(([k, p]) => (!p.show || p.show()) && stGate(k) < 0).map(([k, p]) => {
     const off = p.pet && !save.pet;
     return `<button class="st-pin${off ? ' off' : ''}" data-go="${k}" style="left:${p.x}%;top:${p.y}%"><span class="ic" aria-hidden="true">${off ? '🔒' : p.ic}</span>${off ? '' : stPinBadge(k, today)}<b>${stEsc(p.name)}</b></button>`;
   }).join('');

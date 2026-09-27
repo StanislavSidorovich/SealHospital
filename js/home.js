@@ -819,7 +819,7 @@ function homeTick(t, dt){
   if(!homeMode){   // в уголке: подсказать, что в домик можно зайти (один раз, пока не заходили)
     if(petMode && save.pet && !save.home.v && !busy && mgRoot.hidden && !cornerHint){
       cornerT += dt;
-      if(cornerT > 9){ cornerHint = true; toast(L('Загляни в домик: нажми на иглу или 🏠', 'Peek inside the home: tap the igloo or 🏠'), 3600); }
+      if(cornerT > 9 && nudge(L('Загляни в домик: нажми на иглу или 🏠', 'Peek inside the home: tap the igloo or 🏠'), 3600)) cornerHint = true;
     } else cornerT = 0;
     const hr = petCorner.userData.heart;
     if(hr) hr.scale.setScalar(save.pet && !save.home.v && petMode ? 1 + Math.sin(t*4)*0.14 : 1);   // сердечко над иглу «зовёт»

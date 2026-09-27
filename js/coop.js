@@ -1,7 +1,8 @@
 /* ---------------- Играем вместе (Фаза 13): бой с Большой Тучей ----------------
    Парная игра «вместе, а не против» в духе Cuphead (попроще) и Split Fiction.
    Арена — длинная льдина, вид сбоку (под телефон стоймя). Над ней летает Большая Ворчливая Туча и засыпает всех снегом.
-   Тюлени сами кидают снежки вверх — «щекочут» Тучку; игрок водит пальцем (тюлень бежит), ⬆️ или смахнуть вверх — прыжок.
+   Снежок вверх — по касанию (любое касание арены или ❄️; разбор 27.09: раньше летели сами и Тучу побеждали, стоя на месте),
+   и попадает, только если стоишь под Тучей; игрок водит пальцем (тюлень бежит), ⬆️ или смахнуть вверх — прыжок. Пинг кидает сам, но «в ногу».
    Три фазы: 1) снежки падают (тень на льду заранее показывает куда); 2) + катятся снежные шары — перепрыгни
    или запрыгни на льдинку-платформу; 3) + ряд сосулек с просветом — встань в просвет.
    Попало три раза — тюлень в пузыре. Напарник касается пузыря — спасён сразу, иначе пузырь сам лопнет через 6 с.
@@ -15,7 +16,9 @@ const CO_HALF = 3.5;                       // арена от −3,5 до 3,5 м
 const CO_G = 24, CO_VY = 9.4, CO_RUN = 5.5;   // прыжок ≈1,8 м
 const CO_SC = 0.5;                         // размер тюленей на арене
 const CO_HEARTS = 3, CO_REVIVE = 6, CO_INV = 1.6;
-const CO_SHOT_T = 0.3, CO_SHOT_V = 13;
+const CO_SHOT_T = 0.3, CO_SHOT_V = 13;     // Пинг кидает раз в CO_SHOT_T
+const CO_TAP_DMG = 2, CO_TAP_GAP = 0.12;   // снежок по касанию щекочет вдвое сильнее; чаще CO_TAP_GAP не кидаем
+const CO_HIT_W = 1.5;                      // на сколько по бокам от центра Тучи снежок ещё попадает
 const CO_PLATS = [{x:-2.2, y:1.5, w:1.6}, {x:2.2, y:1.5, w:1.6}];
 const CLOUD_Y = 7.5, CLOUD_SC = 1.5;
 const BOSS_HP = [60, 75, 90];              // «ворчливость» в каждой фазе (без напарника — меньше)
@@ -78,7 +81,7 @@ function coPlayer(m, name, kind){
 let CO = null;
 function coEmpty(mode){
   return {mode, host:mode !== 'net' || net.host, me:null, pal:null, B:null, H:[], shots:[], st:'ready', t:0,
-    pendHits:0, mt:0, bt:0, hitSendT:0, sendT:0, bSendT:0, keyDir:0, drag:null, hud:null, wipeT:0, end:null, hiT:0, won:false, rainbow:null, gigT:0};
+    pendHits:0, mt:0, bt:0, thT:-9, lastThrow:0, nagT:0, hitSendT:0, sendT:0, bSendT:0, keyDir:0, drag:null, hud:null, wipeT:0, end:null, hiT:0, won:false, rainbow:null, gigT:0};
 }
 const coHasPal = () => CO.pal && !CO.pal.gone;
 function coHpMax(ph){ return Math.round(BOSS_HP[ph]*(coHasPal() ? 1 : 0.6)); }
@@ -249,21 +252,29 @@ function coDraw(p, dt){
 /* ---------- снежки игроков ---------- */
 const CO_SHOT_GEO = new THREE.SphereGeometry(0.14, 10, 8);
 const CO_PING_LEAD = 4;   // на сколько попаданий Пинг может обогнать тебя
-function coShoot(p, mine){
+function coShoot(p, mine, dmg = 1){
   const o = addOutline(new THREE.Mesh(CO_SHOT_GEO, CO_SNOW_MAT), 1.2); coopRoot.add(o);
   const x = p.x + (Math.random() - 0.5)*0.12, y = p.y + 1.1;
-  o.position.copy(coAt(x, y, 0.15)); CO.shots.push({o, x, y, mine, ping:p.kind === 'ping'});
+  o.position.copy(coAt(x, y, 0.15)); CO.shots.push({o, x, y, mine, dmg, ping:p.kind === 'ping'});
+}
+// касание — снежок (напарнику по сети показываем его снежок сообщением 'sh')
+function coThrow(){
+  const p = CO && CO.me;
+  if(!p || CO.st !== 'go' || CO.B.st !== 'go' || p.bub || p.gone || now - CO.thT < CO_TAP_GAP) return;
+  CO.thT = CO.lastThrow = now;
+  coShoot(p, true, CO_TAP_DMG); sfx.plop();
+  if(CO.mode === 'net') netSend({t:'sh'});
 }
 function coShotsStep(dt){
   const B = CO.B;
   CO.shots = CO.shots.filter(s => {
     s.y += CO_SHOT_V*dt; s.o.position.y = COOP_POS.y + s.y;
-    if(B.st !== 'win' && Math.abs(s.x - B.x) < 2.1 && Math.abs(s.y - B.y) < 1.0){
+    if(B.st !== 'win' && Math.abs(s.x - B.x) < CO_HIT_W && Math.abs(s.y - B.y) < 1.0){
       coopRoot.remove(s.o);
       emit(TEX.puff, coAt(s.x, s.y, 0.6), {v:new V3(0, 0.6, 0), life:0.4, size:0.25});
       B.sq = 1;
-      if(s.mine && B.st === 'go'){ if(s.ping) CO.bt++; else CO.mt++; }
-      if(s.mine && B.st === 'go'){ if(CO.host) coBossHit(1); else { CO.pendHits++; B.hp = Math.max(0, B.hp - 1); } }
+      if(s.mine && B.st === 'go'){ if(s.ping) CO.bt += s.dmg; else CO.mt += s.dmg; }
+      if(s.mine && B.st === 'go'){ if(CO.host) coBossHit(s.dmg); else { CO.pendHits += s.dmg; B.hp = Math.max(0, B.hp - s.dmg); } }
       return false;
     }
     if(s.y > CLOUD_Y + 4){ coopRoot.remove(s.o); return false; }
@@ -280,7 +291,7 @@ function coBossHit(n){
 
 /* ---------- фазы, «Ой-ой», победа (решает хозяин) ---------- */
 const CO_PH_SAY = [
-  () => L('Большая Туча засыпает всех снегом! Защекочем её снежками — вместе! ☁️', 'The Big Cloud is burying everyone in snow! Let\'s tickle it with snowballs — together! ☁️'),
+  () => L('Большая Туча засыпает всех снегом! Встань под неё и нажимай — кидай снежки! ☁️', 'The Big Cloud is burying everyone in snow! Stand under it and tap to throw snowballs! ☁️'),
   () => L('«Ах так?! Тогда покатаю снежные шары!» — прыгай через них ⬆️', '“Oh yeah?! Then have some rolling snowballs!” — jump over them ⬆️'),
   () => L('«Сосульки!» — найди просвет и встань туда ❄️', '“Icicles!” — find the gap and stand in it ❄️')
 ];
@@ -374,6 +385,7 @@ function coNetWire(){
   netOn('b', m => { const B = CO && CO.B; if(!B || CO.host) return; B.tx = m.x; B.ty = m.y; B.hp = Math.max(0, m.hp - CO.pendHits); if(m.ph !== B.ph && B.st === 'go') B.ph = m.ph; coHud(); });
   netOn('atk', m => { if(CO && !CO.host && CO.st === 'go') coSpawn(m.a); });
   netOn('hit', m => { if(CO && CO.host) coBossHit(m.n); });
+  netOn('sh', () => { const p = CO && CO.pal; if(p && !p.bub && !p.gone) coShoot(p, false); });
   netOn('rev', () => { if(CO && CO.me.bub) coRevive(CO.me, true); });
   netOn('ph', m => { if(CO && !CO.host){ coClearHaz(); coPhaseShow(m.ph).then(() => { if(CO){ CO.B.st = 'go'; CO.B.hp = coHpMax(m.ph); coHud(); } }); } });
   netOn('wipe', () => { if(CO && !CO.host){ coClearHaz(); coWipeShow().then(() => { if(CO) CO.B.st = 'go'; }); } });
@@ -421,16 +433,20 @@ function coStep(dt){
       if(allDown && (coHasPal() || me.bubT < CO_REVIVE - 1.2)) coWipe();
     }
   }
-  // снежки
+  // снежки: свои — по касанию (coThrow), напарник по сети присылает свои ('sh'), Пинг кидает сам
   if(go && B.st === 'go'){
-    for(const p of [me, pal]){
-      if(!p || p.gone || p.bub || p.lost) continue;
+    if(!CO.lastThrow) CO.lastThrow = now;
+    if(!me.bub && now - CO.lastThrow > 4 && now > CO.nagT){   // давно не кидала — подсказка над тюленем
+      CO.nagT = now + 6; floatText(L('Нажимай — кидай снежки! ❄️', 'Tap to throw snowballs! ❄️'), coAt(me.x, me.y + 1.7), '#D9527E');
+    }
+    for(const p of [pal]){
+      if(!p || p.kind !== 'ping' || p.gone || p.bub || p.lost) continue;
       p.shotT -= dt;
       if(p.shotT <= 0){
         p.shotT += CO_SHOT_T;
         // Пинг кидает «в ногу»: попал больше тебя на CO_PING_LEAD — ждёт, пока догонишь (Тучу побеждаешь ты, а не он без тебя)
-        if(p.kind === 'ping' && CO.bt >= CO.mt + CO_PING_LEAD){ if(now > (CO.waitT || 0)){ CO.waitT = now + 7; floatText(L('Встань под Тучу — кидаем вместе! ❄️', 'Stand under the Cloud — let’s throw together! ❄️'), coAt(p.x, p.y + 1.6), '#D9527E'); } continue; }
-        coShoot(p, p.kind !== 'net');
+        if(p.kind === 'ping' && CO.bt >= CO.mt + CO_PING_LEAD){ if(now > (CO.waitT || 0)){ CO.waitT = now + 7; floatText(L('Встань под Тучу и нажимай — кидаем вместе! ❄️', 'Stand under the Cloud and tap — let’s throw together! ❄️'), coAt(p.x, p.y + 1.6), '#D9527E'); } continue; }
+        coShoot(p, true);
       }
     }
   }
@@ -468,8 +484,10 @@ function coHudBuild(){
   const btns = mgNode('div', 'co-btns', `
     ${CO.mode === 'net' ? `<button class="round co-mic" aria-label="${L('Микрофон', 'Microphone')}">🎤</button>` : ''}
     <button class="round co-heart" aria-label="${L('Сердечко напарнику', 'A heart for your partner')}">💗</button>
+    <button class="co-throw" aria-label="${L('Снежок', 'Snowball')}">❄️</button>
     <button class="co-jump" aria-label="${L('Прыжок', 'Jump')}">⬆️</button>`);
   CO.hud = hud;
+  mgOn(btns.querySelector('.co-throw'), 'pointerdown', e => { e.preventDefault(); e.stopPropagation(); coThrow(); });
   const jb = btns.querySelector('.co-jump');
   mgOn(jb, 'pointerdown', e => { e.preventDefault(); e.stopPropagation(); if(CO.st === 'go') coJump(CO.me); });
   mgOn(btns.querySelector('.co-heart'), 'click', e => {
@@ -511,6 +529,7 @@ function coControls(){
     e.preventDefault();
     CO.drag = {id:e.pointerId, x0:coWorldX(e.clientX, e.clientY), sx:CO.me.x, cy:e.clientY, t:performance.now(), jumped:false};
     CO.me.tx = CO.me.x;
+    coThrow();   // любое касание арены — снежок; повёл пальцем — ещё и бежишь
   });
   mgOn(mgRoot, 'pointermove', e => {
     const d = CO.drag; if(!d || d.id !== e.pointerId) return;
@@ -523,6 +542,7 @@ function coControls(){
   mgOn(window, 'keydown', e => {
     if(e.key === 'ArrowLeft' || e.key === 'ArrowRight'){ e.preventDefault(); keys[e.key] = true; }
     if((e.key === ' ' || e.key === 'ArrowUp') && !e.repeat){ e.preventDefault(); if(CO.st === 'go') coJump(CO.me); }
+    if((e.key === 'x' || e.key === 'Enter') && !e.repeat){ e.preventDefault(); coThrow(); }
     CO.keyDir = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
   });
   mgOn(window, 'keyup', e => { keys[e.key] = false; CO.keyDir = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0); });
@@ -539,7 +559,7 @@ const CO_GAMES = {
         + (T ? ' ' + L(`Сегодня ${T.ic} ${T.name} дорога: ${T.about}`, `Today ${T.ic} the ${T.name} road: ${T.about}`) : ''); },
     wins:() => typeof crTheme === 'function' ? `🎯 ${crTaskText(crTheme(), false, crTodayNeed())}${crTaskDone() ? ' ✅' : ` (+${CR_TASK_GIFT} 🐚)`}` : ''},
   fight:{ic:'☁️', name:() => L('Туча', 'Cloud'),
-    say:() => L('Туча засыпает льдину снегом. Щекочите её снежками вдвоём! Упал — напарник спасёт из пузыря.', 'The Cloud is burying the ice in snow. Tickle it with snowballs, two of you! Fall down — your partner saves you from the bubble.')},
+    say:() => L('Туча засыпает льдину снегом. Встаньте под неё и нажимайте — щекочите снежками вдвоём! Упал — напарник спасёт из пузыря.', 'The Cloud is burying the ice in snow. Stand under it and tap — tickle it with snowballs, two of you! Fall down — your partner saves you from the bubble.')},
   rescue:{ic:'🦭', name:() => L('Потеряшка', 'Lost pup'),
     say:() => L('Кто-то потерялся! Один прыгает высоко, другой сильный и ныряет — дойдите вместе. Три уровня: Бухта, Грот и Метель.', 'Someone is lost! One of you jumps high, the other is strong and dives — get there together. Three levels: the Bay, the Grotto and the Blizzard.')}
 };
@@ -547,7 +567,10 @@ const CO_GAMES = {
 const coGamesOn = () => Object.keys(CO_GAMES).filter(g => g === 'rescue' ? typeof rescueGame === 'function'
   : g === 'road' ? typeof roadGame === 'function' : g === 'code' ? typeof iceGame === 'function'
   : g === 'dive' ? typeof diveNet === 'function' && netAvail() : g === 'visit' ? typeof visitGo === 'function' && netAvail()
-  : g === 'storm' ? typeof stormGame === 'function' && smOn() : true);   // 🌪️ шторм — когда открыта глава 8 (js/storm.js)   // 🤿 нырнуть вдвоём (js/dive.js) и 🏝️ в гости — только по сети
+  : g === 'storm' ? typeof stormGame === 'function' && smOn() : true)
+  .filter(g => typeof stGate !== 'function' || stGate(g) < 0)   // игры глав, до которых история не дошла, — пока прячем (js/story.js)
+  .sort((a, b) => CO_ORDER.indexOf(a) - CO_ORDER.indexOf(b));
+const CO_ORDER = ['slide', 'rescue', 'chase', 'dive', 'road', 'fight', 'storm', 'code', 'visit'];   // вкладки — по главам книги, «Код» и «В гости» в конце   // 🌪️ шторм — когда открыта глава 8 (js/storm.js)   // 🤿 нырнуть вдвоём (js/dive.js) и 🏝️ в гости — только по сети
 async function coopMenu(){
   for(;;){
     mgOpen(L('Играем вместе!', 'Let\'s play together!'));

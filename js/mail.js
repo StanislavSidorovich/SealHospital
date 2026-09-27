@@ -208,7 +208,7 @@ function mailTick(t, dt){
   petSeal.letter.visible = carry;
   if(carry && !carrySaid){
     if(carryT < 0) carryT = t + 2.6;
-    else if(t > carryT){ carrySaid = true; toast(L(`${save.pet.name} ${gg('принёс', 'принесла')} тебе письмо! Нажми ${gg('на него', 'на неё')} 💌`, `${save.pet.name} brought you a letter! Tap ${gg('him', 'her')} 💌`), 3600); }
+    else if(t > carryT && nudge(L(`${save.pet.name} ${gg('принёс', 'принесла')} тебе письмо! Нажми ${gg('на него', 'на неё')} 💌`, `${save.pet.name} brought you a letter! Tap ${gg('him', 'her')} 💌`), 3600)) carrySaid = true;
   }
   if(!petMode) carryT = -1;
 }

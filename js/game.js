@@ -2,11 +2,18 @@
 let S = null, busy = false, started = false;
 
 /* ---------------- UI ---------------- */
-let toastTimer = 0;
+let toastTimer = 0, toastEnd = 0;
 function toast(msg, ms = 2600){
   const el = $('#toast'); el.textContent = msg; el.hidden = false;
   el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, ms);
+  toastEnd = performance.now() + ms;
+}
+// зов «загляни туда-то» (книжка, письмо, иглу, желание малыша): по одному и с паузой после любого тоста,
+// иначе в первые секунды у малыша зовут четыре вещи сразу. Не показали — false, позовём в следующий кадр
+function nudge(msg, ms = 3400){
+  if(performance.now() < toastEnd + 5000) return false;
+  toast(msg, ms); return true;
 }
 function buildTools(){
   const nav = $('#tools'); nav.innerHTML = '';

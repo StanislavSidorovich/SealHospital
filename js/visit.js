@@ -79,7 +79,7 @@ async function vsMenu(){
 }
 function vsBtnState(){
   let b = $('#visitBtn');
-  const want = !V && netAvail() && !!save.pet && !(typeof GL !== 'undefined' && GL && GL.home);
+  const want = !V && netAvail() && !!save.pet && save.pet.played && !(typeof GL !== 'undefined' && GL && GL.home);
   if(!b){
     if(!want) return;
     b = document.createElement('button'); b.id = 'visitBtn'; b.className = 'vs-btn';

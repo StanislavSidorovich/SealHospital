@@ -189,7 +189,7 @@ function sanitizePet(p){
     t, seen:Number.isFinite(p.seen) ? p.seen : t,
     pat:p.pat && typeof p.pat.d === 'string' && Number.isFinite(p.pat.n) ? {d:p.pat.d, n:p.pat.n} : {d:'', n:0},
     walk:p.walk && typeof p.walk.d === 'string' && Number.isFinite(p.walk.n) ? {d:p.walk.d, n:p.walk.n} : {d:'', n:0},
-    finds:[...new Set(strList(p.finds))],
+    finds:[...new Set(strList(p.finds))], played:!!p.played || strList(p.finds).length > 0,   // played — уже играли вместе (после этого в уголке появляется «В гости»)
     tricks:Object.fromEntries(Object.entries(p.tricks && typeof p.tricks === 'object' ? p.tricks : {}).filter(([, v]) => Number.isInteger(v)).map(([k, v]) => [k, Math.min(3, Math.max(0, v))])),
     needs:{food:level(n.food), bath:level(n.bath), sleep:level(n.sleep), fun:level(n.fun)},
     wear:Object.fromEntries(['head', 'face'].filter(k => typeof w[k] === 'string').map(k => [k, w[k]]))};

@@ -238,7 +238,7 @@ function petRefresh(){
     const wish = petWish && wishCan() ? petWish : null, map = homeMode ? null : low ? NEED_TEX[low] : wish && WISHES[wish].tex;   // в домике пузырей нет: уход — снаружи
     petSeal.bubble.visible = !!map;
     if(map && petSeal.bubble.material.map !== map){ petSeal.bubble.material.map = map; petSeal.bubble.material.needsUpdate = true; }
-    if(wish && !low && !wishShown && !homeMode){ wishShown = true; sfx.arf(); toast(L(`${save.pet.name}: «${WISHES[wish].say()}» Нажми на облачко ${WISHES[wish].ic}`, `${save.pet.name}: “${WISHES[wish].say()}” Tap the cloud ${WISHES[wish].ic}`), 3400); }
+    if(wish && !low && !wishShown && !homeMode && nudge(L(`${save.pet.name}: «${WISHES[wish].say()}» Нажми на облачко ${WISHES[wish].ic}`, `${save.pet.name}: “${WISHES[wish].say()}” Tap the cloud ${WISHES[wish].ic}`))){ wishShown = true; sfx.arf(); }
   }
   renderPetCard(); renderPetBar(); renderPetBtn();
 }
@@ -473,7 +473,7 @@ async function petDo(k){
   if(s.sleeping) await petWake();
   if(await PET_GAMES[k](s) === false){ unfocusCam(); setBusy(false); return petRefresh(); }   // «Потом» в выборе игры
   unfocusCam();
-  if(k === 'fun') wishDone(); else if(!petWish) wishT = now + WISH_WAIT;   // новое желание — не сразу после ухода
+  if(k === 'fun'){ wishDone(); p.played = true; } else if(!petWish) wishT = now + WISH_WAIT;   // новое желание — не сразу после ухода
   p.needs[k] = 1;
   if(k === 'fun') for(const [n, v] of Object.entries(FUN_COST[funKind])) p.needs[n] = Math.max(0, p.needs[n] - v);   // игра, прогулка или трюки (walk.js)
   if(!s.sleeping){ s.happyUntil = now + 3; setMood(s, 'happy'); }   // уснувшему не открываем глазки
