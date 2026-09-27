@@ -16,7 +16,7 @@ const dayGap = (a, b) => Math.round((new Date(a) - new Date(b))/864e5);
 // потом обычное — но обычное только одно в день
 function mailNext(){
   if(!isSabrinaPlayer()) return null;   // папина почта — только у Сабрины (js/game.js «Кто играет?»)
-  const today = ymd(), fresh = MAIL.filter(l => !mailHas(letterId(l)));
+  const today = ymd(), fresh = MAIL.filter(l => !l.fin && !mailHas(letterId(l)));   // письмо праздника (fin) приносит сам праздник (js/finale.js)
   const dated = fresh.filter(l => typeof l.date === 'string' && l.date <= today && dayGap(today, l.date) <= MAIL_LATE);
   return dated.find(l => l.date === today) || (save.mail.d === today ? null : dated[0] || fresh.find(l => !l.date) || null);
 }
@@ -90,7 +90,7 @@ function mailEnvelope(l){
 }
 function mailTear(){
   if(!mailCur || envEl.classList.contains('open')) return;
-  const l = mailCur.l, special = l.date === ymd();
+  const l = mailCur.l, special = l.date === ymd() || !!l.fin;
   envEl.classList.add('open'); sfx.paper();
   // письмо получено, как только конверт открыт (даже если окно закроют, не дочитав)
   save.mail.got.push({id:letterId(l), t:Date.now()});
@@ -100,6 +100,7 @@ function mailTear(){
 }
 function mailRead(l, t){
   $('#mailText').textContent = letterText(l);
+  $('#mailText').classList.toggle('long', letterText(l).length > 180);
   $('#mailSig').textContent = `— ${l.from || 'Dad'} ♡`;
   const d = new Date(t); $('#mailDate').textContent = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
   const gift = mailCur && mailCur.gift && !mailCur.got;

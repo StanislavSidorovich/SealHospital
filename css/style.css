@@ -444,6 +444,8 @@ body:not(.pet-mode) .night{opacity:0}
 .panel.mail-read{position:relative;padding-top:30px}
 .letter.note{margin:4px 0 16px;padding:16px 20px 10px}
 .letter .note-text{font-size:26px;line-height:33px;margin:0 0 2px;font-weight:400;white-space:pre-line;text-wrap:pretty}
+.letter .note-text.long{font-size:20px}   /* длинное письмо (письмо праздника) */
+.overlay.mail{overflow-y:auto;align-items:safe center}
 .letter .note-date{font-size:12px;font-weight:800;color:var(--soft);text-align:right;margin:0}
 .gift-box{display:flex;align-items:center;gap:10px;margin:0 auto 16px;min-height:56px;padding:6px 18px;border-radius:18px;
   border:2.5px solid var(--ink);background:#FFF1C9;box-shadow:0 4px 0 var(--ink);font-weight:800;font-size:17px;color:var(--ink);
@@ -746,7 +748,8 @@ body.ice-on #corner>:not(#bag){display:none!important}
 .vs-chip.ask .vs-play{background:#DDF5EA}
 @keyframes vsPing{50%{transform:scale(1.14)}}
 body:not(.pet-mode) .vs-btn,body.mg-on .vs-btn,body.home-mode .vs-btn,body.run-on .vs-btn,
-body:not(.pet-mode) .vs-chip,body.mg-on .vs-chip,body.home-mode .vs-chip,body.run-on .vs-chip{display:none}
+body:not(.pet-mode) .vs-chip,body.mg-on .vs-chip,body.home-mode .vs-chip,body.run-on .vs-chip,
+body:has(.overlay:not([hidden])) .vs-btn{display:none}   /* письмо, книжка, лавка поверх уголка — пилюлю прячем */
 .vs-bar{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;justify-content:center;gap:10px}
 .vs-bar .round{font-size:24px;line-height:1;width:52px;height:52px}
 body.visit-on #corner>:not(#bag):not(#btnRunHome){display:none!important}
@@ -862,3 +865,38 @@ body.story-on .vs-btn{display:none}   /* пилюля «В гости» лежи
 .sm-end .sm-steps span.ok{opacity:1;filter:none}
 .sm-pick .picks button{min-height:84px}
 @media (prefers-reduced-motion:reduce){.sm-hud .sm-hold.warn{animation:none}}
+
+/* 🎉 праздник острова и грамота (js/finale.js) */
+.fn-seat{position:absolute;width:58px;height:58px;translate:-50% -50%;border-radius:50%;border:3px dashed rgba(59,58,74,.45);background:rgba(255,253,248,.35);
+  font:inherit;font-size:26px;color:var(--ink);display:grid;place-items:center;padding:0;z-index:2}
+.fn-seat::before{content:'+';font-weight:800;opacity:.6}
+.fn-seat.want{border-color:var(--pink-d);background:rgba(255,155,184,.45);animation:pulse 1s ease-in-out infinite}
+.fn-seat.want::before{opacity:1}
+.fn-seat.full{border-color:transparent;background:none}
+.fn-seat.full::before{content:''}
+.mg-panel.fn-pick{padding:10px 10px 12px}
+.fn-pick .fn-tip{margin:0 0 8px;font-size:15px}
+.fn-cards{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.fn-card{flex:none;width:74px;min-height:78px;border-radius:18px;border:2.5px solid var(--ink);background:#fff;box-shadow:0 4px 0 var(--ink);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;font:inherit;color:var(--ink);scroll-snap-align:start;touch-action:pan-x;position:relative}
+.fn-card .ic{font-size:32px;line-height:1.1}
+.fn-card b{font-size:12px;font-weight:800;line-height:1.1}
+.fn-card.sel{background:#FFE3EC;transform:translateY(-4px);box-shadow:0 8px 0 var(--ink)}
+.fn-card.in{background:var(--mint,#DDF5EA)}
+.fn-card.in::after{content:'✓';position:absolute;top:-8px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--paper);border:2px solid var(--ink);font-size:13px;font-weight:800;display:grid;place-items:center}
+.fn-go{margin-top:4px;width:100%}
+.fn-go:disabled{opacity:.55;filter:grayscale(.6)}
+.fn-ghost{position:fixed;z-index:60;font-size:44px;translate:-50% -70%;pointer-events:none;filter:drop-shadow(0 3px 0 rgba(59,58,74,.35))}
+.fn-cake{position:absolute;width:76px;height:76px;translate:-50% -50%;border-radius:50%;border:3px solid var(--ink);background:var(--paper);box-shadow:0 5px 0 var(--ink);
+  font-size:38px;padding:0;z-index:2;animation:pulse 1s ease-in-out infinite}
+.fn-dip{position:absolute;inset:calc(env(safe-area-inset-top,0px) + 10px) 10px calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  max-width:460px;margin:0 auto;animation:rise .35s ease-out}
+.fn-dip img{flex:0 1 auto;min-height:0;max-height:calc(100% - 120px);max-width:100%;object-fit:contain;border-radius:18px;-webkit-touch-callout:default;user-select:auto}
+.fn-dip .row{display:flex;gap:8px;justify-content:center}
+.fn-dip .fn-small{margin:0;font-size:13px;color:var(--soft);text-align:center;background:var(--paper);border-radius:12px;padding:4px 10px}
+#storyBody .fn-dip{position:static;inset:auto;height:calc(100dvh - 190px);max-height:760px}
+body.fn-dip-on #corner{visibility:hidden}
+.st-fin{display:flex;gap:8px;justify-content:center;margin:0 0 12px}
+.st-fin .btn{margin-top:0;flex:1 1 0;min-width:0;padding-left:8px;padding-right:8px;font-size:20px}
+.st-fin{flex-wrap:nowrap}
+@media (prefers-reduced-motion:reduce){.fn-seat.want,.fn-cake{animation:none}}

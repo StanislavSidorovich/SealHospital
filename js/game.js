@@ -330,7 +330,7 @@ const STAT_NAMES = {hosp:['🏥 Больница', '🏥 Hospital'], pet:['🦭 
   run:['🏃 Забег', '🏃 Run'], road:['☁️ Дорога к Туче', '☁️ Road to the Cloud'], cloud:['⛈️ Бой с Тучей', '⛈️ Cloud battle'], gull:['🕊️ Чайка', '🕊️ Gull'],
   bay:['🌊 Потеряшка: Бухта', '🌊 Lost pup: Bay'], grot:['🕯️ Потеряшка: Грот', '🕯️ Lost pup: Grotto'], snow:['❄️ Потеряшка: Метель', '❄️ Lost pup: Blizzard'],
   dive:['🤿 Бухта под водой', '🤿 Underwater bay'], chase:['🦈 Салки с акулой', '🦈 Shark tag'], gloom:['🌑 Мгла', '🌑 Gloom'],
-  ice:['🧊 Ледяной код', '🧊 Ice code'], visit:['🏝️ Остров в гостях', '🏝️ Island visit'], shop:['🛍️ Лавка', '🛍️ Shop'], mail:['✉️ Почта', '✉️ Mail'], book:['📖 Книга острова', '📖 Island book'], storm:['🌪️ Великий шторм', '🌪️ The Great Storm']};
+  ice:['🧊 Ледяной код', '🧊 Ice code'], visit:['🏝️ Остров в гостях', '🏝️ Island visit'], shop:['🛍️ Лавка', '🛍️ Shop'], mail:['✉️ Почта', '✉️ Mail'], book:['📖 Книга острова', '📖 Island book'], storm:['🌪️ Великий шторм', '🌪️ The Great Storm'], party:['🎉 Праздник острова', '🎉 Island party']};
 let statLastIn = -1e9, statAcc = 0, statWas = null;
 ['pointerdown', 'keydown'].forEach(e => addEventListener(e, () => statLastIn = performance.now(), {capture:true, passive:true}));
 const statDay = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -339,6 +339,7 @@ function statPlace(){
   if(!$('#story').hidden) return 'book';
   const b = document.body.classList;
   if(b.contains('gloom-on')) return 'gloom';
+  if(b.contains('fin-on')) return 'party';
   if(b.contains('storm-on')) return 'storm';
   if(b.contains('visit-on')) return 'visit';
   if(b.contains('ice-on')) return 'ice';

@@ -1115,7 +1115,7 @@ async function smPanel(r){
     <p class="ttl display">${SM_WIN[r.part]()}</p>
     ${r.photo ? `<img class="co-photo" src="${r.photo}" alt=""><p class="got">📷 ${L('Фото — в альбоме', 'The photo is in the album')}</p>` : ''}
     <p class="got">${SM_NEXT[r.part]()}</p>
-    ${last && save.storm.n === 1 && r.first ? `<p class="got">📖 ${L('Глава «Великий шторм» прочитана — загляни в Книгу острова!', 'The «Great Storm» chapter is done — look in the Island book!')}</p>` : ''}
+    ${last && save.storm.n === 1 && r.first ? `<p class="got">🎉 ${L('Друзья готовят праздник! Открой Книгу острова 📖', 'Your friends are getting a party ready! Open the Island book 📖')}</p>` : ''}
     ${!last ? `<p class="got sm-steps">${SM_PARTS.map((p, i) => `<span class="${i <= r.part ? 'ok' : ''}">${p.ic}</span>`).join('')}</p>` : ''}
     <p class="earned display">${r.gift ? `+${r.gift} 🐚` : ''}</p>
     <p class="got co-wait" hidden></p>

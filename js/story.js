@@ -167,6 +167,8 @@ const TODAY = [
     show:() => !!save.pet && !save.dive.seen.includes(dvGuest()), done:() => save.dive.seen.includes(dvGuest()), go:'dive'},
   {id:'storm', ic:'🌪️', t:() => { const st = Math.min(3, save.storm.st); return L(`Великий шторм! Часть ${st + 1} из 4: ${SM_PARTS[st].name}`, `The Great Storm! Part ${st + 1} of 4: ${SM_PARTS[st].name}`); },
     show:() => !!save.pet && typeof smOn === 'function' && smOn() && save.storm.st < 4, done:() => save.storm.d === stDay(), go:'storm'},
+  {id:'party', ic:'🎉', t:() => L('Шторм позади — друзья зовут на праздник!', 'The storm is over — your friends invite you to a party!'),
+    show:() => save.storm.st >= 4 && !save.story.fest.includes(8), done:() => save.story.fest.includes(8), go:'party'},
   {id:'feed', ic:'🍤', t:() => L('Покорми рыбок в аквариуме', 'Feed the fish in the tank'), show:() => !!save.pet && /^tank_/.test(save.home.s.tank || ''),
     done:() => save.home.fed === stDay(), go:'home'}
 ];
@@ -224,6 +226,7 @@ function stRender(){
   }));
   const back = body.querySelector('#stBack'); if(back) back.addEventListener('click', () => { sfx.tap(); stCh = -1; stRender(); });
   const fest = body.querySelector('#stFest'); if(fest) fest.addEventListener('click', () => stFest(stCh));
+  body.querySelectorAll('[data-fin]').forEach(b => b.addEventListener('click', () => { sfx.tap(); b.dataset.fin === 'dip' ? stDiploma() : fnGo(); }));
   if(stTab === 'book' && stCh < 0 && save.story.seen < save.story.open){ save.story.seen = save.story.open; persist(); stCheck(); }
 }
 // карта острова: вода, большая льдина, горка и маленькие льдинки; метки мест поверх
@@ -263,6 +266,8 @@ function stBookHtml(){
       ${open ? `<span class="dots">${dots}</span>` : ''}${fest ? `<span class="tag">🎉 ${L('Праздник!', 'Party!')}</span>` : was ? '<span class="tag ok">✓</span>' : ''}</button>`;
   }).join('');
   const got = st.fest.length;
+  if(st.fest.includes(8)) return `<p class="st-sub display">🌈 ${L('История прочитана! Но остров живёт дальше — заходи каждый день ♡', 'The story is finished! But the island lives on — come back every day ♡')}</p>
+    ${stFinBtns()}<div class="st-book">${tiles}</div>`;
   return `<p class="st-sub">${got ? L(`Прочитано глав: ${got} из ${STORY.length}`, `Chapters finished: ${got} of ${STORY.length}`) : L('Твоя история на острове. Делай пункты глав — и узнаешь, чем всё кончится!', 'Your story on the island. Do the chapter steps and find out how it ends!')}</p>
     <div class="st-book">${tiles}</div>`;
 }
@@ -280,14 +285,23 @@ function stChapterHtml(i){
     <div class="st-head"><span class="ic" aria-hidden="true">${c.ic}</span><div><small>${L(`Глава ${i + 1}`, `Chapter ${i + 1}`)}</small><h3 class="display">${stEsc(c.name)}</h3></div></div>
     <p class="st-about">${stEsc(c.about)}</p>
     <ul class="st-todo">${rows}</ul>
-    ${fest ? `<button class="btn" id="stFest">🎉 ${L('Праздник главы!', 'Chapter party!')}</button>`
-      : was ? `<p class="st-end display">🎉 ${stEsc(c.end)}</p>`
+    ${fest ? `<button class="btn" id="stFest">🎉 ${i === 7 ? L('Большой праздник!', 'The big party!') : L('Праздник главы!', 'Chapter party!')}</button>`
+      : was ? `<p class="st-end display">🎉 ${stEsc(c.end)}</p>${i === 7 ? stFinBtns() : ''}`
       : `<p class="st-note">${next && !s.half ? L(`Сделай ещё ${Math.ceil(s.all/2) - s.done} — и откроется следующая глава`, `Do ${Math.ceil(s.all/2) - s.done} more and the next chapter opens`) + ' · ' : ''}${c.items.some(it => it.soon) ? L('Пункты «скоро» ещё впереди ✨', 'The «soon» steps are still ahead ✨') : L('Сделай всё — и будет праздник 🎉', 'Do everything for a party 🎉')}</p>`}`;
+}
+
+/* ---------- после истории: праздник ещё раз и грамота (js/finale.js) ---------- */
+const stFinBtns = () => `<div class="row st-fin"><button class="btn" data-fin="dip">📜 ${L('Грамота', 'Certificate')}</button><button class="btn ghost" data-fin="party">🎉 ${L('Праздник', 'Party')}</button></div>`;
+async function stDiploma(){
+  const body = $('#storyBody'); body.innerHTML = '';
+  await fnDiplomaPanel(fnLastPhoto(), body, L('← Назад', '← Back'));
+  if(!$('#story').hidden) stRender();
 }
 
 /* ---------- праздник главы ---------- */
 function stFest(i){
   if(!stFestReady(i)) return;
+  if(i === 7) return fnGo();   // глава 8 — большой праздник острова и грамота (js/finale.js)
   const c = STORY[i], gift = ST_GIFT[i] || 20;
   save.story.fest.push(i + 1); persist();
   sfx.grow ? sfx.grow() : sfx.star();
@@ -333,6 +347,7 @@ function stTick(t){
 /* ---------- «Идём ▶»: к месту на острове ----------
    Почти всё начинается из уголка малыша: переходим туда и открываем нужную игру, как будто её выбрали в «Поиграть». */
 async function stGo(k){
+  if(k === 'party') return fnGo();
   const P = ST_PLACES[k]; if(!P) return;
   if(P.pet && !save.pet) return toast(L('Сначала познакомься со своим малышом: он ждёт у льдины после первой смены 🦭', 'Meet your pup first: it waits by the ice after your first shift 🦭'), 3400);
   const park = P.pet && mgCanPark();   // лупа или лечение подождут, как по кнопке малыша (goPet в pet.js)

@@ -13,6 +13,8 @@
              {hearts:1}         — сердечко дружбы малышу 💗 (если малыша ещё нет — ракушки)
              {wear:'dadhat'}    — особая вещь, которой нет в лавке: 'dadhat' (Папина шапочка), 'hearts' (Очки-сердечки)
      from  — (не обязательно) подпись вместо «Dad ♡».
+     fin   — письмо праздника острова: не приходит «письмом дня», его приносит сам праздник после Великого шторма
+             (js/finale.js), один раз. Текст — черновик, его можно переписать, пока праздник не случился.
 
    Письмо узнаётся по тексту: уже прочитанное письмо лучше не править (иначе оно придёт ещё раз как новое).
    Порядок = порядок доставки. Письма ниже 4-го — черновики-подсказки, их можно переписать или удалить. */
@@ -30,4 +32,7 @@ const LETTERS = [
   {text:'Обнимаю тебя крепко-крепко!', en:'Sending you the biggest hug!', gift:{shells:20}},
   {date:'2027-01-01', text:'С Новым годом, моя звёздочка! Пусть в этом году будет много чудес ✨', en:'Happy New Year, my little star! May this year be full of wonders ✨', gift:{shells:30}},
   // {date:'2027-03-15', text:'С днём рождения, моя девочка! 🎂', gift:{shells:50}},
+  {fin:true, text:'Моя дорогая Сабрина! Ты спасла весь остров от Великого шторма: малыши в убежище, соседи на плоту, маяк горит. Но больше всего я горжусь другим. Ты никого не бросила — ни плачущую Мглу, ни простывшую Тучу, ни акулу с больным зубом. Ты увидела, что им плохо, и помогла. Это и есть настоящая смелость. Я очень тебя люблю. А остров теперь твой — и он ждёт тебя каждый день ♡',
+    en:'My dear Sabrina! You saved the whole island from the Great Storm: the little ones are in the shelter, the neighbours are on the raft, the lighthouse is shining. But I am proudest of something else. You never left anyone behind — not the crying Gloom, not the Cloud with a cold, not the shark with a toothache. You saw they were unhappy, and you helped. That is real courage. I love you very much. And the island is yours now — it is waiting for you every day ♡',
+    gift:{hearts:3}},
 ];

@@ -176,12 +176,14 @@ const TUNES = {
   sea:  {parts:TUNE_PET,   seq:'BRAR', bpm:72,  bar:6, style:'waltz', inst:'mar', shift:-3, vol:0.24},   // под водой: медленно и мягко
   gloom:{parts:TUNE_GLOOM, seq:'A',    bpm:50,  bar:8, style:'box',   inst:'box', shift:-10, vol:0.2},   // пришла Мгла: медленно, низко, тревожно
   glboss:{parts:TUNE_GLOOM, seq:'A',   bpm:76,  bar:8, style:'run',   inst:'mar', shift:-7, vol:0.24},   // бой со Мглой (js/gloom.js): бодрее, но в той же тревожной мелодии
+  fest: {parts:TUNE_PET,   seq:'ABAR', bpm:120, bar:6, style:'waltz', inst:'mar', shift:2,  vol:0.28},   // 🎉 праздник острова (js/finale.js)
   storm:{parts:TUNE_RUN,   seq:'ABAB', bpm:112, bar:8, style:'run',   inst:'mar', shift:-5, vol:0.26}    // 🌪️ Великий шторм (js/storm.js): бодро, чуть ниже, не страшно
 };
 function musicMood(){
   if(musForce) return musForce;
   const b = document.body.classList;
   if(b.contains('gloom-on')) return b.contains('gloom-boss') ? 'glboss' : 'gloom';
+  if(b.contains('fin-on')) return 'fest';
   if(b.contains('storm-on')) return 'storm';
   if(b.contains('visit-on')) return 'pet';   // в гостях на чужой льдине (js/visit.js)
   if(b.contains('dive-on')) return 'sea';
