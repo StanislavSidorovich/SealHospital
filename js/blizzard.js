@@ -254,7 +254,9 @@ function bzBeacon(remote){
   burst(TEX.star, rsAt(BZ.beacon, 2.2, 0), 18, 2.4, 0.3);
   floatText(L('Маяк горит! Метель стихает…', 'The beacon is lit! The blizzard calms…'), rsAt(BZ.beacon, 3.2), '#E0A21B');
   mgHint(L('Метель стихает… Смотрите — пингвины! 🐧', 'The blizzard calms… Look — penguins! 🐧'));
-  Q.momAsk = now + 2.6; Q.hintT = now + 3;
+  Q.hintT = now + 3;
+  const q = Q, go = () => { if(Q === q) Q.momAsk = now + 1.6; };
+  if(typeof trGo === 'function') trGo('snow', go); else Q.momAsk = now + 2.6;   // сначала — «Сугроб-ураган» (js/rstrial.js)
 }
 
 /* ---------- Пипа на спине у Силача, мамы-пингвины ---------- */

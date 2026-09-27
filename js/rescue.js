@@ -443,7 +443,8 @@ function rsCage(remote){
   floatText(L('Ура! Свободен!', 'Yay! I\'m free!'), rsAt(pp.x, 4.6), '#D9527E');
   burst(TEX.heart, rsAt(pp.x, 3.8), 12, 2, 0.3);
   pp.happy = now + 3;
-  wait(0.9).then(() => { if(Q && Q.pup === pp){ pp.tx = RS_END; Q.momAsk = now + 1.6; } });
+  const go = () => { if(Q && Q.pup === pp){ pp.tx = RS_END; Q.momAsk = now + 1.6; } };
+  wait(0.9).then(() => { if(Q && Q.pup === pp){ if(typeof trGo === 'function') trGo('bay', go); else go(); } });   // сначала — «Лавина комов» (js/rstrial.js)
 }
 function rsClue(){
   const f = Q.fam;

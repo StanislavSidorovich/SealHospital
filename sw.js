@@ -13,7 +13,7 @@ const CORE = [
   './js/minigames.js', './js/shop.js', './js/shift.js', './js/pet.js', './js/walk.js', './js/home.js',
   './js/adventure.js', './js/neighbors.js', './js/mail.js', './js/holidays.js', './js/net.js', './js/coop.js',
   './js/gull.js', './js/rescue.js', './js/grotto.js', './js/blizzard.js', './js/glowcave.js', './js/kelpforest.js',
-  './js/festival.js', './js/cloudroad.js', './js/icecode.js', './js/dive.js', './js/gloom.js', './js/chase.js',
+  './js/festival.js', './js/rstrial.js', './js/cloudroad.js', './js/icecode.js', './js/dive.js', './js/gloom.js', './js/chase.js',
   './js/sharktooth.js', './js/cloudcure.js', './js/visit.js', './js/storm.js', './js/finale.js', './js/slide.js', './js/story.js', './js/game.js'
 ];
 
