@@ -48,7 +48,14 @@ function sanitize(d){
     coop:sanitizeCoop(d.coop),   // играем вместе: бой с Большой Тучей (js/coop.js)
     dive:sanitizeDive(d.dive),   // подводная бухта (js/dive.js)
     st:sanitizeSt(d.st),         // тихий счётчик: время в игре и по местам (statTick в js/game.js), для папы и будущей грамоты
-    story:sanitizeStory(d.story)};   // «Книга острова» и дела на сегодня (js/story.js)
+    story:sanitizeStory(d.story),   // «Книга острова» и дела на сегодня (js/story.js)
+    storm:sanitizeStorm(d.storm)};  // 🌪️ Великий шторм (js/storm.js)
+}
+// storm = {st — сколько частей шторма пройдено (0…4), n — сколько раз прошли весь шторм, d — день последней игры (toDateString), net — сколько раз вместе} (js/storm.js)
+function sanitizeStorm(a){
+  a = a && typeof a === 'object' ? a : {};
+  const num = v => Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0;
+  return {st:Math.min(4, num(a.st)), n:num(a.n), d:typeof a.d === 'string' ? a.d.slice(0, 20) : '', net:num(a.net)};
 }
 // story = {open — сколько глав «Книги острова» открыто (1…8), fest:[номера отпразднованных глав], seen — сколько открытых глав уже показали,
 //          pg — сколько было вылечено при прошлой проверке, hd — день, когда лечили (toDateString), td:{d, ok:[дела дня, сделанные сегодня]}} (js/story.js)

@@ -29,7 +29,7 @@ const nameL = n => LANG === 'en' ? (NAME_EN[n] || n) : (NAME_RU[n] || n);   // Ñ
 
 document.documentElement.lang = LANG;
 if(LANG === 'en'){
-  document.title = 'Seal Hospital';
+  document.title = 'Seal Island';
   const md = document.querySelector('meta[name="description"]');
   if(md) md.content = 'A cozy little 3D game: heal seal pups on the ice, hug them and raise a pup of your own.';
   const at = document.querySelector('meta[name="apple-mobile-web-app-title"]');

@@ -4,8 +4,7 @@
      не сделала — завтра будут новые.
    — «Главы»: 8 глав истории. Пункты глав считаются из того, что уже лежит в сохранении (ничего нового не копим).
      Следующая глава открывается, когда в текущей сделана половина; праздник главы — когда сделано всё.
-     Пункты «скоро» — то, что ещё строим (Великий шторм):
-     пока их нет, праздник такой главы впереди.
+     Пункт «скоро» (soon:true) — то, что ещё строим: пока он есть, праздник такой главы впереди.
    Своё в сохранении — save.story (sanitizeStory в data.js):
      open — сколько глав открыто, fest:[номера отпразднованных глав], seen — сколько открытых глав уже показали,
      pg — сколько было вылечено при прошлой проверке, hd — в какой день лечили, td:{d, ok:[дела дня, уже сделанные сегодня]}. */
@@ -26,7 +25,8 @@ const ST_PLACES = {
   road:  {ic:'🛣️', name:L('Дорога', 'Road'),          x:86, y:62, pet:true},
   rescue:{ic:'🔎', name:L('Потеряшки', 'Lost pups'),   x:62, y:64, pet:true},
   dive:  {ic:'🤿', name:L('Бухта', 'Bay'),             x:28, y:86, pet:true},
-  chase: {ic:'🦈', name:L('Салки', 'Tag'),             x:66, y:88, pet:true}
+  chase: {ic:'🦈', name:L('Салки', 'Tag'),             x:66, y:88, pet:true},
+  storm: {ic:'🌪️', name:L('Шторм', 'Storm'),          x:90, y:86, pet:true, show:() => typeof smOn === 'function' && smOn()}   // глава 8 (js/storm.js)
 };
 
 /* ---------- главы ----------
@@ -107,13 +107,13 @@ const STORY = [
       {ic:'🍤', t:L('Покорми рыбок в аквариуме', 'Feed the fish in the tank'), ok:() => !!save.home.fed, go:'home'}
     ]},
   {ic:'🌪️', name:L('Великий шторм', 'The Great Storm'),
-    about:L('Небо темнеет на горизонте… Эта глава ещё впереди.', 'The sky is darkening on the horizon… This chapter is still ahead.'),
+    about:L('Небо почернело: на остров идёт Великий шторм и большая вода! Нужны отвага, скорость и смекалка — и все друзья вместе.', 'The sky has turned black: the Great Storm and high water are coming to the island! You need courage, speed and wits — and all your friends together.'),
     end:L('Шторм ушёл, над островом радуга 🌈', 'The storm is gone, and there is a rainbow over the island 🌈'),
     items:[
-      {ic:'🚨', t:L('Тревога', 'The alarm'), soon:true},
-      {ic:'🛟', t:L('Спасаем всех', 'Save everyone'), soon:true},
-      {ic:'🗼', t:L('Держим маяк', 'Hold the lighthouse'), soon:true},
-      {ic:'🌈', t:L('Глаз бури', 'The eye of the storm'), soon:true}
+      {ic:'🚨', t:L('Тревога: отведи малышей в убежище', 'The alarm: lead the little ones to the shelter'), ok:() => save.storm.st > 0, go:'storm'},
+      {ic:'🛟', t:L('Спасаем всех: соседи на льдинах', 'Save everyone: neighbours on the floes'), ok:() => save.storm.st > 1, go:'storm'},
+      {ic:'🗼', t:L('Держим маяк', 'Hold the lighthouse'), ok:() => save.storm.st > 2, go:'storm'},
+      {ic:'🌈', t:L('Глаз бури: зажги маяк', 'The eye of the storm: light the lighthouse'), ok:() => save.storm.st > 3, go:'storm'}
     ]}
 ];
 function stItemDone(it){
@@ -165,6 +165,8 @@ const TODAY = [
     done:() => !stGardenGift(), go:'dive'},
   {id:'guest', ic:'🤿', t:() => { const d = dvDef(dvGuest()); return L(`Гость бухты: ${d ? d.ic + ' ' + d.name : ''}`, `Bay guest: ${d ? d.ic + ' ' + d.name : ''}`); },
     show:() => !!save.pet && !save.dive.seen.includes(dvGuest()), done:() => save.dive.seen.includes(dvGuest()), go:'dive'},
+  {id:'storm', ic:'🌪️', t:() => { const st = Math.min(3, save.storm.st); return L(`Великий шторм! Часть ${st + 1} из 4: ${SM_PARTS[st].name}`, `The Great Storm! Part ${st + 1} of 4: ${SM_PARTS[st].name}`); },
+    show:() => !!save.pet && typeof smOn === 'function' && smOn() && save.storm.st < 4, done:() => save.storm.d === stDay(), go:'storm'},
   {id:'feed', ic:'🍤', t:() => L('Покорми рыбок в аквариуме', 'Feed the fish in the tank'), show:() => !!save.pet && /^tank_/.test(save.home.s.tank || ''),
     done:() => save.home.fed === stDay(), go:'home'}
 ];
@@ -238,7 +240,7 @@ function stPinBadge(k, today){
 }
 function stTodayHtml(){
   const today = stTodayList(), left = today.filter(x => !x.done).length;
-  const pins = Object.entries(ST_PLACES).map(([k, p]) => {
+  const pins = Object.entries(ST_PLACES).filter(([k, p]) => !p.show || p.show()).map(([k, p]) => {
     const off = p.pet && !save.pet;
     return `<button class="st-pin${off ? ' off' : ''}" data-go="${k}" style="left:${p.x}%;top:${p.y}%"><span class="ic" aria-hidden="true">${off ? '🔒' : p.ic}</span>${off ? '' : stPinBadge(k, today)}<b>${stEsc(p.name)}</b></button>`;
   }).join('');
@@ -352,7 +354,7 @@ async function stGo(k){
     return;
   }
   if(k === 'home') return homeEnter();
-  if(k === 'road' || k === 'rescue'){ coGame = k; funPre = 'coop'; }
+  if(k === 'road' || k === 'rescue' || k === 'storm'){ coGame = k; funPre = 'coop'; }
   else funPre = k;   // walk, run, dive, chase — как в «Поиграть» (js/walk.js)
   petDo('fun');
 }

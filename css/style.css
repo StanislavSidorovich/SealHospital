@@ -850,3 +850,15 @@ body.story-on .vs-btn{display:none}   /* пилюля «В гости» лежи
 .cf-flake{position:absolute;pointer-events:none;font-size:34px;animation:cfflake 2s ease-in forwards}
 @keyframes cfflake{from{opacity:0;translate:0 -30px;rotate:0}15%{opacity:1}to{opacity:0;translate:0 240px;rotate:220deg}}
 @media (prefers-reduced-motion:reduce){ .cf-mug,.cf-flake,.cf-tissue.cf-catch{animation:none} }
+/* 🌪️ Великий шторм (js/storm.js) */
+.sm-hud .sm-hold{flex:none;width:40px;height:40px;display:grid;place-items:center;font-size:22px;background:var(--paper);border:2.5px solid var(--ink);border-radius:50%;box-shadow:0 3px 0 var(--ink);opacity:.55;transition:transform .15s,opacity .15s}
+.sm-hud .sm-hold.warn{opacity:1;background:#FFE6A8;animation:smPulse .5s ease-in-out infinite alternate}
+.sm-hud .sm-hold.on{opacity:1;background:#DDF5EA;transform:scale(.9);animation:none}
+@keyframes smPulse{to{transform:scale(1.14)}}
+.sm-hud{flex-wrap:nowrap}
+.sm-hud .bar{min-width:40px}
+.sm-end .sm-steps{display:flex;justify-content:center;gap:8px;font-size:26px}
+.sm-end .sm-steps span{opacity:.3;filter:grayscale(1)}
+.sm-end .sm-steps span.ok{opacity:1;filter:none}
+.sm-pick .picks button{min-height:84px}
+@media (prefers-reduced-motion:reduce){.sm-hud .sm-hold.warn{animation:none}}

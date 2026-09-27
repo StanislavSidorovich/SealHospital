@@ -175,12 +175,14 @@ const TUNES = {
   night:{parts:TUNE_NIGHT, seq:'ARAR', bpm:58,  bar:6, style:'waltz', inst:'box', shift:-5, vol:0.24},
   sea:  {parts:TUNE_PET,   seq:'BRAR', bpm:72,  bar:6, style:'waltz', inst:'mar', shift:-3, vol:0.24},   // под водой: медленно и мягко
   gloom:{parts:TUNE_GLOOM, seq:'A',    bpm:50,  bar:8, style:'box',   inst:'box', shift:-10, vol:0.2},   // пришла Мгла: медленно, низко, тревожно
-  glboss:{parts:TUNE_GLOOM, seq:'A',   bpm:76,  bar:8, style:'run',   inst:'mar', shift:-7, vol:0.24}    // бой со Мглой (js/gloom.js): бодрее, но в той же тревожной мелодии
+  glboss:{parts:TUNE_GLOOM, seq:'A',   bpm:76,  bar:8, style:'run',   inst:'mar', shift:-7, vol:0.24},   // бой со Мглой (js/gloom.js): бодрее, но в той же тревожной мелодии
+  storm:{parts:TUNE_RUN,   seq:'ABAB', bpm:112, bar:8, style:'run',   inst:'mar', shift:-5, vol:0.26}    // 🌪️ Великий шторм (js/storm.js): бодро, чуть ниже, не страшно
 };
 function musicMood(){
   if(musForce) return musForce;
   const b = document.body.classList;
   if(b.contains('gloom-on')) return b.contains('gloom-boss') ? 'glboss' : 'gloom';
+  if(b.contains('storm-on')) return 'storm';
   if(b.contains('visit-on')) return 'pet';   // в гостях на чужой льдине (js/visit.js)
   if(b.contains('dive-on')) return 'sea';
   if(b.contains('run-on')) return R && R.paused ? 'map' : 'run';

@@ -178,7 +178,7 @@ function netInviteUrl(code){
 }
 async function netShare(code){
   const url = netInviteUrl(code), text = L(`Поиграем вместе? 🦭 Комната ${netCodeText(code)} — нажми на ссылку:`, `Let's play together! 🦭 Room ${netCodeText(code)} — tap the link:`);
-  try{ if(navigator.share){ await navigator.share({title:L('Тюленья больница', 'Seal Hospital'), text, url}); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
+  try{ if(navigator.share){ await navigator.share({title:L('Тюлений остров', 'Seal Island'), text, url}); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
   try{ await navigator.clipboard.writeText(`${text} ${url}`); toast(L('Ссылка скопирована — вставь её в WhatsApp 📋', 'Link copied — paste it into WhatsApp 📋'), 3200); }
   catch(e){ prompt(L('Скопируй ссылку:', 'Copy the link:'), url); }
 }

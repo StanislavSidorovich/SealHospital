@@ -539,7 +539,8 @@ const CO_GAMES = {
 // какие игры есть (старый кеш мог не отдать новые файлы)
 const coGamesOn = () => Object.keys(CO_GAMES).filter(g => g === 'rescue' ? typeof rescueGame === 'function'
   : g === 'road' ? typeof roadGame === 'function' : g === 'code' ? typeof iceGame === 'function'
-  : g === 'dive' ? typeof diveNet === 'function' && netAvail() : g === 'visit' ? typeof visitGo === 'function' && netAvail() : true);   // 🤿 нырнуть вдвоём (js/dive.js) и 🏝️ в гости — только по сети
+  : g === 'dive' ? typeof diveNet === 'function' && netAvail() : g === 'visit' ? typeof visitGo === 'function' && netAvail()
+  : g === 'storm' ? typeof stormGame === 'function' && smOn() : true);   // 🌪️ шторм — когда открыта глава 8 (js/storm.js)   // 🤿 нырнуть вдвоём (js/dive.js) и 🏝️ в гости — только по сети
 async function coopMenu(){
   for(;;){
     mgOpen(L('Играем вместе!', 'Let\'s play together!'));
@@ -601,13 +602,14 @@ function coopNetGo(game, pal){
     toast(L(`Напарник выбрал «${CO_GAMES[g].name()}» — играем в неё!`, `Your partner picked “${CO_GAMES[g].name()}” — let's play that!`), 3200);
   }
   return g === 'rescue' ? rescueGame('net', pal) : g === 'road' && typeof roadGame === 'function' ? roadGame('net', pal)
-    : g === 'dive' && typeof diveNet === 'function' ? diveNet(pal) : g === 'chase' && typeof chaseGame === 'function' ? chaseGame('net', pal) : coopFight('net', pal);
+    : g === 'dive' && typeof diveNet === 'function' ? diveNet(pal) : g === 'storm' && typeof stormGame === 'function' ? stormGame('net', pal) : g === 'chase' && typeof chaseGame === 'function' ? chaseGame('net', pal) : coopFight('net', pal);
 }
 function coopPlay(pick){
   if(pick.game === 'visit') return visitGo(pick.mode);   // 🏝️ «Остров в гостях» (js/visit.js)
   if(pick.game === 'code') return iceGame(pick.mode);
   if(pick.mode === 'net') return coopNet(pick.game);
   if(pick.game === 'chase') return chaseGame(pick.mode);   // 🦈 салки с акулой (js/chase.js)
+  if(pick.game === 'storm') return stormGame(pick.mode);   // 🌪️ Великий шторм (js/storm.js)
   return pick.game === 'rescue' ? rescueGame(pick.mode) : pick.game === 'road' ? roadGame(pick.mode) : coopFight(pick.mode);
 }
 // знакомство по сети: обмениваемся малышами, хозяин даёт старт
@@ -737,7 +739,7 @@ async function coResultPanel(res){
 FUN_COST.coop = {food:0.2, bath:0.2, sleep:0.2};
 let coGull = false;   // последний раз летали чайкой в чужом забеге (js/gull.js), а не бились с Тучей
 FUN_SAY.coop = () => coGull ? L('Хорошо полетали чайкой! 🐦', 'Great flying as the gull! 🐦')
-  : coGame === 'chase' ? L('Вот это салки! Акула не угналась 🦈💨', 'What a game of tag! The shark could not keep up 🦈💨') : coGame === 'code' ? L('Какой хитрый код! 🧊', 'What a tricky code! 🧊') : coGame === 'visit' ? L('Как здорово, когда приходят гости! 🏝️', 'It is so nice to have guests! 🏝️') : coGame === 'dive' ? L('Хорошо поплавали вместе! 🤿', 'What a swim together! 🤿') : coGame === 'rescue' ? L('Потеряшка нашла маму — мы молодцы! 💗', 'The lost pup found mum — well done us! 💗') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
+  : coGame === 'storm' ? L('Мы спасли остров! Вместе мы — сила 🌈', 'We saved the island! Together we are strong 🌈') : coGame === 'chase' ? L('Вот это салки! Акула не угналась 🦈💨', 'What a game of tag! The shark could not keep up 🦈💨') : coGame === 'code' ? L('Какой хитрый код! 🧊', 'What a tricky code! 🧊') : coGame === 'visit' ? L('Как здорово, когда приходят гости! 🏝️', 'It is so nice to have guests! 🏝️') : coGame === 'dive' ? L('Хорошо поплавали вместе! 🤿', 'What a swim together! 🤿') : coGame === 'rescue' ? L('Потеряшка нашла маму — мы молодцы! 💗', 'The lost pup found mum — well done us! 💗') : L('Вот это бой! Вместе мы — сила 💪', 'What a fight! Together we\'re strong 💪');
 async function coopFromPet(s){
   if(typeof GL !== 'undefined' && GL && GL.home) gullRunEnd(true);   // чайка порхала над уголком — отпускаем: новая игра соединяется заново
   const pick = await coopMenu();

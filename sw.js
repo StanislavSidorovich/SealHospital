@@ -4,7 +4,7 @@
    js/css — «сначала сеть, потом кеш»: так Сабрина не застревает на старой версии после правок.
    vendor/ и иконки почти не меняются — «сначала кеш, потом сеть», это быстрее.
    Поменяй CACHE, если нужно один раз сбросить старый кеш у всех разом (например, после большой правки). */
-const CACHE = 'sh-v1';
+const CACHE = 'sh-v2';
 const CORE = [
   './', './index.html', './manifest.json', './css/style.css',
   './vendor/three.min.js', './vendor/peerjs.min.js',
@@ -14,7 +14,7 @@ const CORE = [
   './js/adventure.js', './js/neighbors.js', './js/mail.js', './js/holidays.js', './js/net.js', './js/coop.js',
   './js/gull.js', './js/rescue.js', './js/grotto.js', './js/blizzard.js', './js/glowcave.js', './js/kelpforest.js',
   './js/festival.js', './js/cloudroad.js', './js/icecode.js', './js/dive.js', './js/gloom.js', './js/chase.js',
-  './js/sharktooth.js', './js/cloudcure.js', './js/visit.js', './js/story.js', './js/game.js'
+  './js/sharktooth.js', './js/cloudcure.js', './js/visit.js', './js/storm.js', './js/story.js', './js/game.js'
 ];
 
 self.addEventListener('install', e => {
