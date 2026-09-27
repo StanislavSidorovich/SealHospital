@@ -55,7 +55,7 @@ async function cfSecret(c, at){
   mgHint(L('«Я не злая… Я простыла — вот и чихаю снегом. И мне одиноко: все от меня прячутся…» ☁️', '“I\'m not mean… I have a cold — that\'s why I sneeze snow. And I\'m lonely: everyone hides from me…” ☁️'));
   await wait(3.8); if(!CO) return;
   const who = save.pet ? save.pet.name : L('Малыш', 'The pup');
-  mgHint(L(`${who}: «Прилетай к нам в больницу! Доктор Сабрина тебя вылечит 🩺»`, `${who}: “Come to our hospital! Doctor Sabrina will make you better 🩺”`));
+  mgHint(L(`${who}: «Прилетай к нам в больницу! Доктор ${pname()} тебя вылечит 🩺»`, `${who}: “Come to our hospital! Doctor ${pname()} will make you better 🩺”`));
   sfx.arf();
   await wait(3); mgTicks.delete(drops);
 }
@@ -215,7 +215,7 @@ async function spawnCloud(){
   const last = shift.n >= SHIFT_SIZE;
   const card = mgNode('div', 'mg-panel adopt st-cured', `<p class="ttl display">${L('Туча здорова! ☁️✨', 'The Cloud is well! ☁️✨')}</p>
     <img class="co-photo" src="${img}" alt="">
-    <p>${L('Туча: «Спасибо, доктор Сабрина! Больше не буду ворчать. Можно я буду поливать твой подводный сад тёплым дождиком? 🌧️💗»', 'Cloud: “Thank you, Doctor Sabrina! I won\'t grumble anymore. May I water your underwater garden with warm rain? 🌧️💗”')}</p>
+    <p>${L(`Туча: «Спасибо, доктор ${pname()}! Больше не буду ворчать. Можно я буду поливать твой подводный сад тёплым дождиком? 🌧️💗»`, `Cloud: “Thank you, Doctor ${pname()}! I won't grumble anymore. May I water your underwater garden with warm rain? 🌧️💗”`)}</p>
     <p class="got">+${CF_CURE_SHELLS} 🐚${save.pet ? `  +${PATIENT_XP} 💗` : ''} · ${L('🌧️ дождик для сада в бухте', '🌧️ rain for the garden in the bay')}</p>
     <div class="row"><button class="btn">${last ? L('Итоги смены ⭐', 'Shift results ⭐') : L('Следующий пациент', 'Next patient')}</button></div>`);
   await new Promise(r => mgOn(card.querySelector('button'), 'click', () => { sfx.tap(); r(); }));

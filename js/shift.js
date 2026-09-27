@@ -332,7 +332,7 @@ Object.assign(HOTSPOT, {
 Object.assign(THANKS, {
   beak: [f => L('Можно я ещё приду? Только уже без костюма!', 'Can I come again? Without the costume this time!')],
   paws: [f => L('Теперь я самый тёплый пингвин на льдине!', 'Now I am the warmest penguin on the ice!')],
-  quack:[f => L('Кря! То есть… спасибо, доктор Сабрина!', 'Quack! I mean… thank you, Doctor Sabrina!')]
+  quack:[f => L(`Кря! То есть… спасибо, доктор ${pname()}!`, `Quack! I mean… thank you, Doctor ${pname()}!`)]
 });
 const DISGUISE = {name:L('Тюлень Тюленевич', 'Sealy McSeal'), f:false, color:0xDCE3EC, spot:0xB9C4D3, ail:['beak', 'paws', 'quack'],
   text:L('Здравствуйте, доктор! Я самый обыкновенный тюлень. Честно-честно! Просто что-то нездоровится…', 'Hello, doctor! I am a totally ordinary seal. Honest! I just feel a bit funny…')};

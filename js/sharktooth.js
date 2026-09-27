@@ -237,7 +237,7 @@ async function spawnShark(){
   const last = shift.n >= SHIFT_SIZE;
   const card = mgNode('div', 'mg-panel adopt st-cured', `<p class="ttl display">${L('Акула здорова! 🦷✨', 'The shark is well! 🦷✨')}</p>
     <img class="co-photo" src="${img}" alt="">
-    <p>${L('Акула: «Спасибо, доктор Сабрина! Приплывай в подводную бухту — покатаю тебя на спине! 🦈💗»', 'Shark: “Thank you, Doctor Sabrina! Come to the underwater bay — I\'ll give you a ride on my back! 🦈💗”')}</p>
+    <p>${L(`Акула: «Спасибо, доктор ${pname()}! Приплывай в подводную бухту — покатаю тебя на спине! 🦈💗»`, `Shark: “Thank you, Doctor ${pname()}! Come to the underwater bay — I'll give you a ride on my back! 🦈💗”`)}</p>
     <p class="got">+${ST_CURE_SHELLS} 🐚${save.pet ? `  +${PATIENT_XP} 💗` : ''}${rug ? L(' · 🎁 коврик-акулёнок для иглу', ' · 🎁 a shark rug for the igloo') : ''}</p>
     <div class="row"><button class="btn">${last ? L('Итоги смены ⭐', 'Shift results ⭐') : L('Следующий пациент', 'Next patient')}</button></div>`);
   await new Promise(r => mgOn(card.querySelector('button'), 'click', () => { sfx.tap(); r(); }));

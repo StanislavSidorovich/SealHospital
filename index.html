@@ -114,12 +114,36 @@
   <div class="fade" id="fade"></div>
   <div class="toast" id="toast" hidden></div>
 
+  <!-- «Кто играет?» (Фаза 11, часть 1, js/game.js whoDone/whoShow): показывается один раз на совсем новом сохранении, до первого экрана -->
+  <div class="overlay" id="who" hidden>
+    <div class="panel">
+      <div class="lang" role="group" aria-label="Language / Язык"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
+      <div class="sign"><span class="cross"></span></div>
+      <h1 class="display" data-en="Who's playing?">Кто играет?</h1>
+      <p data-en="Pick a name — the game will call you by it.">Выбери имя — так игра будет к тебе обращаться.</p>
+      <div class="row" id="whoPickRow">
+        <button class="btn" id="btnWhoMe" data-en="I'm Sabrina ♡">Я Сабрина ♡</button>
+        <button class="btn ghost" id="btnWhoOther" data-en="Another name">Другое имя</button>
+      </div>
+      <div class="row" id="whoNameRow" hidden>
+        <input type="text" id="whoName" maxlength="12" autocomplete="off" autocapitalize="words" placeholder="Имя" data-en-ph="Name" aria-label="Имя" data-en-aria="Name">
+      </div>
+      <div class="seg" id="whoGenderRow" hidden role="group" aria-label="Кто ты" data-en-aria="Who are you">
+        <button data-g="f" class="on" data-en="Girl">Девочка</button>
+        <button data-g="m" data-en="Boy">Мальчик</button>
+      </div>
+      <div class="row" id="whoGoRow" hidden>
+        <button class="btn" id="btnWhoGo" data-en="Start playing">Играть</button>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" id="intro">
     <div class="panel">
       <div class="lang" role="group" aria-label="Language / Язык"><button data-lang="ru">RU</button><button data-lang="en">EN</button></div>
       <div class="sign"><span class="cross"></span></div>
       <h1 class="display" data-en="Seal Hospital">Тюленья больница</h1>
-      <p data-en="Doctor Sabrina, patients are swimming in! Three seals per shift: check them, heal them, hug them and tuck them in. Every patient earns you shells 🐚 for the shop.">Доктор Сабрина, к тебе приплывают пациенты! За смену — три тюленя: осмотри, вылечи, обними и уложи спать. За каждого — ракушки 🐚 для лавки.</p>
+      <p id="introText" data-en="Doctor Sabrina, patients are swimming in! Three seals per shift: check them, heal them, hug them and tuck them in. Every patient earns you shells 🐚 for the shop.">Доктор Сабрина, к тебе приплывают пациенты! За смену — три тюленя: осмотри, вылечи, обними и уложи спать. За каждого — ракушки 🐚 для лавки.</p>
       <p id="introStat" class="thanks" hidden></p>
       <p id="introMail" class="intro-mail display" data-en="💌 You have a letter from Dad!" hidden>💌 Тебе письмо от папы!</p>
       <div class="row">
@@ -144,6 +168,12 @@
       <div class="lang" role="group" aria-label="Language / Язык"><button data-lang="ru">Русский</button><button data-lang="en">English</button></div>
       <p class="set-lbl display" data-en="Music">Музыка</p>
       <div class="seg" id="musicSeg" role="group" aria-label="Музыка" data-en-aria="Music"><button data-m="1" data-en="🎵 On">🎵 Вкл</button><button data-m="0" data-en="Off">Выкл</button></div>
+      <p class="set-lbl display" id="whoRow" hidden><span data-en="Playing as:">Играет:</span> <b id="whoRowName"></b> · <button class="link" id="btnWhoChange" data-en="change">сменить</button></p>
+      <div id="installBlock" hidden>
+        <p class="set-lbl display" data-en="Install">Установка</p>
+        <button class="btn" id="btnInstall" hidden data-en="📲 Add to home screen">📲 Поставить на экран</button>
+        <p id="iosHint" hidden data-en="On iPhone/iPad: tap “Share”, then “Add to Home Screen”.">На iPhone/iPad: нажми «Поделиться», потом «На экран Домой».</p>
+      </div>
       <p class="set-lbl display" data-en="Save code">Код сохранения</p>
       <p data-en="Use it to move your pup, shells and purchases to another phone or tablet. It is also a backup. Album photos are not included in the code.">Так можно перенести малыша, ракушки и покупки на другой телефон или планшет, а ещё это запасная копия. Фото из альбома в код не входят.</p>
       <textarea id="codeBox" rows="4" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Код сохранения" data-en-aria="Save code" placeholder="Здесь появится код. Или вставь сюда код с другого устройства." data-en-ph="Your code will appear here. Or paste a code from another device."></textarea>
@@ -173,7 +203,7 @@
       <h2 class="display" id="curedTitle">Моти здоров!</h2>
       <p class="thanks" id="curedThanks"></p>
       <p class="earned display" id="curedShells"></p>
-      <div class="letter">
+      <div class="letter" id="curedLetter">
         <div class="stamp"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.3-7-9.2A3.8 3.8 0 0 1 12 9a3.8 3.8 0 0 1 7 1.8C19 15.7 12 20 12 20z" fill="#FFFDF8" stroke="#3B3A4A" stroke-width="1.8"/></svg></div>
         <p class="to display" data-en="For my dearest daughter">Для любимой дочи</p>
         <p class="sig display">— Dad ♡</p>
@@ -331,5 +361,11 @@
 <script src="js/visit.js"></script>
 <script src="js/story.js"></script>
 <script src="js/game.js"></script>
+<script>
+// Установка на экран (PWA): только на https и не во фрейме (Artifact) — локально и в Artifact игра работает и без него.
+if('serviceWorker' in navigator && location.protocol === 'https:' && window.top === window){
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
 </body>
 </html>

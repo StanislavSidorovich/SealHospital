@@ -221,6 +221,7 @@ async function hug(e0){
   $('#curedTitle').textContent = L(`${s.p.name} ${s.p.f ? 'здорова' : 'здоров'}!`, `${s.p.name} is well!`);
   const thx = thanksFor(s.p, Object.keys(wearIds(s)).length > 0);
   $('#curedThanks').textContent = L(`${s.p.name}: «${thx}»`, `${s.p.name}: “${thx}”`);
+  $('#curedLetter').hidden = !isSabrinaPlayer();   // записка от папы — только у Сабрины
   $('#cured').hidden = false; setBusy(false);
 }
 async function nextPatient(){
@@ -280,6 +281,7 @@ function openSettings(){
   $('#storeNote').textContent = '';
   keepSave().then(ok => { $('#storeNote').textContent = ok === null ? '' : ok ? L('🔒 Браузер обещал не стирать сохранение.', '🔒 The browser promised to keep your save.') : L('Браузер может стереть сохранение, если кончится место: лучше скопируй код и спрячь его.', 'The browser may erase your save if it runs out of space: better copy the code and keep it safe.'); });
   $('#dadStats').open = false;
+  renderWhoRow();
   $('#settings').hidden = false;
 }
 async function copyCode(){
@@ -487,6 +489,55 @@ function frame(ts){
   statTick(dt);
   updateParts(dt);
   renderer.render(scene, camera);
+}
+
+/* ---------------- «Кто играет?» (Фаза 11, часть 1): имя игрока на первом экране (save.who, pname/pg/isSabrinaPlayer — js/data.js) ---------------- */
+let whoDraftG = 'f', whoFromSettings = false;
+function whoRenderGender(){ for(const b of document.querySelectorAll('#whoGenderRow button')) b.classList.toggle('on', b.dataset.g === whoDraftG); }
+function whoReset(){
+  $('#whoPickRow').hidden = false; $('#whoNameRow').hidden = true; $('#whoGenderRow').hidden = true; $('#whoGoRow').hidden = true;
+  $('#whoName').value = ''; whoDraftG = 'f'; whoRenderGender();
+}
+function whoFinish(name, g){
+  save.who = {name, g, asked:true}; persist();
+  applyPname(); renderWhoRow(); if(typeof mailApplyWho === 'function') mailApplyWho();
+  $('#who').hidden = true;
+  if(!whoFromSettings) $('#intro').hidden = false;
+}
+function applyPname(){
+  $('#introText').textContent = L(`Доктор ${pname()}, к тебе приплывают пациенты! За смену — три тюленя: осмотри, вылечи, обними и уложи спать. За каждого — ракушки 🐚 для лавки.`,
+    `Doctor ${pname()}, patients are swimming in! Three seals per shift: check them, heal them, hug them and tuck them in. Every patient earns you shells 🐚 for the shop.`);
+}
+function renderWhoRow(){ $('#whoRow').hidden = isSabrinaPlayer(); $('#whoRowName').textContent = pname(); }
+$('#btnWhoMe').addEventListener('click', () => { sfx.tap(); whoFinish(L('Сабрина', 'Sabrina'), 'f'); });
+$('#btnWhoOther').addEventListener('click', () => {
+  sfx.tap(); $('#whoPickRow').hidden = true; $('#whoNameRow').hidden = false; $('#whoGenderRow').hidden = false; $('#whoGoRow').hidden = false; $('#whoName').focus();
+});
+for(const b of document.querySelectorAll('#whoGenderRow button')) b.addEventListener('click', () => { sfx.tap(); whoDraftG = b.dataset.g; whoRenderGender(); });
+$('#btnWhoGo').addEventListener('click', () => {
+  const name = $('#whoName').value.trim().slice(0, 12);
+  if(!name) return $('#whoName').focus();
+  sfx.tap(); whoFinish(name, whoDraftG);
+});
+$('#btnWhoChange').addEventListener('click', () => { sfx.tap(); $('#settings').hidden = true; whoFromSettings = true; whoReset(); $('#who').hidden = false; });
+applyPname(); renderWhoRow();
+if(!save.who.asked){ $('#intro').hidden = true; $('#who').hidden = false; }
+
+/* ---------------- «Поставить на экран» (PWA): кнопка в ⚙️, ловим beforeinstallprompt; на iPhone/iPad подсказка картинкой ---------------- */
+let deferredInstall = null;
+function showInstallBlock(){ $('#installBlock').hidden = $('#btnInstall').hidden && $('#iosHint').hidden; }
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; $('#btnInstall').hidden = false; showInstallBlock(); });
+addEventListener('appinstalled', () => { deferredInstall = null; $('#btnInstall').hidden = true; $('#iosHint').hidden = true; showInstallBlock(); });
+$('#btnInstall').addEventListener('click', async () => {
+  if(!deferredInstall) return;
+  sfx.tap(); deferredInstall.prompt();
+  try{ await deferredInstall.userChoice; }catch(e){}
+  deferredInstall = null; $('#btnInstall').hidden = true; showInstallBlock();
+});
+{
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  const iOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  if(iOS && !standalone && window.top === window){ $('#iosHint').hidden = false; showInstallBlock(); }
 }
 
 buildTools(); renderMute(); renderMusic(); renderAlbumCount(); renderBucket();

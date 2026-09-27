@@ -15,6 +15,7 @@ const dayGap = (a, b) => Math.round((new Date(a) - new Date(b))/864e5);
 // какое письмо ждёт сегодня: сначала письмо ровно на сегодня, потом праздничное, которое чуть опоздало,
 // потом обычное — но обычное только одно в день
 function mailNext(){
+  if(!isSabrinaPlayer()) return null;   // папина почта — только у Сабрины (js/game.js «Кто играет?»)
   const today = ymd(), fresh = MAIL.filter(l => !mailHas(letterId(l)));
   const dated = fresh.filter(l => typeof l.date === 'string' && l.date <= today && dayGap(today, l.date) <= MAIL_LATE);
   return dated.find(l => l.date === today) || (save.mail.d === today ? null : dated[0] || fresh.find(l => !l.date) || null);
@@ -217,4 +218,10 @@ $('#mailGift').addEventListener('click', mailGiftOpen);
 $('#btnMailOk').addEventListener('click', mailDone);
 $('#btnBoxClose').addEventListener('click', () => { sfx.tap(); mailClose(); });
 $('#btnBoxNew').addEventListener('click', () => { if(mailWaiting) mailEnvelope(mailWaiting); });
-mailRefresh(); updateMailbox(); mailbox.userData.flag.rotation.x = mailbox.userData.wantFlag;
+// папина почта — только у Сабрины («Кто играет?»); у подруг ящика и кнопки нет совсем
+function mailApplyWho(){
+  const show = isSabrinaPlayer();
+  $('#btnMail').hidden = !show; mailbox.visible = show;
+  if(!show) mailRefresh();
+}
+mailApplyWho(); updateMailbox(); mailbox.userData.flag.rotation.x = mailbox.userData.wantFlag;

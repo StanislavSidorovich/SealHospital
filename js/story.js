@@ -35,7 +35,7 @@ const stNum = v => Number.isFinite(v) ? v : 0;
 const stLv = k => stNum(save.coop.resc.lv[k]);
 const STORY = [
   {ic:'🩺', name:L('Доктор', 'Doctor'),
-    about:L('К льдине приплывают больные тюлени. Кто им поможет? Конечно, доктор Сабрина!', 'Sick seals are swimming to the ice floe. Who will help them? Doctor Sabrina, of course!'),
+    about:L(`К льдине приплывают больные тюлени. Кто им поможет? Конечно, доктор ${pname()}!`, `Sick seals are swimming to the ice floe. Who will help them? Doctor ${pname()}, of course!`),
     end:L('Больнице дают флажок! Теперь он развевается над крышей 🚩', 'The hospital gets a flag! Now it waves over the roof 🚩'),
     items:[
       {ic:'🩺', t:L('Вылечи первого пациента', 'Heal your first patient'), n:() => [save.progress, 1], go:'hosp'},

@@ -477,6 +477,14 @@ body:not(.pet-mode) .night{opacity:0}
 .panel.settings .lang,.panel.settings .seg{margin:0 auto 14px}
 .set-lbl{font-size:22px!important;color:var(--pink-d);margin:6px 0 6px!important;line-height:1.1!important}
 
+/* ---------------- «Кто играет?» (Фаза 11, часть 1, js/game.js) ---------------- */
+#who .row{margin-bottom:12px}
+#whoName{width:100%;max-width:260px;box-sizing:border-box;padding:10px 16px;margin:0 auto 12px;display:block;
+  border:2.5px solid var(--ink);border-radius:16px;background:#fff;color:var(--ink);text-align:center;
+  font-family:"Pangolin","Comic Sans MS",cursive;font-size:22px}
+#whoName:focus{outline:3px solid var(--pink);outline-offset:1px}
+.link{font:700 14px/1 "Nunito",sans-serif;background:none;border:0;padding:0;color:var(--pink-d);text-decoration:underline;cursor:pointer;min-height:0}
+
 /* ---------------- Фаза 4: мой иглу (js/home.js) ---------------- */
 .round.home{font-size:24px;line-height:1}
 body:not(.home-mode) #homeCard,body:not(.home-mode) #homeBar,body:not(.home-mode) .home-dim{display:none!important}

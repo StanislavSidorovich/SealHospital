@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story}.
+// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story, who}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
@@ -17,8 +17,18 @@ const MIGRATIONS = [
   // 0 → 1: раньше было три отдельных ключа sh.album, sh.progress, sh.muted
   () => ({album:store.get('sh.album', []), progress:store.get('sh.progress', 0), muted:store.get('sh.muted', false)})
 ];
+// who = {name, g:'f'|'m', asked} — кто играет («Кто играет?», Фаза 11 часть 1). Имя ограничено 12 буквами.
+// asked=false только у совсем нового сохранения — тогда игра сама спросит имя перед первым экраном;
+// у сохранений, где уже что-то есть (лечила, гуляла, письма), считаем, что это Сабрина, и не переспрашиваем.
+function sanitizeWho(w, hasHistory){
+  w = w && typeof w === 'object' ? w : {};
+  const name = typeof w.name === 'string' && w.name.trim() ? w.name.trim().slice(0, 12) : L('Сабрина', 'Sabrina');
+  return {name, g:w.g === 'm' ? 'm' : 'f', asked:!!(w.asked || hasHistory)};
+}
 function sanitize(d){
+  const hasHistory = !!(d.progress || d.shifts || d.pet || d.album && d.album.length || d.mail && d.mail.got && d.mail.got.length);
   return {...d, version:SAVE_VERSION,
+    who:sanitizeWho(d.who, hasHistory),
     album:Array.isArray(d.album) ? d.album : [],
     progress:Number.isFinite(d.progress) ? d.progress : 0,
     muted:!!d.muted,
@@ -179,6 +189,9 @@ function loadSave(){
 }
 const save = loadSave();
 const persist = () => store.set(SAVE_KEY, save);
+const pname = () => save.who.name;                          // имя игрока (по умолчанию — Сабрина)
+const pg = (m, f) => save.who.g === 'm' ? m : f;             // род игрока: pg('вылечил', 'вылечила')
+const isSabrinaPlayer = () => save.who.name === L('Сабрина', 'Sabrina') && save.who.g === 'f';   // папины письма и записки — только у неё
 
 // Просим браузер не стирать сохранение, когда ему не хватает места (Chrome решает сам, Firefox спросит, Safari даёт установленным на экран).
 // Зовём после нажатия, а не при загрузке: так браузеру проще согласиться. Ответ нужен только для подсказки в настройках.
@@ -240,12 +253,12 @@ const SYMPTOMS = {
 const PHRASE = {fever:L('горячий лоб', 'hot forehead'), sneeze:L('чихает', 'sneezing'), scratch:L('ранка на лобике', 'a scratch on the forehead'), hungry:L('урчит животик', 'a rumbling tummy'), cold:f => L(f ? 'замёрзла' : 'замёрз', 'feeling cold')};
 // «Спасибо» вылеченного пациента: про то, что лечили, плюс общие; одна и та же фраза два раза подряд не выпадает
 const THANKS = {
-  fever:  [f => L('Лобик больше не горячий! Спасибо, доктор Сабрина!', 'My forehead isn\'t hot anymore! Thank you, Doctor Sabrina!')],
+  fever:  [f => L(`Лобик больше не горячий! Спасибо, доктор ${pname()}!`, `My forehead isn't hot anymore! Thank you, Doctor ${pname()}!`)],
   sneeze: [f => L('Апчхи… ой, а я больше не чихаю! Спасибо!', 'Achoo… oh, I\'m not sneezing anymore! Thank you!')],
   scratch:[f => L(`С пластырем я ${f ? 'как настоящая героиня' : 'как настоящий герой'}!`, 'With this bandage I look like a real hero!')],
   hungry: [f => L('Рыбка была такая вкусная! Ням-ням, спасибо!', 'That fish was so yummy! Nom-nom, thank you!')],
   cold:   [f => L(`Шарфик такой тёплый! Я ${f ? 'согрелась' : 'согрелся'}, спасибо!`, 'The scarf is so warm! I\'m all cozy now, thank you!')],
-  any:    [f => L('Спасибо, доктор Сабрина!', 'Thank you, Doctor Sabrina!'),
+  any:    [f => L(`Спасибо, доктор ${pname()}!`, `Thank you, Doctor ${pname()}!`),
            f => L('Ты самый лучший доктор на всём льду!', 'You\'re the best doctor on the whole ice!'),
            f => L('Я расскажу всем друзьям про твою больницу!', 'I\'ll tell all my friends about your hospital!'),
            f => L(`Я снова ${f ? 'здорова' : 'здоров'} и могу нырять! Спасибо!`, 'I\'m well again and can dive! Thank you!'),

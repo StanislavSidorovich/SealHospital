@@ -9,7 +9,7 @@ const HOLIDAYS = [
   {id:'halloween', from:[10, 24], to:[11, 1], ic:'🎃', greet:L('С Хэллоуином!', 'Happy Halloween!'), gift:{wear:'pumpkin'}},
   {id:'newyear',   from:[12, 20], to:[1, 7],  ic:'🎄', greet:L('С Новым годом!', 'Happy New Year!'), gift:{wear:'santa'}},
   {id:'valentine', from:[2, 12],  to:[2, 14], ic:'💗', greet:L('С Днём всех влюблённых!', 'Happy Valentine\'s Day!'), gift:{shells:14}},
-  {id:'bday',      from:BDAY,     to:BDAY,    ic:'🎂', greet:L('С днём рождения, Сабрина!', 'Happy birthday, Sabrina!'), gift:{shells:30}}
+  {id:'bday',      from:BDAY,     to:BDAY,    ic:'🎂', greet:L(`С днём рождения, ${pname()}!`, `Happy birthday, ${pname()}!`), gift:{shells:30}}
 ];
 // праздничные шапочки: в лавке не продаются (gift:true), приходят подарком
 SHOP.push({id:'pumpkin', kind:'wear', slot:'head', name:L('Шапочка-тыква', 'Pumpkin hat'), gift:true},
