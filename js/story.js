@@ -64,7 +64,8 @@ const STORY = [
       {ic:'❄️', t:L('Найди потеряшку в Метели', 'Find the lost pup in the Blizzard'), n:() => [stLv('snow'), 1], go:'rescue'},
       {ic:'✨', t:L('Принеси свет Лучику в Пещеру сияния', 'Bring light to Little Ray in the Shining Cave'), n:() => [stLv('glow'), 1], go:'rescue'},
       {ic:'🌿', t:L('Спаси калана Пуговку в подводном лесу', 'Save Button the sea otter in the kelp forest'), n:() => [stLv('kelp'), 1], go:'rescue'},
-      {ic:'🎉', t:L('Праздник мам (и кто-то рычит…)', 'The mums\' party (and someone growls…)'), n:() => [stLv('fest'), 1], go:'rescue'}
+      {ic:'🎉', t:L('Праздник мам (и кто-то рычит…)', 'The mums\' party (and someone growls…)'), n:() => [stLv('fest'), 1], go:'rescue'},
+      {ic:'🐻‍❄️', t:L('Вылечи медведю лапу', 'Heal the bear\'s paw'), ok:() => save.pt.bear, go:'hosp'}
     ]},
   {ic:'🦈', name:L('Акула', 'Shark'),
     about:L('В бухте живёт акула. Страшная? Посмотрим… И почему она всё время гонится за тобой?', 'A shark lives in the bay. Scary? We\'ll see… And why does it keep chasing you?'),
@@ -84,7 +85,8 @@ const STORY = [
       {ic:'🌑', t:L('Встреть Мглу в бухте', 'Meet the Gloom in the bay'), n:() => [save.dive.gloom.met, 1], go:'dive'},
       {ic:'🛢️', t:L('Найди бочку', 'Find the barrel'), n:() => [save.dive.gloom.st, 1], go:'dive'},
       {ic:'💧', t:L('Услышь, как плачет Мгла', 'Hear the Gloom crying'), n:() => [save.dive.gloom.st, 2], go:'dive'},
-      {ic:'🐙', t:L('Спаси Кляксу', 'Save Blot'), n:() => [save.dive.gloom.st, 3], go:'dive'}
+      {ic:'🐙', t:L('Спаси Кляксу', 'Save Blot'), n:() => [save.dive.gloom.st, 3], go:'dive'},
+      {ic:'🩹', t:L('Вылечи Кляксе царапинку', 'Fix Blot\'s scratch'), ok:() => save.pt.blot, go:'hosp'}
     ]},
   {ic:'☁️', name:L('Туча', 'Cloud'),
     about:L('Большая Туча засыпает льдину снегом и ворчит. Может, ей просто одиноко?', 'The Big Cloud buries the ice in snow and grumbles. Maybe it is just lonely?'),
@@ -158,6 +160,10 @@ const TODAY = [
   {id:'cloud', ic:'☁️', t:() => L(`Почему Туча ворчит? Этап ${Math.min(3, save.coop.cs.n + 1)} из 3`, `Why does the Cloud grumble? Stage ${Math.min(3, save.coop.cs.n + 1)} of 3`),
     show:() => !!save.pet && save.coop.cs.n < 3 && save.coop.cs.d !== advDayKey() || save.coop.cs.d === advDayKey() && save.coop.cs.cure === 0, done:() => save.coop.cs.d === advDayKey(), go:'road'},
   {id:'cloudsick', ic:'🤧', t:() => L('Туча ждёт в больнице: простыла!', 'The Cloud is waiting in the hospital: she has a cold!'), show:() => save.coop.cs.cure === 1,
+    done:() => false, go:'hosp'},
+  {id:'blot', ic:'🐙', t:() => L('Клякса ждёт в больнице: царапинка!', 'Blot is waiting in the hospital: a scratch!'), show:() => save.dive.gloom.st >= 3 && !save.pt.blot,
+    done:() => false, go:'hosp'},
+  {id:'bear', ic:'🐻‍❄️', t:() => L('Медведь ждёт в больнице: болит лапа!', 'The bear is waiting in the hospital: his paw hurts!'), show:() => stLv('fest') > 0 && !save.pt.bear,
     done:() => false, go:'hosp'},
   {id:'ride', ic:'🌊', t:() => L('Покатайся на акуле в бухте', 'Ride the shark in the bay'), show:() => !!save.pet && save.dive.shark.tooth === 2,
     done:() => save.dive.shark.ride === dvToday(), go:'dive'},

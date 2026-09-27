@@ -121,6 +121,8 @@ async function hop(s, h = 0.3, dur = 0.4){
 async function spawnPatient(){
   if(cloudDue()) return spawnCloud();   // простывшая Туча после третьего этапа дороги (js/cloudcure.js)
   if(sharkDue()) return spawnShark();   // акула с больным зубом из «Салок» (js/sharktooth.js)
+  if(typeof blotDue === 'function' && blotDue()) return spawnBlot();   // Клякса с царапинкой (js/guests.js)
+  if(typeof bearDue === 'function' && bearDue()) return spawnBear();   // медведь: лапа после занозы (js/guests.js)
   if(pengDue()) return spawnImpostor();   // иногда вместо тюленя — пингвин в костюме (shift.js)
   const p = patientFor(save.progress);
   const seal = makeSeal(p);
@@ -483,7 +485,7 @@ function frame(ts){
     }
   }
   shiftTick(t, dt);
-  petTick(t, dt); walkTick(t); homeTick(t, dt); mailTick(t, dt); advTick(t, dt);
+  petTick(t, dt); walkTick(t); homeTick(t, dt); mailTick(t, dt); advTick(t, dt); if(typeof gsTick === 'function') gsTick(t, dt);
   if(typeof holTick === 'function') holTick(t, dt);
   if(typeof nbTick === 'function') nbTick(t, dt);   // сосед Пинг (js/neighbors.js)   // старый index.html из кеша может ещё не знать про holidays.js
   if(typeof gullIsleTick === 'function') gullIsleTick(t, dt);   // чайка напарника порхает над уголком (js/gull.js)

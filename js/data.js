@@ -50,8 +50,11 @@ function sanitize(d){
     st:sanitizeSt(d.st),         // тихий счётчик: время в игре и по местам (statTick в js/game.js), для папы и будущей грамоты
     story:sanitizeStory(d.story),   // «Книга острова» и дела на сегодня (js/story.js)
     storm:sanitizeStorm(d.storm),   // 🌪️ Великий шторм (js/storm.js)
-    sl:sanitizeSlide(d.sl)};        // 🛷 Ледяная горка (js/slide.js)
+    sl:sanitizeSlide(d.sl),         // 🛷 Ледяная горка (js/slide.js)
+    pt:sanitizePt(d.pt)};           // 🐙🐻‍❄️ гости-пациенты (js/guests.js)
 }
+// pt = {blot — Кляксу вылечили (царапинка), bear — медведя вылечили (лапа)} (js/guests.js)
+function sanitizePt(a){ a = a && typeof a === 'object' ? a : {}; return {blot:!!a.blot, bear:!!a.bear}; }
 // sl = {n — сколько раз скатились, bt — лучшее время (секунды, 0 — ещё нет), st — лучшие звёзды, win — сколько раз приехали первыми в гонке,
 //       gold — нашли золотую ракушку, flips — кувырков всего, net — сколько раз вместе, day:{d, n — спусков сегодня (ракушки за первые два), st — звёзды сегодня}} (js/slide.js)
 function sanitizeSlide(a){
