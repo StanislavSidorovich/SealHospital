@@ -4,7 +4,7 @@
      не сделала — завтра будут новые.
    — «Главы»: 8 глав истории. Пункты глав считаются из того, что уже лежит в сохранении (ничего нового не копим).
      Следующая глава открывается, когда в текущей сделана половина; праздник главы — когда сделано всё.
-     Пункты «скоро» — то, что ещё строим (потеряшки 4–6, этапы «Дороги», аквариум, Великий шторм):
+     Пункты «скоро» — то, что ещё строим (Великий шторм):
      пока их нет, праздник такой главы впереди.
    Своё в сохранении — save.story (sanitizeStory в data.js):
      open — сколько глав открыто, fest:[номера отпразднованных глав], seen — сколько открытых глав уже показали,
@@ -103,7 +103,8 @@ const STORY = [
       {ic:'🛋️', t:L('Обставь 5 мест в иглу', 'Furnish 5 spots in the igloo'), n:() => [Object.keys(save.home.s).length, 5], go:'home'},
       {ic:'🐟', t:L('Поймай 5 разных рыбок моря', 'Catch 5 different sea fish'), n:() => [save.sea.got.length, 5], go:'hosp'},
       {ic:'📸', t:L('Сфотографируй 8 жителей бухты', 'Photograph 8 bay creatures'), n:() => [save.dive.seen.length, 8], go:'dive'},
-      {ic:'🐠', t:L('Аквариум с жителями моря', 'A tank with sea creatures'), soon:true}
+      {ic:'🦀', t:L('Позови 3 жителей бухты в аквариум', 'Invite 3 bay creatures to the fish tank'), n:() => [save.dive.tank.length, 3], go:'dive'},
+      {ic:'🍤', t:L('Покорми рыбок в аквариуме', 'Feed the fish in the tank'), ok:() => !!save.home.fed, go:'home'}
     ]},
   {ic:'🌪️', name:L('Великий шторм', 'The Great Storm'),
     about:L('Небо темнеет на горизонте… Эта глава ещё впереди.', 'The sky is darkening on the horizon… This chapter is still ahead.'),
@@ -163,7 +164,9 @@ const TODAY = [
   {id:'garden', ic:'🌱', t:() => L('Рыбка-садовник ждёт с подарком', 'The gardener fish has a gift'), show:() => !!save.pet && stGardenGift(),
     done:() => !stGardenGift(), go:'dive'},
   {id:'guest', ic:'🤿', t:() => { const d = dvDef(dvGuest()); return L(`Гость бухты: ${d ? d.ic + ' ' + d.name : ''}`, `Bay guest: ${d ? d.ic + ' ' + d.name : ''}`); },
-    show:() => !!save.pet && !save.dive.seen.includes(dvGuest()), done:() => save.dive.seen.includes(dvGuest()), go:'dive'}
+    show:() => !!save.pet && !save.dive.seen.includes(dvGuest()), done:() => save.dive.seen.includes(dvGuest()), go:'dive'},
+  {id:'feed', ic:'🍤', t:() => L('Покорми рыбок в аквариуме', 'Feed the fish in the tank'), show:() => !!save.pet && /^tank_/.test(save.home.s.tank || ''),
+    done:() => save.home.fed === stDay(), go:'home'}
 ];
 function stTodayList(){
   const td = save.story.td, out = [];

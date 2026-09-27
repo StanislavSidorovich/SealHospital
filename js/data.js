@@ -59,7 +59,7 @@ function sanitizeSt(a){
   for(const k of Object.keys(g).slice(0, 40)) if(Array.isArray(g[k])) out[k.slice(0, 12)] = [num(g[k][0]), num(g[k][1]), day(g[k][2])];
   return {t:num(a.t), days:num(a.days), first:day(a.first), last:day(a.last), tog:num(a.tog), g:out};
 }
-// dive = {n — сколько раз ныряли, seen:[жители из DV_LIFE, которых сфотографировали], day:{d, cl:[раковины, открытые сегодня]},
+// dive = {n — сколько раз ныряли, seen:[жители из DV_LIFE, которых сфотографировали], tank:[жители бухты, позванные в аквариум иглу], day:{d, cl:[раковины, открытые сегодня]},
 //         garden:[когда посажен росток, мс, или 0 — три грядки], gh:[в какой день грядка последний раз дарила ракушки],
 //         turt — черепаху освободили, shark:{hid — сколько раз спрятались, friend — подружились,
 //         tooth — история зуба (js/sharktooth.js): 0 — ещё нет, 1 — застряла в «Салках», ждёт в больнице, 2 — вылечили, катает; ride — день последнего катания}, map:[найденные кусочки 0–2], chest, book — подарок за всю энциклопедию,
@@ -75,7 +75,7 @@ function sanitizeDive(a){
     day:{d:typeof day.d === 'string' ? day.d : '', cl:Array.isArray(day.cl) ? [...new Set(day.cl.filter(i => i === 0 || i === 1 || i === 2))] : []},
     garden:three(a.garden, num), gh:three(a.gh, v => typeof v === 'string' ? v : ''),
     turt:!!a.turt, shark:{hid:num(sh.hid), friend:!!sh.friend, tooth:Math.min(2, Math.floor(num(sh.tooth))), ride:typeof sh.ride === 'string' ? sh.ride.slice(0, 20) : ''},
-    map:Array.isArray(a.map) ? [...new Set(a.map.filter(i => i === 0 || i === 1 || i === 2))] : [], chest:!!a.chest, book:!!a.book,
+    map:Array.isArray(a.map) ? [...new Set(a.map.filter(i => i === 0 || i === 1 || i === 2))] : [], chest:!!a.chest, book:!!a.book, tank:[...new Set(strList(a.tank))].slice(0, 20),
     big:typeof a.big === 'string' ? a.big : '', gloom:{met:num(gl.met), hid:num(gl.hid), out:num(gl.out), st:Math.min(3, Math.floor(num(gl.st)))},
     chase:{n:num(ch.n), best:Math.min(3, Math.floor(num(ch.best))), day:{d:typeof cd.d === 'string' ? cd.d.slice(0, 20) : '', n:num(cd.n), st:Math.min(3, Math.floor(num(cd.st)))}}};
 }
@@ -127,11 +127,11 @@ function sanitizeAdv(a){
     fish:[...new Set(strList(a.fish))], sec:[...new Set(strList(a.sec))],
     quest:a.quest && typeof a.quest.d === 'string' ? {d:a.quest.d, ids:strList(a.quest.ids), done:strList(a.quest.done)} : {d:'', ids:[], done:[]}};
 }
-// home = {s:{слот: id вещи}, v} — мебель в иглу малыша (js/home.js) и заходили ли туда. Нет поля — стартовая мебель.
+// home = {s:{слот: id вещи}, v, fed} — мебель в иглу малыша (js/home.js), заходили ли туда, в какой день кормили рыбок. Нет поля — стартовая мебель.
 // Купленная мебель, как и всё из лавки, лежит в owned; пустой слот — просто нет ключа.
 function sanitizeHome(h){
-  if(!h || typeof h !== 'object' || !h.s || typeof h.s !== 'object') return {s:{bed:'bed_basic', window:'win_basic', shelf:'shelf'}, v:false};
-  return {s:Object.fromEntries(Object.entries(h.s).filter(([, v]) => typeof v === 'string')), v:!!h.v};
+  if(!h || typeof h !== 'object' || !h.s || typeof h.s !== 'object') return {s:{bed:'bed_basic', window:'win_basic', shelf:'shelf'}, v:false, fed:''};
+  return {s:Object.fromEntries(Object.entries(h.s).filter(([, v]) => typeof v === 'string')), v:!!h.v, fed:typeof h.fed === 'string' ? h.fed.slice(0, 20) : ''};
 }
 // mail = {got:[{id, t}], d} — полученные письма (id из letterId(), t — когда открыли) и день последнего «письма дня» (ymd)
 function sanitizeMail(m){

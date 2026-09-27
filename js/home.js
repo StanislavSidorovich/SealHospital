@@ -262,7 +262,8 @@ const FURN_MAKE = {
     // спасённые в забеге рыбки (в круглом помещаются TANK_CAP.tank_bowl), пока их нет — две обычные
     const mine = tankFish('tank_bowl'), n = mine.length || 2;
     const fish = Array.from({length:n}, (_, i) => { const f = mine[i] ? tankMake(mine[i]) : makeFish(); f.scale.setScalar(0.5); g.add(f); f.userData = {a:i*Math.PI*2/n, r:0.24 + (i % 2)*0.06, y:c.y - 0.12 + i*0.1, sp:1 + i*0.25}; return f; });
-    g.userData = {fish, nf:mine.length, bubbleAt:c.clone().add(new V3(0, 0.3, 0))};
+    const pals = tankPals('tank_bowl').map(p => palMake(p, 0.8, 0.05, TANK_PALS[p].fl ? c.y + 0.05 : c.y - 0.52, 0.12, g));
+    g.userData = {fish, nf:mine.length, pals, np:pals.map(p => p.userData.pal.id).join(), topY:c.y + 0.25, spread:0.4, bubbleAt:c.clone().add(new V3(0, 0.3, 0))};
     return g;
   },
   tank_big(){   // большой аквариум: песок, водоросли, три рыбки туда-сюда, пузырьки
@@ -283,7 +284,8 @@ const FURN_MAKE = {
     for(const sx of [-1, 1]) for(const sz of [-1, 1]){ const p = new THREE.Mesh(new THREE.BoxGeometry(0.06, H, 0.06), fm); p.position.set(sx*W/2, y0 + H/2, sz*D/2); g.add(p); }
     const mine = tankFish('tank_big'), n = mine.length || 3;
     const fish = Array.from({length:n}, (_, i) => { const f = mine[i] ? tankMake(mine[i]) : makeFish(); f.scale.setScalar(0.48); g.add(f); f.userData = {ph:i*2.1, y:y0 + 0.3 + (i % 4)*0.17, z:-0.24 + (i % 3)*0.2, sp:0.5 + (i % 3)*0.2, w:W/2 - 0.3}; return f; });
-    g.userData = {fish, nf:mine.length, weeds, box:true, bubbleAt:new V3(0.3, y0 + 0.2, 0.1)};
+    const pals = tankPals('tank_big').map((p, i) => palMake(p, 1, [-0.5, 0.5, -0.12, 0.22][i], TANK_PALS[p].fl ? y0 + 0.66 : y0 + 0.14, [0.14, 0.06, 0.2, -0.14][i], g));
+    g.userData = {fish, nf:mine.length, pals, np:pals.map(p => p.userData.pal.id).join(), weeds, box:true, topY:y0 + H - 0.2, spread:1.2, bubbleAt:new V3(0.3, y0 + 0.2, 0.1)};
     return g;
   },
   win_basic(){ return roundWindow(); },
@@ -390,7 +392,7 @@ function homeSet(k, id){
 function homeBuild(){
   for(const k of SLOT_KEYS){
     const id = save.home.s[k], o = homeItems[k];
-    const newFish = o && o.userData.nf !== undefined && o.userData.nf !== tankFish(id).length;   // в забеге спасли новых рыбок — аквариум заново
+    const newFish = o && o.userData.nf !== undefined && (o.userData.nf !== tankFish(id).length || o.userData.np !== tankPals(id).join());   // новые рыбки или гости из бухты — аквариум заново
     if(o && (o.userData.id !== id || /^pic_/.test(id) || newFish)){ homeRoot.remove(o); homeItems[k] = null; }   // картину — заново: вдруг в альбоме новое фото
     homeSet(k, homeHas(id) ? id : null);
     if(homeItems[k] && homeItems[k].userData.shelf) homeShelf(homeItems[k]);
@@ -691,7 +693,7 @@ const HOME_PLAY = {
     sfx.chomp(); homeSay(s, 'Можно одну?..', 'Can I have one?..');
     await wait(1.1); sfx.arf(); homeSay(s, 'Шучу! ♡', 'Just kidding! ♡', '#D9527E'); burst(TEX.heart, headTop(s), 6, 1.4, 0.24);
     await wait(0.5);
-    await homeFishPanel(o.userData.id);
+    if(await homeFishPanel(o.userData.id) === 'feed') await homeFeed(s, o);
   },
   async window(s, o){   // смотрит в окно, снег идёт сильнее
     homeSnowK = 3; homeSay(s, 'Снежок идёт!', 'It is snowing!');
@@ -732,6 +734,38 @@ const TANK_CAP = {tank_bowl:3, tank_big:15};
 const seaTank = () => (save.sea ? save.sea.got : []).map(seaDef).filter(f => f && !f.food).map(f => ({...f, sea:true}));
 const tankFish = id => TANK_CAP[id] ? [...seaTank(), ...save.adv.fish.map(fishDef).filter(Boolean)].slice(0, TANK_CAP[id]) : [];
 const tankMake = f => f.sea ? makeSeaFish(f) : makeRunFish(f);
+// жители бухты в гостях (save.dive.tank): после фото в «Нырнуть» малые жители просятся в аквариум (dvInvite в dive.js)
+// s — размер, walk — ходит по песку туда-сюда, fl — плавает в толще воды. В круглом аквариуме помещается 1, в большом 4 (последние позванные)
+const TANK_PALS = {starfish:{s:0.36}, crab:{s:0.34, walk:true}, urchin:{s:0.34}, anemone:{s:0.34}, jelly:{s:0.3, fl:true}, octopus:{s:0.26}};
+const PAL_CAP = {tank_bowl:1, tank_big:4};
+const tankPals = id => { const n = PAL_CAP[id] || 0, l = (save.dive.tank || []).filter(p => TANK_PALS[p]); return n ? l.slice(-n) : []; };
+function palMake(id, k, x, y, z, g){
+  const o = DV_MAKE[id](); o.traverse(c => { if(c.isSprite) c.visible = false; });
+  o.scale.setScalar(TANK_PALS[id].s*k); o.position.set(x, y, z); o.rotation.y = -0.3*Math.sign(x || 1);
+  o.userData.pal = {id, x, y, ry:o.rotation.y, ph:x*3.1}; g.add(o); return o;
+}
+const FEED_TEX = canvasTex(64, (g, s) => { g.beginPath(); g.arc(s/2, s/2, s/2 - 6, 0, 7); g.fillStyle = '#FFB36B'; g.fill(); g.lineWidth = 5; g.strokeStyle = '#3B3A4A'; g.stroke(); });
+const HOME_FEED = 3;   // ракушки за первое кормление за день
+const homeDay = () => new Date().toDateString();
+// покормить: корм сыплется сверху, рыбки поднимаются к нему, гости радуются; раз в день +ракушки и 💗 малышу
+async function homeFeed(s, o){
+  const u = o.userData, first = save.home.fed !== homeDay();
+  save.home.fed = homeDay(); persist();
+  homeSay(s, 'Кушать подано!', 'Dinner time!', '#D9527E');
+  for(let i = 0; i < 16; i++){
+    const at = o.localToWorld(new V3((Math.random() - 0.5)*u.spread, u.topY + 0.12, (Math.random() - 0.5)*0.25));
+    emit(FEED_TEX, at, {v:new V3(0, -0.22 - Math.random()*0.15, 0), life:2.4, size:0.06 + Math.random()*0.03});
+    if(i % 4 === 0) sfx.tap();
+    await wait(0.06);
+  }
+  u.feed = 4.5; u.excite = 4.5;
+  await wait(1.4); sfx.chomp(); floatText(L('Ням! ♡', 'Yum! ♡'), o.localToWorld(new V3(0, u.topY + 0.4, 0)), '#D9527E');
+  await wait(1.6);
+  if(first){
+    addShells(HOME_FEED, {x:innerWidth/2, y:innerHeight*0.45}); petGive(2); sfx.star();
+    toast(L(`Рыбки сыты и довольны! +${HOME_FEED} 🐚`, `The fish are full and happy! +${HOME_FEED} 🐚`), 2600);
+  } else toast(L('Рыбки уже обедали сегодня, но всё равно рады ♡', 'The fish already ate today, but they are happy anyway ♡'), 2600);
+}
 const fishThumbs = {};
 function fishThumb(fd){
   if(fishThumbs[fd.id]) return fishThumbs[fd.id];
@@ -740,6 +774,7 @@ function fishThumb(fd){
 }
 async function homeFishPanel(tankId){
   const got = save.adv.fish, cap = TANK_CAP[tankId] || 0, sea = save.sea ? save.sea.got : [];
+  const palAll = Object.keys(TANK_PALS), pals = save.dive.tank.filter(p => TANK_PALS[p]), pcap = PAL_CAP[tankId] || 0;
   mgOpen(L('Аквариум', 'Fish tank'));
   const where = lv => LEVELS[lv] ? levelName(lv) : '';
   const panel = mgNode('div', 'mg-panel walk-end finds-panel fish-panel', `
@@ -754,10 +789,18 @@ async function homeFishPanel(tankId){
     <div class="finds sea">${SEA_FISH.map(fd => sea.includes(fd.id)
       ? `<i data-n="${fd.name}" data-f="${fd.fact}"><img src="${seaThumb(fd)}" alt="${fd.name}"></i>` : '<i class="no">?</i>').join('')}</div>
     <p class="fact">${sea.length ? L('Нажми на рыбку моря — узнаешь про неё что-то интересное', 'Tap a sea fish to learn something about it') : L('Рыбачь у лунки — там клюют настоящие рыбки 🎣', 'Go fishing at the ice hole — real fish bite there 🎣')}</p>
-    <button class="btn" id="fishOk">${L('Закрыть', 'Close')}</button>`);
+    <p class="sub">${L(`Гости из бухты: ${pals.length} из ${palAll.length}`, `Guests from the bay: ${pals.length} of ${palAll.length}`)}</p>
+    <div class="finds pals">${palAll.map(id => { const d = dvDef(id);
+      return pals.includes(id) ? `<i data-n="${d.ic} ${d.name}"><img src="${dvThumb(id)}" alt="${d.name}"></i>` : '<i class="no">?</i>'; }).join('')}</div>
+    <p class="tip">${!pals.length ? L('Ныряй в бухту 🤿 и фотографируй: краб, звёздочка, медуза и другие малыши попросятся в гости', 'Dive in the bay 🤿 and take photos: the crab, the starfish, the jellyfish and other little ones will ask to visit')
+      : pals.length > pcap ? L(`Здесь помещается ${pcap} — остальные гости ждут ${pcap < 4 ? 'большой аквариум' : 'своей очереди'}`, `${pcap} fit here — the other guests are waiting for ${pcap < 4 ? 'the big tank' : 'their turn'}`)
+      : L('Нажми на гостя — узнаешь, кто это', 'Tap a guest to see who it is')}</p>
+    <div class="row"><button class="btn" id="fishFeed">🍤 ${L('Покормить', 'Feed them')}${save.home.fed !== homeDay() ? ' ✨' : ''}</button>
+    <button class="btn ghost" id="fishOk">${L('Закрыть', 'Close')}</button></div>`);
   panel.querySelectorAll('.finds i[data-n]').forEach(el => mgOn(el, 'click', () => { sfx.tap(); mgHint(el.dataset.n); wiggle(el); if(el.dataset.f) panel.querySelector('.fact').textContent = el.dataset.f; }));
-  await new Promise(r => mgOn(panel.querySelector('#fishOk'), 'click', r));
+  const res = await new Promise(r => { mgOn(panel.querySelector('#fishOk'), 'click', () => r('ok')); mgOn(panel.querySelector('#fishFeed'), 'click', () => r('feed')); });
   sfx.tap(); panel.classList.add('away'); await wait(0.25); mgClose();
+  return res;
 }
 // сам по себе: время от времени малыш подходит к вещам (тихо, без окошек)
 async function homeWander(){
@@ -797,10 +840,18 @@ function homeTick(t, dt){
     const u = o.userData;
     if(u.excite) u.excite = Math.max(0, u.excite - dt);
     const fast = 1 + (u.excite ? 2.5 : 0);
+    if(u.feed) u.feed = Math.max(0, u.feed - dt);
+    const up = u.feed ? Math.min(1, u.feed, 4.5 - u.feed) : 0;   // кормим: рыбки поднимаются к корму и опускаются обратно
     if(u.fish) u.fish.forEach(f => {
-      const d = f.userData;
-      if(u.box){ const x = Math.sin(t*d.sp*fast*0.8 + d.ph)*d.w; f.position.set(x, d.y + Math.sin(t*2 + d.ph)*0.05, d.z); f.rotation.y = Math.cos(t*d.sp*fast*0.8 + d.ph) > 0 ? 0 : Math.PI; }
-      else { d.a += dt*d.sp*fast; f.position.set(Math.cos(d.a)*d.r, d.y + Math.sin(d.a*2)*0.04, Math.sin(d.a)*d.r); f.rotation.y = -d.a - Math.PI/2; }
+      const d = f.userData, y = d.y + (u.topY - 0.12 - d.y)*up*0.8;
+      if(u.box){ const x = Math.sin(t*d.sp*fast*0.8 + d.ph)*d.w; f.position.set(x, y + Math.sin(t*2 + d.ph)*0.05, d.z); f.rotation.y = Math.cos(t*d.sp*fast*0.8 + d.ph) > 0 ? 0 : Math.PI; }
+      else { d.a += dt*d.sp*fast; f.position.set(Math.cos(d.a)*d.r, y + Math.sin(d.a*2)*0.04, Math.sin(d.a)*d.r); f.rotation.y = -d.a - Math.PI/2; }
+    });
+    if(u.pals) u.pals.forEach(p => {   // гости из бухты: краб ходит, медуза покачивается, остальные поворачиваются; кормим — подпрыгивают
+      const d = p.userData.pal, T = TANK_PALS[d.id];
+      if(T.walk) p.position.x = d.x + Math.sin(t*0.7*fast + d.ph)*(u.box ? 0.2 : 0.08);
+      p.position.y = d.y + (T.fl ? Math.sin(t*1.3 + d.ph)*0.07 + up*0.12 : Math.abs(Math.sin(t*6 + d.ph))*0.05*up);
+      p.rotation.y = d.ry + Math.sin(t*0.6*fast + d.ph)*0.35;
     });
     if(u.weeds) u.weeds.forEach((w, i) => w.rotation.z = Math.sin(t*1.5 + i)*0.18);
     if(u.tents) u.tents.forEach(p => p.rotation.x = Math.sin(t*1.8 + p.userData.ph)*0.2);

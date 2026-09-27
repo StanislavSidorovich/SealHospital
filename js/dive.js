@@ -724,12 +724,25 @@ function dvShoalStep(dt){
 }
 
 /* ---------- фото жителя и карточки ---------- */
-async function dvCard({img, ttl, txt, got, btn}){
+async function dvCard({img, ttl, txt, got, btn, btn2}){
   const panel = mgNode('div', 'mg-panel dv-card', `${img ? `<img class="dv-img" src="${img}" alt="">` : ''}
     <p class="ttl display">${ttl}</p>${txt ? `<p class="dv-fact">${txt}</p>` : ''}${got ? `<p class="got">${got}</p>` : ''}
-    <button class="btn">${btn || L('Дальше 🫧', 'Next 🫧')}</button>`);
-  await new Promise(r => mgOn(panel.querySelector('.btn'), 'click', e => { e.stopPropagation(); sfx.tap(); r(); }));
+    <div class="row"><button class="btn" data-k="yes">${btn || L('Дальше 🫧', 'Next 🫧')}</button>${btn2 ? `<button class="btn ghost" data-k="no">${btn2}</button>` : ''}</div>`);
+  const yes = await new Promise(r => panel.querySelectorAll('.btn').forEach(b => mgOn(b, 'click', e => { e.stopPropagation(); sfx.tap(); r(b.dataset.k === 'yes'); })));
   panel.classList.add('away'); await wait(0.2); panel.remove();
+  return yes;
+}
+// малые жители после фото просятся в гости в аквариум иглу (TANK_PALS в home.js); отказалась — попросятся в следующий раз
+async function dvInvite(id){
+  const d = dvDef(id);
+  const yes = await dvCard({img:dvThumb(id), ttl:L(`${d.ic} ${d.name}: «Можно к тебе в гости?»`, `${d.ic} ${d.name}: “Can I come and visit?”`),
+    txt:L('Позови — и поселится в аквариуме в иглу малыша. А в бухте места хватит всем 🌊', 'Invite it and it will live in the fish tank in your pup’s igloo. There is room for everyone in the bay too 🌊'),
+    btn:L('🏠 Позвать', '🏠 Invite'), btn2:L('Не сейчас', 'Not now')});
+  if(!yes || save.dive.tank.includes(id)) return;
+  save.dive.tank.push(id); persist();
+  sfx.hug(); if(DV) burst(TEX.heart, headTop(DV.s), 10, 1.6, 0.26);
+  toast(/^tank_/.test(save.home.s.tank || '') ? L(`${d.name} уже плывёт в твой аквариум! 🏠`, `${d.name} is on the way to your fish tank! 🏠`)
+    : L(`${d.name} поселится в иглу, когда там будет аквариум 🏠`, `${d.name} will move in once the igloo has a fish tank 🏠`), 3200);
 }
 async function dvPhoto(id, c){
   const D = DV; if(!D) return;
@@ -745,6 +758,7 @@ async function dvPhoto(id, c){
   if(!DV) return;
   if(fresh){ addShells(DV_NEW, {x:innerWidth/2, y:innerHeight*0.45}); sfx.star(); }
   dvHud();
+  if(DV && TANK_PALS[id] && !save.dive.tank.includes(id)) await dvInvite(id);
   await dvBookGift();
   if(DV) DV.pause = false;
 }
