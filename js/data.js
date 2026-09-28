@@ -190,11 +190,17 @@ function sanitizeAdv(a){
     fish:[...new Set(strList(a.fish))], sec:[...new Set(strList(a.sec))],
     quest:a.quest && typeof a.quest.d === 'string' ? {d:a.quest.d, ids:strList(a.quest.ids), done:strList(a.quest.done)} : {d:'', ids:[], done:[]}};
 }
-// home = {s:{слот: id вещи}, v, fed} — мебель в иглу малыша (js/home.js), заходили ли туда, в какой день кормили рыбок. Нет поля — стартовая мебель.
-// Купленная мебель, как и всё из лавки, лежит в owned; пустой слот — просто нет ключа.
+// home = {s:{слот: id вещи}, v, fed, rooms, build, oc} — мебель в иглу малыша (js/home.js), заходили ли туда, в какой день кормили рыбок.
+// Нет поля — стартовая мебель. Купленная мебель, как и всё из лавки, лежит в owned; пустой слот — просто нет ключа.
+// Комнаты иглу (Спринт 7, js/ocean.js): rooms = {id: 1 — построена, 2 — уже заходили}, build = {id, d} — что строится и в какой день
+// заказали (готово на следующий день) или null; oc — кого уже видели в океанариуме ('sea:clown', 'run:minty', 'pal:crab'): новенькие подплывают к стеклу.
 function sanitizeHome(h){
-  if(!h || typeof h !== 'object' || !h.s || typeof h.s !== 'object') return {s:{bed:'bed_basic', window:'win_basic', shelf:'shelf'}, v:false, fed:''};
-  return {s:Object.fromEntries(Object.entries(h.s).filter(([, v]) => typeof v === 'string')), v:!!h.v, fed:typeof h.fed === 'string' ? h.fed.slice(0, 20) : ''};
+  const ok = h && typeof h === 'object' && h.s && typeof h.s === 'object';
+  h = ok ? h : {};
+  const rooms = h.rooms && typeof h.rooms === 'object' ? Object.fromEntries(Object.entries(h.rooms).filter(([, v]) => v === 1 || v === 2)) : {};
+  const build = h.build && typeof h.build.id === 'string' && typeof h.build.d === 'string' && !rooms[h.build.id] ? {id:h.build.id, d:h.build.d.slice(0, 20)} : null;
+  return {s:ok ? Object.fromEntries(Object.entries(h.s).filter(([, v]) => typeof v === 'string')) : {bed:'bed_basic', window:'win_basic', shelf:'shelf'},
+    v:!!h.v, fed:typeof h.fed === 'string' ? h.fed.slice(0, 20) : '', rooms, build, oc:strList(h.oc).slice(-160)};
 }
 // mail = {got:[{id, t}], d} — полученные письма (id из letterId(), t — когда открыли) и день последнего «письма дня» (ymd)
 function sanitizeMail(m){
