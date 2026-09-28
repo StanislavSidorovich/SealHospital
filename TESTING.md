@@ -92,3 +92,10 @@
 - Автопилот своего малыша: `SL.me.ai = {pace:1, skill:1, show:1, mult:1, line:0, ph:0, lead:0, did:new Set()}` и `mgTick(dt => SL && SL.st === 'go' && slAI(SL.me, dt))` — весь спуск ≈58 с, 3 звезды и золотая ракушка.
 - Касания: `pointerdown`/`pointerup` на `#mg` без движения — прыжок (в полёте — кувырок); `pointerdown` → `pointermove` на ±80 px → `pointerup` — сдвиг по жёлобу.
 - Состояние: `SL.st` (`ready`/`go`/`end`), `SL.me.s` (м от старта, финиш `SL.L.fin` ≈517), `SL.shells_`/`SL.total`, `SL.flips`, `SL.bots[i].s`.
+
+## 🎲 Игротека (`js/boardgames.js`)
+
+- Первая коробка: малыш есть и глава 2 открыта (в `?test=1` открыто всё) → зайти в иглу (`$('#btnHome').click()`), `bgEnsure()` положит «Мемори», стопка — `homeItems.games`. Полка: дождаться `!busy` (малыш сам бродит; `homeIdleT = 99`), `homePlay('games')` → `.bg-shelf [data-k="memo"]` → `.bg-modes [data-k="ping|duo|net|solo"]`. Сразу в партию: `$('#intro').hidden = true; bgGame('memo', 'ping' | 'duo' | 'solo', {size:12})`.
+- Партия — `BGS` (`st`, `i`, `busy`, `over`, `me`). Ход за игрока — клик по `.mc` (`BGS.try`), свой цикл с паузой ≥ 200 мс и шагами по 35 с (javascript_tool падает на 45 с). Итоги — `.bg-end [data-k="home|again"]`. Выйти посреди партии — 🏠 два раза.
+- Сеть во фрейме (проверено 28.09): iframe `/?test=1`, в обоих окнах `BroadcastChannel`, `net.conn = {open:true, send}`, `net.host`; гость `coopNet('bg')`, хозяин `bgWant = {id:'memo', o:{size:12}}; coopNet('bg')`. Сверка: `JSON.stringify(BGS.st)` у обоих при равном `BGS.i`. Обрыв: у хозяина `net.conn.send = () => {}`, ход, вернуть send, `net.onBack()` в обоих — ход дошлётся (`at`/`mvs`).
+- Коробка с прогулки без ожидания: временная игра `bgReg({...BG.memo, id:'fake', …})`, `bgWalkBoxDue()`/`bgWalkBox()`; день последней — `save.bg.box` (сбросить в `''`).

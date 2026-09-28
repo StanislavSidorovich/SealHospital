@@ -310,6 +310,19 @@ async function petWalk(s){
 
   // итоги прогулки: что нашли и полка находок
   await wait(0.4);
+  if(typeof bgWalkBoxDue === 'function' && bgWalkBoxDue()){   // 🎲 волна выносит коробку с игрой (js/boardgames.js)
+    const box = new THREE.Sprite(new THREE.SpriteMaterial({map:emojiTex('🎁'), transparent:true, depthWrite:false}));
+    const from = at.clone().add(new V3(2.2, -0.4, 0.6)), to = at.clone().add(new V3(0.7, 0.35, 0.35));
+    box.position.copy(from); box.scale.setScalar(0.7); scene.add(box);
+    mgHint(L('Смотри, волна что-то несёт! 🌊', 'Look, a wave is bringing something! 🌊')); sfx.whoosh();
+    await tween(1.1, q => { box.position.lerpVectors(from, to, q); box.position.y += Math.sin(q*Math.PI)*0.5; box.material.rotation = Math.sin(q*9)*0.2; }, ease.out);
+    sfx.plop(); burst(TEX.star, to, 10, 1.6, 0.26);
+    await faceTo(s, to); await hop(s, 0.3, 0.4);
+    res.box = bgWalkBox();
+    if(res.box){ floatText(res.box.name() + '!', to.clone().add(new V3(0, 0.6, 0)), '#D9527E'); sfx.star(); }
+    await wait(1.0);
+    scene.remove(box); box.material.map.dispose(); box.material.dispose();
+  }
   if(!res.plop && bonus){ addShells(WALK_CLEAN, toScreen(at)); res.shells += WALK_CLEAN; }   // вся прогулка без «плюх»
   const cells = TREASURES.map(t => p.finds.includes(t.id) ? `<i class="${res.find === t ? 'new' : ''}" title="${t.name}">${t.ic}</i>` : '<i class="no">?</i>').join('');
   const got = [res.shells ? `+${res.shells} 🐚` : '', res.fish ? L(`${gg('съел', 'съела')} рыбку 🐟`, 'ate a fish 🐟') : ''].filter(Boolean).join(' · ');
@@ -319,6 +332,7 @@ async function petWalk(s){
     ${got ? `<p class="got">${got}</p>` : ''}
     <p class="got">${res.plop ? `🎯 ${res.jumps} ${plural(res.jumps, 'прыжок', 'прыжка', 'прыжков', 'jump', 'jumps')} · 💦 ${L('плюх', 'splashes')}: ${res.plop}` : L(`🎯 Ни разу не ${gg('плюхнулся', 'плюхнулась')}!`, '🎯 Not a single splash!')}${res.eye ? L(`<br>в яблочко: ${res.eye}`, `<br>bullseyes: ${res.eye}`) : ''}</p>
     ${res.find ? `<p class="got">${L('Новая находка:', 'New find:')} ${res.find.ic} ${res.find.name}!</p>` : ''}
+    ${res.box ? `<p class="got">🎁 ${L('Коробка с игрой:', 'A game box:')} ${res.box.ic} ${res.box.name()}! ${L('Она в иглу 🎲', 'It is in the igloo 🎲')}</p>` : ''}
     <div class="finds">${cells}</div>
     <p class="tip">${foundAll() ? L('Все находки собраны! Ты настоящий следопыт ♡', 'All finds collected! You are a real explorer ♡') : res.find ? L('Под снегом ещё много всего. Новая находка — завтра ✨', 'There is still lots under the snow. A new find tomorrow ✨') : L('Сегодняшнюю находку ты уже нашла. Новая спрячется под снегом завтра ✨', 'You already found today\'s treasure. A new one will hide under the snow tomorrow ✨')}</p>
     <button class="btn" id="walkHome">${L('Домой ♡', 'Home ♡')}</button>`);

@@ -52,7 +52,16 @@ function sanitize(d){
     story:sanitizeStory(d.story),   // «Книга острова» и дела на сегодня (js/story.js)
     storm:sanitizeStorm(d.storm),   // 🌪️ Великий шторм (js/storm.js)
     sl:sanitizeSlide(d.sl),         // 🛷 Ледяная горка (js/slide.js)
-    pt:sanitizePt(d.pt)};           // 🐙🐻‍❄️ гости-пациенты (js/guests.js)
+    pt:sanitizePt(d.pt),            // 🐙🐻‍❄️ гости-пациенты (js/guests.js)
+    bg:sanitizeBg(d.bg)};           // 🎲 Игротека (js/boardgames.js)
+}
+// bg = {got:[коробки игр на полке], n:{игра: сколько партий}, w:{игра: побед}, day:{d, n — партий сегодня (ракушки за первые)}, box — день коробки с прогулки}
+function sanitizeBg(a){
+  a = a && typeof a === 'object' ? a : {};
+  const cnt = v => Object.fromEntries(Object.entries(v && typeof v === 'object' ? v : {}).filter(([k, x]) => /^[a-z0-9]{2,12}$/.test(k) && Number.isFinite(x)).map(([k, x]) => [k, Math.max(0, Math.floor(x))]));
+  const day = a.day && typeof a.day === 'object' ? a.day : {};
+  return {got:[...new Set(strList(a.got))].filter(x => /^[a-z0-9]{2,12}$/.test(x)), n:cnt(a.n), w:cnt(a.w),
+    day:{d:typeof day.d === 'string' ? day.d.slice(0, 20) : '', n:Number.isFinite(day.n) ? Math.max(0, day.n) : 0}, box:typeof a.box === 'string' ? a.box.slice(0, 20) : ''};
 }
 // pt = {blot — Кляксу вылечили (царапинка), bear — медведя вылечили (лапа)} (js/guests.js)
 function sanitizePt(a){ a = a && typeof a === 'object' ? a : {}; return {blot:!!a.blot, bear:!!a.bear}; }

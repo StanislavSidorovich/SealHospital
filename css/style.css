@@ -47,8 +47,8 @@ button:focus-visible{outline:3px solid var(--pink-d);outline-offset:2px}
 .corner.bag-open .bag{display:flex;animation:bagIn .18s ease-out}
 @keyframes bagIn{from{opacity:0;transform:translateX(12px) scale(.9)}}
 /* в забегах, на карте и в «Ледяном коде» из рюкзака виден только звук — в колонке, как раньше */
-body.run-on .bag,body.map-on .bag,body.ice-on .bag,body.visit-on .bag{display:flex!important;position:static;padding:0;border:0;background:none;box-shadow:none;animation:none}
-body.run-on .bag>:not(#btnSound),body.map-on .bag>:not(#btnSound),body.ice-on .bag>:not(#btnSound),body.visit-on .bag>:not(#btnSound){display:none!important}
+body.run-on .bag,body.map-on .bag,body.ice-on .bag,body.visit-on .bag,body.bg-on .bag{display:flex!important;position:static;padding:0;border:0;background:none;box-shadow:none;animation:none}
+body.run-on .bag>:not(#btnSound),body.map-on .bag>:not(#btnSound),body.ice-on .bag>:not(#btnSound),body.visit-on .bag>:not(#btnSound),body.bg-on .bag>:not(#btnSound){display:none!important}
 .round{width:48px;height:48px;border-radius:50%;border:2.5px solid var(--ink);background:var(--paper);
   box-shadow:0 3px 0 var(--ink);display:grid;place-items:center;position:relative;padding:0}
 .round:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
@@ -946,3 +946,44 @@ body.fn-dip-on #corner{visibility:hidden}
 .sling-hand{position:absolute;font-size:42px;margin:-10px 0 0 -18px;pointer-events:none;animation:slinghand 1.3s ease-in-out infinite}
 @keyframes slinghand{0%{translate:0 0;opacity:0}20%{opacity:1}70%{translate:0 90px;opacity:1}100%{translate:0 90px;opacity:0}}
 @media (prefers-reduced-motion:reduce){ .sling-hand{animation:none} }
+
+/* 🎲 Игротека (js/boardgames.js): полка, выбор, партия */
+body.bg-on #corner>:not(#bag){display:none!important}
+.bg-boxes button{background:color-mix(in srgb,var(--bx,#fff) 45%,#fff)}
+.bg-boxes .bg-no{background:#F1F1F4;border-style:dashed;box-shadow:none;opacity:.8}
+.bg-boxes .bg-no small{margin-top:4px}
+.co-own .bg-no{opacity:.6;border-style:dashed;box-shadow:none}
+.bg-opt{display:flex;align-items:center;justify-content:center;gap:6px;margin:0 0 10px;font-weight:800;font-size:15px}
+.bg-opt button{min-width:52px;min-height:44px;border-radius:14px;border:2.5px solid var(--ink);background:#fff;font-weight:800;font-size:17px;box-shadow:0 3px 0 var(--ink)}
+.bg-opt button[aria-pressed="true"]{background:var(--pink)}
+.mg-panel.bg-panel{top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;padding:10px 10px 12px;
+  max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+.bg-top{display:flex;align-items:center;gap:8px;padding-right:50px}
+.bg-top .bg-home{flex:none;font-size:22px;box-shadow:0 3px 0 var(--ink)}
+.bg-players{display:flex;gap:8px;margin:8px 0 10px}
+.bg-pl{flex:1;min-width:0;display:flex;align-items:center;gap:4px;padding:4px 8px;border:2.5px solid var(--ink);border-radius:16px;background:#fff;transition:transform .2s,background .2s}
+.bg-pl .av{font-size:20px}
+.bg-pl b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.bg-pl .sc{font-family:"Pangolin","Comic Sans MS",cursive;font-size:22px}
+.bg-pl.p0.now{background:#FFE3EC;transform:scale(1.04);box-shadow:0 3px 0 var(--ink)}
+.bg-pl.p1.now{background:#DDEEFF;transform:scale(1.04);box-shadow:0 3px 0 var(--ink)}
+.bg-say{flex:1;margin:0;font-weight:800;font-size:16px;line-height:1.25;text-align:center}
+.bg-shelf .ttl,.bg-modes .ttl{font-size:26px;margin:2px 0 4px}
+.bg-board{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.bg-cover{position:absolute;inset:0;border-radius:23px;background:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;z-index:3}
+.bg-cover p{font-size:26px;text-align:center;margin:0}
+.bg-final{font-size:17px}
+/* 🃏 Мемори */
+.memo{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:8px;width:100%;max-width:400px}
+.mc{position:relative;aspect-ratio:1/1.12;border:0;padding:0;background:none;perspective:500px}
+.mc .bk,.mc .fr{position:absolute;inset:0;display:grid;place-items:center;border:2.5px solid var(--ink);border-radius:14px;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;transition:transform .3s ease-out;box-shadow:0 3px 0 var(--ink)}
+.mc .bk{background:repeating-linear-gradient(45deg,#FF9BB8 0 8px,#FFB3C8 8px 16px);font-size:22px}
+.mc .fr{background:#fff;font-size:clamp(26px,9vw,40px);transform:rotateY(180deg)}
+.mc.up .bk{transform:rotateY(-180deg)}
+.mc.up .fr{transform:rotateY(0)}
+.mc.o0 .fr{background:#FFE3EC}
+.mc.o1 .fr{background:#DDEEFF}
+.mc:disabled{cursor:default}
+.mc:disabled .fr{opacity:.85;box-shadow:none}
+@media (prefers-reduced-motion:reduce){ .mc .bk,.mc .fr{transition:none} }

@@ -120,6 +120,10 @@ function mailGiftOpen(){
     html = `<img src="${thumb(g.wear)}" alt=""><span>${shopItem(g.wear).name}!<small>${L('Надевай пациентам и малышу 🎀', 'Put it on patients and your pup 🎀')}</small></span>`;
     if(S && S.stage === 'hug' && !petMode && showWardrobe(S.seal)) $('#tools').hidden = true;   // обновка сразу в гардеробе
   }
+  else if(g.game && typeof bgGive === 'function' && BG[g.game] && !bgHas(g.game)){   // 🎲 коробка игры — на полку в иглу (js/boardgames.js)
+    bgGive(g.game); sfx.buy();
+    html = `${BG[g.game].ic} ${BG[g.game].name()}!<small>${L('Коробка — в иглу, на полке с играми 🎲', 'The box is in the igloo, on the games shelf 🎲')}</small>`;
+  }
   else if(g.hearts && save.pet){
     const n = Math.max(1, Math.round(g.hearts));
     save.pet.xp += n*HEART_XP; persist(); sfx.hug(); renderPetCard(); renderPetBtn();

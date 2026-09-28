@@ -26,7 +26,8 @@ const HOME_SLOTS = {
   tank:   {name:L('Аквариум', 'Fish tank'),  floor:[2.35, 1.15],   rot:-0.6, stand:[1.0, 0.55],   mk:2.0},
   window: {name:L('Окно', 'Window'),         wall:[-0.62, 0.62], tilt:true, stand:[-0.85, -1.25]},
   shelf:  {name:L('Полка', 'Shelf'),         wall:[0.06, 0.3],               stand:[0.95, -1.65]},   // сбоку: малыш не заслоняет полку
-  pic:    {name:L('Картина', 'Picture'),     wall:[0.66, 0.58], tilt:true,  stand:[1.05, -1.25]}
+  pic:    {name:L('Картина', 'Picture'),     wall:[0.66, 0.58], tilt:true,  stand:[1.05, -1.25]},
+  games:  {name:L('Игротека', 'Game shelf'), floor:[-2.3, 1.05],   rot:0.5,  stand:[-1.25, 1.2],  mk:1.4}   // 🎲 коробки игр (js/boardgames.js), появляется с первой коробкой
 };
 const SLOT_KEYS = Object.keys(HOME_SLOTS);
 // мебель: price 0 — есть с самого начала. Товары домика лежат в save.owned, как покупки из лавки
@@ -51,7 +52,8 @@ const FURN = [
   // подарки из подводной бухты (js/dive.js): не продаются, появляются в выборе, когда получены
   {id:'lamp_pearl',  slot:'lamp',   name:L('Лампа-жемчужина', 'Pearl lamp'),   price:0, gift:true},
   {id:'rug_shark',   slot:'rug',    name:L('Коврик-акулёнок', 'Shark rug'),    price:0, gift:true},
-  {id:'pic_sea',     slot:'pic',    name:L('Морские жители', 'Sea friends'),   price:0, gift:true}
+  {id:'pic_sea',     slot:'pic',    name:L('Морские жители', 'Sea friends'),   price:0, gift:true},
+  {id:'bg_shelf',    slot:'games',  name:L('Игротека', 'Game shelf'),        price:0, gift:true}   // даёт первая коробка игры (bgGive)
 ];
 const furn = id => FURN.find(x => x.id === id);
 const homeHas = id => { const f = furn(id); return !!f && ((!f.price && !f.gift) || owns(id)); };
@@ -361,6 +363,7 @@ const FURN_MAKE = {
     const ph = new THREE.Mesh(new THREE.PlaneGeometry(1.04, 0.74), new THREE.MeshBasicMaterial({map:tex})); ph.position.z = 0.045; g.add(ph);
     return g;
   },
+  bg_shelf(){ return bgStackMake(); },   // столик с коробками игр (js/boardgames.js)
   pic_heart(){
     const g = new THREE.Group();
     const ph = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), new THREE.MeshBasicMaterial({map:photoTex(true), transparent:true})); ph.position.y = 0.03; g.add(ph);
@@ -393,7 +396,8 @@ function homeBuild(){
   for(const k of SLOT_KEYS){
     const id = save.home.s[k], o = homeItems[k];
     const newFish = o && o.userData.nf !== undefined && (o.userData.nf !== tankFish(id).length || o.userData.np !== tankPals(id).join());   // новые рыбки или гости из бухты — аквариум заново
-    if(o && (o.userData.id !== id || /^pic_/.test(id) || newFish)){ homeRoot.remove(o); homeItems[k] = null; }   // картину — заново: вдруг в альбоме новое фото
+    const newBox = o && o.userData.nb !== undefined && o.userData.nb !== save.bg.got.length;   // новая коробка игры — стопка заново
+    if(o && (o.userData.id !== id || /^pic_/.test(id) || newFish || newBox)){ homeRoot.remove(o); homeItems[k] = null; }   // картину — заново: вдруг в альбоме новое фото
     homeSet(k, homeHas(id) ? id : null);
     if(homeItems[k] && homeItems[k].userData.shelf) homeShelf(homeItems[k]);
   }
@@ -464,6 +468,7 @@ async function homeEnter(){
   sfx.whoosh(); flash();
   homeMode = true; document.body.classList.add('home-mode'); homeRoot.visible = true;
   scene.fog = null; snow.visible = false; homeLights(true); homeEdit = false; homeLight = true;
+  if(typeof bgEnsure === 'function') bgEnsure();   // глава открылась — первая коробка игры уже на полке
   homeBuild(); homeUi();
   s.bubble.visible = false; s.root.position.copy(hp(0, HOME_R + 0.5)); s.root.rotation.set(0, Math.PI, 0);
   camOff.copy(HOME_POS); camOffWant.copy(HOME_POS); camFocus.yaw = 0; homeView(true);
@@ -704,6 +709,15 @@ const HOME_PLAY = {
     await wait(0.6);
     if(!quiet) await homeFinds();
   },
+  async games(s, o, quiet){   // 🎲 Игротека: малыш достаёт коробку, касание — выбрать игру (js/boardgames.js)
+    homeSay(s, 'Поиграем? 🎲', 'Shall we play? 🎲', '#D9527E'); sfx.pop();
+    const b = o.userData.boxes && o.userData.boxes[o.userData.boxes.length - 1];
+    if(b) await tween(0.5, k => b.position.y = b.userData.y0 + Math.sin(k*Math.PI)*0.25, ease.lin);
+    if(quiet || typeof bgGo !== 'function') return wait(0.3);
+    await wait(0.2);
+    await bgGo();
+    if(homeMode) homeBuild();
+  },
   async pic(s){
     sfx.arf(); homeSay(s, 'Это я! ♡', 'That is me! ♡', '#D9527E'); burst(TEX.heart, headTop(s), 8, 1.6, 0.26);
     await hop(s, 0.3, 0.4); await wait(0.4);
@@ -829,7 +843,7 @@ function homeTick(t, dt){
   for(const k of SLOT_KEYS){
     const o = homeItems[k], m = homeMarks[k];
     // значки: ➕ на пустом месте всегда, ✏️ над вещью — в «Обустроить»
-    const show = mgRoot.hidden && !busy && (!o || homeEdit);
+    const show = mgRoot.hidden && !busy && (!o || homeEdit) && (o || k !== 'games' || homeHas('bg_shelf'));   // место игротеки — только когда есть коробки
     m.visible = show;
     if(show){
       const tex = o ? MARK_TEX.edit : MARK_TEX.plus; if(m.material.map !== tex){ m.material.map = tex; m.material.needsUpdate = true; }

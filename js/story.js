@@ -181,7 +181,7 @@ function stMarkPicks(panel){
 // с какой главы (номер с нуля) игра открывается в «Поиграть», «Вместе» и на карте (разбор 27.09: всё было открыто сразу,
 // «Салки» раньше главы «Акула» — и игра казалась набором случайных уровней). Закрытая плитка в «Поиграть» — с 🔒 и главой.
 // ?test=1 открывает всё (для проверок), ?test=1&lock=1 — как у игрока
-const ST_GATE = {rescue:2, dive:3, chase:3, road:5, fight:5, coop:-1};
+const ST_GATE = {rescue:2, dive:3, chase:3, road:5, fight:5, bg:1, coop:-1};   // bg — 🎲 Игротека в иглу (js/boardgames.js)
 function stGate(k){
   const i = ST_GATE[k];
   if(i == null || i < 0 || save.story.open > i || save.free) return -1;   // 🔓 «Все игры открыты» в ⚙️
