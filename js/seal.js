@@ -279,7 +279,14 @@ const SEA_FISH = [
   {id:'puffer', name:L('Рыба-фугу', 'Pufferfish'), steps:['tap6', 'hold'],
     fact:L('Испугается — и надувается, как колючий шарик! Поэтому её никто не обижает.', 'When scared it puffs up like a spiky ball! So nobody bothers it.')},
   {id:'seahorse', name:L('Морской конёк', 'Seahorse'), steps:['hold', 'hold', 'tap4'],
-    fact:L('У морских коньков малышей вынашивает папа! Он носит их в сумке на животике.', 'In seahorses, the dad carries the babies! He keeps them in a pouch on his tummy.')}
+    fact:L('У морских коньков малышей вынашивает папа! Он носит их в сумке на животике.', 'In seahorses, the dad carries the babies! He keeps them in a pouch on his tummy.')},
+  // редкие рыбки острова (js/island.js, ISL_FISH): клюют только в своём месте (isle — ключ места), фонарик — ночью; в больнице не клюют
+  {id:'lumpfish', isle:'dock', name:L('Пинагор', 'Lumpsucker'), steps:['hold', 'tap4', 'hold'],
+    fact:L('Пинагор круглый, как мячик, а на животе у него присоска: он прилипает к камням и сваям, чтобы волна не унесла.', 'The lumpsucker is round like a ball and has a sucker on its tummy: it sticks to rocks and posts so the waves can’t carry it away.')},
+  {id:'char', isle:'floe', name:L('Голец', 'Arctic char'), steps:['tap4', 'hold', 'tap5'],
+    fact:L('Арктический голец — самая северная пресноводная рыбка на свете. Осенью животик у него становится ярко-оранжевым!', 'The Arctic char is the most northern freshwater fish in the world. In autumn its tummy turns bright orange!')},
+  {id:'lantern', isle:'night', name:L('Рыбка-фонарик', 'Lanternfish'), steps:['hold', 'tap3', 'hold'],
+    fact:L('Днём рыбка-фонарик прячется глубоко-глубоко, а ночью поднимается наверх. На боках у неё светятся огоньки!', 'In the daytime the lanternfish hides deep down, and at night it swims up to the top. Little lights glow on its sides!')}
 ];
 const seaDef = id => SEA_FISH.find(f => f.id === id);
 // тельце-эллипсоид с контуром; хвост — сплюснутый конус; глаза с двух сторон (в аквариуме плавают туда-сюда)
@@ -347,6 +354,26 @@ const SEA_MAKE = {
     const fin = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.08, 4), toon(0xFFE0A0)), 1.15); fin.position.set(-0.1, 0.04, 0); fin.rotation.z = Math.PI/2; fin.scale.z = 0.3; g.add(fin);
     const crown = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.06, 5), m), 1.15); crown.position.set(0, 0.3, 0); g.add(crown);
     for(const sd of [-1, 1]){ const e = new THREE.Mesh(SMALL, inkMat); e.scale.setScalar(0.022); e.position.set(0.06, 0.22, sd*0.075); g.add(e); }
+  },
+  lumpfish(g){   // круглый, в пупырышках, гребень на спинке, розовая присоска снизу
+    fishBody(g, 0x9DBB6E, 0.22, 0.2, 0.17, 0x86A35A);
+    for(const [x, y] of [[-0.08, 0.12], [0.04, 0.14], [-0.14, 0.02], [0.08, 0.04], [-0.02, -0.06]]) fishSpot(g, 0x6F8F4A, 0.22, 0.2, 0.17, x, y, 0.03, 0.03);
+    const r = addOutline(new THREE.Mesh(SMALL, toon(0x86A35A)), 1.1); r.scale.set(0.13, 0.06, 0.04); r.position.set(-0.02, 0.2, 0); g.add(r);
+    const cup = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.03, 16), toon(0xFFB3C4)), 1.1); cup.position.set(0.02, -0.2, 0); g.add(cup);
+  },
+  char(g){   // спинка тёмно-зелёная, животик оранжевый, светлые крапинки
+    fishBody(g, 0x5E8074, 0.36, 0.13, 0.1);
+    const b = new THREE.Mesh(SMALL, toon(0xFF8F6B)); b.scale.set(0.3, 0.075, 0.095); b.position.y = -0.065; g.add(b);
+    for(const [x, y] of [[-0.2, 0.05], [-0.08, 0.08], [0.04, 0.06], [0.14, 0.07], [-0.14, 0.0], [0.0, 0.01]]) fishSpot(g, 0xFFD2B8, 0.36, 0.13, 0.1, x, y, 0.018, 0.018);
+  },
+  lantern(g){   // тёмно-синяя, вдоль брюшка светятся огоньки
+    fishBody(g, 0x3E4F86, 0.26, 0.12, 0.085, 0x2F3E6E);
+    const lm = new THREE.MeshBasicMaterial({color:0xBFF6FF});
+    for(let i = 0; i < 5; i++) for(const sd of [-1, 1]){
+      const x = -0.16 + i*0.075, k = Math.sqrt(Math.max(0.05, 1 - (x/0.26)**2 - (0.05/0.12)**2));
+      const d = new THREE.Mesh(SMALL, lm); d.scale.setScalar(0.02); d.position.set(x, -0.05, sd*0.085*k); g.add(d);
+    }
+    const gl = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX, transparent:true, depthWrite:false, color:0x9FEFFF, opacity:0.55})); gl.scale.setScalar(0.9); g.add(gl);
   }
 };
 function makeSeaFish(f){ const g = new THREE.Group(); SEA_MAKE[f.id](g); g.userData.sea = f.id; return g; }

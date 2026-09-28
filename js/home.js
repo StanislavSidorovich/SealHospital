@@ -769,7 +769,7 @@ async function homeFinds(){
 // рыбки из приключений: спасённые живут в аквариуме, у каждой имя; ещё не спасённые — «?»
 // + южные гостьи с рыбалки (SEA_FISH без food): они первыми занимают аквариум — их меньше и они ярче
 const TANK_CAP = {tank_bowl:3, tank_big:15};
-const seaTank = () => (save.sea ? save.sea.got : []).map(seaDef).filter(f => f && !f.food).map(f => ({...f, sea:true}));
+const seaTank = () => (save.sea ? save.sea.got : []).map(seaDef).filter(f => f && !f.food && !f.isle).map(f => ({...f, sea:true}));   // рыбки острова живут в океанариуме
 const tankFish = id => TANK_CAP[id] ? [...seaTank(), ...save.adv.fish.map(fishDef).filter(Boolean)].slice(0, TANK_CAP[id]) : [];
 const tankMake = f => f.sea ? makeSeaFish(f) : makeRunFish(f);
 // жители бухты в гостях (save.dive.tank): после фото в «Нырнуть» малые жители просятся в аквариум (dvInvite в dive.js)

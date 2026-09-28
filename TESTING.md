@@ -123,6 +123,12 @@
 - Держать палец — мышью в headless Edge: `mouse.move(x, y); mouse.down(); … mouse.up()` (малыш идёт, пока держишь). Касание по подписи места (≈60 px вокруг) — идёт туда сам, поэтому для «держи палец» бери точку подальше от подписей.
 - Проверено 28.09 на 375×812 (headless Edge, 60 к/с): ходьба и холм со звёздочкой, горка на пузике, причал → «Бухта» (ныряем), прыжок-кувырок из воды, маяк закрыт до главы 8, лавка открывается, 🏠 — обратно в уголок с тостом.
 
+## 🦭 Охота (`sealHunt` в minigames.js) и 🎣 охота на острове
+
+- Быстро: у малыша `petFeed(petSeal)`; в больнице `mgFishing(S.seal)`; на острове `const o = islRoot.userData.fish.find(f => f.F.k === 'dock'); ISL.R.pos.copy(o.pos)` → `.isl-go button` (или `islFish(o)`). Места: `shore`, `dock`, `floe`. Ночь: `Date.prototype.getHours = () => 22` (рыбка-фонарик).
+- Шаги видно по классам `.hunt`: без `under` — ⤵ нырок (клик по `.hunt-btns button`); `dark` — держать кнопку `.hunt-hold` (mouse.down), пока не станет `seen`; `.hunt-lr` — погоня: жать ту же сторону, что `.hunt-arrow` (◀/▶); `snap` — держать `.hunt-hold`, отпустить, когда у `.hunt-ring` класс `ok`; `caught` — поймали. Готовый бот — `tools/huntbot.js` (`await require('./huntbot')(page)`).
+- Режимы `hunt` и `isle-fish` в `smoke.js`. Новичок: пустое сохранение, «Открыть больницу», `save.progress = 1; setBusy(false); nextPatient()` → «Смотри, кто приплыл!» (`.mg-panel.adopt`).
+
 ## 🐠 Океанариум (js/ocean.js)
 
 - Быстро: сохранение с малышом, `save.home.v = true; await homeEnter(); ocOrder()` → `#ocBuy` (в `?test=1` строится сразу) → `await ocGo()`. Сразу в комнату: `save.home.rooms = {ocean: 2}` и `homeEnter().then(ocGo)` (так делает `smoke.js`, режим `ocean`).

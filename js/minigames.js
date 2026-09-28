@@ -49,6 +49,18 @@ function mgUnpark(){
   setBusy(p.busy);
   return true;
 }
+// спрятать открытую мини-игру (узлы, покадровые обработчики, касания), чтобы внутри неё сыграть другую, и вернуть как было
+// (рыбалка посреди прогулки по острову: fishCast сам открывает и закрывает свой слой)
+function mgStash(){
+  const p = {nodes:[...mgStage.childNodes], ticks:[...mgTicks], clean:mgCleanup, hint:mgHintEl.textContent, bottom:mgHintEl.classList.contains('bottom')};
+  p.clean.forEach(f => f.on && f()); p.nodes.forEach(n => n.remove()); mgTicks.clear(); mgCleanup = [];
+  return p;
+}
+function mgRestore(p){
+  mgOpen('', {hintBottom:p.bottom});
+  p.nodes.forEach(n => mgStage.appendChild(n)); p.ticks.forEach(f => mgTicks.add(f));
+  p.clean.forEach(f => f.on && f.on[0].addEventListener(f.on[1], f.on[2])); mgCleanup = p.clean;
+}
 function mgTick(fn){ mgTicks.add(fn); }
 function mgNode(tag, cls, html = ''){
   const el = document.createElement(tag); if(cls) el.className = cls; el.innerHTML = html; mgStage.appendChild(el); return el;
@@ -232,120 +244,179 @@ async function mgBandage(s){
   await tween(0.4, k => s.plaster.scale.setScalar(Math.max(0.01, k)), ease.back);
 }
 
-/* ---------- Рыбалка: полоса с кружком (как в Seally Seal) ----------
-   Поплавок нырнул — рыбка на крючке. Внизу полоса, по ней слева направо бежит кружок.
-   Каждый «рывок» — одно из двух: натапать N раз, пока кружок бежит, или держать палец, пока он в розовой зоне.
-   Рывков 2–4, зависит от рыбки (SEA_FISH в seal.js). Не вышло — рыбка вильнула хвостом, тот же рывок медленнее. */
+/* ---------- Охота: тюлень ловит рыбку, как настоящий (вместо удочки; разговор с папой 28.09) ----------
+   Своя механика, не как в Seally Seal. Под водой, в окошке снизу — 4 шага, каждый — одна кнопка:
+   1) ⤵ Нырок — нажать; 2) 〰️ Усы — держать: тюлени находят рыбку усами даже в темноте (усы чувствуют, как рыбка
+   шевелит воду), от рыбки расходятся круги, малыш подплывает ближе, пока держишь; 3) Погоня — рыбка виляет:
+   над ней стрелка, жми ◀ или ▶ туда же (промах — рыбка просто вильнула ещё раз); 4) Хап! — держи, малыш
+   подкрадывается и кружок сжимается, отпусти, когда он внутри точки (рано — рыбка отплыла, ещё раз).
+   Проиграть нельзя. Сложность — от рыбки: fd.steps.length (2–4) и редкая ли (SEA_FISH в seal.js). */
 if(!save.sea) save.sea = {got:[], n:0, r:0};   // страница могла взять старый data.js из кеша
 // кто клюнул: сначала северные рыбки на обед; южная гостья — редкость, пока не все в коллекции (но не реже раза в 6 уловов)
 function pickCatch(){
-  const sea = save.sea, rare = SEA_FISH.filter(f => !f.food && !sea.got.includes(f.id));
+  const sea = save.sea, rare = SEA_FISH.filter(f => !f.food && !f.isle && !sea.got.includes(f.id));   // рыбки острова клюют только на острове
   if(rare.length && sea.n >= 2 && (Math.random() < 0.25 || sea.n - sea.r >= 6)) return rare[Math.floor(Math.random()*rare.length)];
   const food = SEA_FISH.filter(f => f.food), pool = sea.n < 3 ? food.slice(0, 2) : food;   // первые уловы — полегче
   return pool[Math.floor(Math.random()*pool.length)];
 }
-// hole — лунка, cam — [центр, размер, lift] для focusCam, side — с какой стороны лунки удочка (-1 слева, 1 справа)
-async function fishCast({hole, cam, side = -1}){
-  focusCam(...cam);
-  const rod = new THREE.Group();
-  const stick = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 1.5, 8), toon(0xE0A36B)), 1.15);
-  stick.position.y = 0.75; rod.add(stick);
-  rod.position.copy(hole).add(new V3(0.8*side, 0, 0.65)); rod.rotation.set(-0.35, 0, 0.55*side); scene.add(rod);
-  const bend0 = rod.rotation.z;
-  const tip = () => stick.localToWorld(new V3(0, 0.75, 0));
-  const bob = makeBobber(); bob.position.copy(hole); bob.position.y = hole.y + 1.15; scene.add(bob);
-  const lineGeo = new THREE.BufferGeometry().setFromPoints([new V3(), new V3()]);
-  const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({color:INK})); scene.add(line);
-  const drawLine = () => { rod.updateMatrixWorld(true); lineGeo.setFromPoints([tip(), bob.position.clone().add(new V3(0, 0.2, 0))]); };
-  const baseY = hole.y + 0.02, splash = (n = 6, sp = 1) => burst(TEX.puff, hole.clone().add(new V3(0, 0.1, 0)), n, sp, 0.4);
-  await tween(0.5, k => { bob.position.y = hole.y + 1.15*(1 - k) + 0.02*k; drawLine(); }, ease.out);
-  sfx.plop(); emit(TEX.puff, hole.clone().add(new V3(0, 0.1, 0)), {v:new V3(0, 0.6, 0), life:0.6, size:0.5, grow:1});
-
-  const fd = pickCatch(), first = !save.sea.n;
-  let cur = null;   // текущий рывок: {hold, need, got, a, b, T, k, held, pressing, done}
-  mgOpen(L('Жди поклёвку…', 'Wait for a bite…'));
-  let pull = 0, tension = 0;   // pull — насколько поплавок утянуло под воду, tension — изгиб удочки
-  mgTick(dt => {
-    tension += ((cur && cur.pressing ? 1 : 0) - tension)*Math.min(1, dt*10);
-    rod.rotation.z = bend0 - tension*0.18*side;
-    bob.position.y = baseY + Math.sin(now*3)*0.015 - pull*0.13 + (cur && cur.pressing ? Math.sin(now*40)*0.012 : 0);
-    drawLine();
-  });
-  await wait(1 + Math.random()*0.8);
-  pull = 1; sfx.plop(); splash(5, 0.8);
-  floatText('!', hole.clone().add(new V3(0, 0.9, 0)), '#D9364F');
-  await wait(0.35);
-
-  const ui = mgNode('div', 'reel', `
-    <div class="reel-top"><span class="reel-say display"></span><span class="reel-steps">${fd.steps.map(() => '<i></i>').join('')}</span></div>
-    <div class="reel-bar"><div class="zone"><b></b></div><div class="knob"></div></div>
-    <div class="reel-taps"></div>`);
-  const say = ui.querySelector('.reel-say'), zone = ui.querySelector('.zone'), zfill = zone.firstChild, knob = ui.querySelector('.knob'),
-    taps = ui.querySelector('.reel-taps'), dots = [...ui.querySelectorAll('.reel-steps i')];
-  mgOn(mgRoot, 'pointerdown', e => {
-    e.preventDefault(); if(!cur || cur.done) return;
-    cur.pressing = true; if(cur.hold) return;
-    if(cur.got < cur.need){ const d = taps.children[cur.got++]; d.classList.add('pop'); sfx.tick(); splash(2, 0.6); }
-  });
-  for(const ev of ['pointerup', 'pointercancel']) mgOn(mgRoot, ev, () => { if(cur) cur.pressing = false; });
-  const step = (st, slow) => new Promise(res => {
-    const hold = st === 'hold', need = hold ? 0 : +st.slice(3);
-    const a = hold ? 0.25 + Math.random()*0.2 : 0, b = hold ? a + 0.4 : 1;
-    cur = {hold, need, got:0, a, b, T:(hold ? 2.6 : 1.2 + need*0.5)*slow, k:0, held:0, pressing:cur ? cur.pressing : false, done:false};
-    ui.classList.toggle('is-hold', hold);
-    zone.style.left = a*100 + '%'; zone.style.width = (b - a)*100 + '%'; zfill.style.width = '0';
-    taps.innerHTML = hold ? '' : '<i></i>'.repeat(need);
-    say.textContent = hold ? L('Держи, пока кружок в розовом! 👆', 'Hold while the dot is in the pink! 👆') : L(`Тапай быстро — ${need} раз! 👆`, `Tap fast — ${need} times! 👆`);
-    const c = cur;
+const HUNT_SEAL = `<svg viewBox="0 0 120 80" aria-hidden="true">
+  <path d="M20 44 L3 30 Q1 44 4 58 Z" fill="#fff" stroke="#3B3A4A" stroke-width="4" stroke-linejoin="round"/>
+  <ellipse cx="58" cy="44" rx="42" ry="25" fill="#fff" stroke="#3B3A4A" stroke-width="4"/>
+  <path d="M52 62 Q46 74 58 72" fill="#fff" stroke="#3B3A4A" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="80" cy="37" r="4.5" fill="#3B3A4A"/><circle cx="81.5" cy="35.5" r="1.4" fill="#fff"/>
+  <ellipse cx="78" cy="48" rx="6" ry="3.5" fill="#FF9BB8" opacity=".7"/>
+  <path d="M90 46 q2 3 4 0 q2 3 4 0" fill="none" stroke="#3B3A4A" stroke-width="2.5" stroke-linecap="round"/>
+  <g class="whisk" stroke="#3B3A4A" stroke-width="2" stroke-linecap="round"><path d="M98 42 L116 36"/><path d="M99 45 L118 45"/><path d="M98 48 L116 54"/></g>
+</svg>`;
+async function sealHunt(fd, first){
+  const lvl = fd.steps.length + (fd.food ? 0 : 1), slow = first ? 1.3 : 1;
+  mgOpen(L('Ныряем за рыбкой!', 'Let’s dive for a fish!'));
+  const ui = mgNode('div', 'hunt', `
+    <div class="hunt-top"><span class="hunt-say display"></span><span class="hunt-steps"><i></i><i></i><i></i><i></i></span></div>
+    <div class="hunt-sea"><i class="hunt-hole"></i><div class="hunt-rings"></div>
+      <img class="hunt-fish" src="${seaThumb(fd)}" alt=""><div class="hunt-ring"><i></i></div><b class="hunt-arrow"></b>
+      <div class="hunt-seal">${HUNT_SEAL}</div><div class="hunt-dark"></div></div>
+    <div class="hunt-btns"></div>`);
+  const $u = q => ui.querySelector(q);
+  const say = $u('.hunt-say'), sea = $u('.hunt-sea'), seal = $u('.hunt-seal'), fish = $u('.hunt-fish'), dark = $u('.hunt-dark'),
+    rings = $u('.hunt-rings'), arrow = $u('.hunt-arrow'), ring = $u('.hunt-ring'), btns = $u('.hunt-btns'), dots = [...ui.querySelectorAll('.hunt-steps i')];
+  const S = {x:50, y:10, f:1}, F = {x:50, y:70};   // где малыш и рыбка (в % окошка); f — куда смотрит малыш
+  const place = () => {
+    seal.style.left = S.x + '%'; seal.style.top = S.y + '%'; seal.style.setProperty('--f', S.f);
+    fish.style.left = ring.style.left = arrow.style.left = F.x + '%'; fish.style.top = ring.style.top = F.y + '%'; arrow.style.top = (F.y - 26) + '%';
+  };
+  const near = (k = 18) => { S.f = F.x >= S.x ? 1 : -1; S.x = F.x - S.f*k; S.y = F.y; place(); };
+  const dot = i => { dots[i].classList.add('on'); sfx.ding(); };
+  const hold = (b, down, up) => { mgOn(b, 'pointerdown', e => { e.preventDefault(); down(); }); for(const ev of ['pointerup', 'pointercancel', 'pointerleave']) mgOn(b, ev, up); };
+  place();
+  // 1) нырок
+  say.textContent = L('Нажми — и ныряй! ⤵', 'Tap to dive! ⤵');
+  btns.innerHTML = `<button class="btn">⤵ ${L('Нырок!', 'Dive!')}</button>`;
+  await new Promise(r => mgOn(btns.firstChild, 'click', r));
+  sfx.splash(); ui.classList.add('under'); S.y = 40; place(); dot(0);
+  await wait(0.5);
+  // 2) усы в темноте
+  F.x = 18 + Math.random()*64; F.y = 62 + Math.random()*20; place();
+  ui.classList.add('dark');
+  say.textContent = L('Темно! Держи 〰️ — усы слушают воду', 'It’s dark! Hold 〰️ — whiskers feel the water');
+  btns.innerHTML = `<button class="btn hunt-hold">〰️ ${L('Усы', 'Whiskers')}</button>`;
+  const need = (1.1 + lvl*0.25)*slow, s0 = {x:S.x, y:S.y};
+  let on = false, got = 0, ringT = 0;
+  hold(btns.firstChild, () => { on = true; ui.classList.add('feel'); }, () => { on = false; ui.classList.remove('feel'); });
+  await new Promise(res => mgTick(function tick(dt){
+    if(!on) return;
+    got += dt; const k = Math.min(1, got/need);
+    S.f = F.x >= s0.x ? 1 : -1; S.x = s0.x + (F.x - S.f*20 - s0.x)*k*0.85; S.y = s0.y + (F.y - s0.y)*k*0.85; place();
+    ringT -= dt;
+    if(ringT <= 0){   // круги от рыбки: чем ближе, тем чаще
+      ringT = 0.55 - k*0.3;
+      const c = document.createElement('i'); c.style.left = F.x + '%'; c.style.top = F.y + '%'; rings.appendChild(c);
+      setTimeout(() => c.remove(), 1200); sfx.tick();
+    }
+    if(k >= 1){ mgTicks.delete(tick); res(); }
+  }));
+  ui.classList.remove('dark', 'feel'); ui.classList.add('seen'); dot(1);
+  say.textContent = L('Вот она! 🐟', 'There it is! 🐟');
+  await wait(0.6);
+  // 3) погоня: стрелка показывает, куда рыбка метнётся
+  const N = Math.min(5, lvl + 1);   // 3–5 рывков
+  btns.innerHTML = `<button class="btn hunt-lr" data-d="-1" aria-label="${L('Влево', 'Left')}">◀</button><button class="btn hunt-lr" data-d="1" aria-label="${L('Вправо', 'Right')}">▶</button>`;
+  let dir = 0, left = N;
+  const next = () => {
+    dir = F.x < 28 ? 1 : F.x > 72 ? -1 : Math.random() < 0.5 ? -1 : 1;
+    arrow.textContent = dir < 0 ? '◀' : '▶'; arrow.classList.remove('pop'); void arrow.offsetWidth; arrow.classList.add('pop');
+    say.textContent = L(`Куда вильнёт? Жми туда же! Ещё ${left}`, `Which way? Tap the same way! ${left} more`);
+  };
+  near(); next();
+  await new Promise(res => btns.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => {
+    if(!left) return;
+    if(+b.dataset.d !== dir){ sfx.bad(); wiggle(fish); mgHint(L('Рыбка вильнула в другую сторону! Смотри на стрелку', 'The fish went the other way! Watch the arrow')); return; }
+    sfx.whoosh(); F.x += dir*(16 + Math.random()*8); F.y = Math.max(55, Math.min(85, F.y + (Math.random() - 0.5)*14)); near(); left--; mgHint('');
+    if(left) next(); else { arrow.textContent = ''; res(); }
+  })));
+  dot(2);
+  // 4) подкрасться и хапнуть: держи — кружок сжимается, отпусти внутри точки
+  const zone = (fd.food ? 0.32 : 0.25)*(first ? 1.2 : 1), T = 1.5*slow;
+  ui.classList.add('snap'); ring.firstChild.style.setProperty('--z', zone);
+  say.textContent = L('Держи — подкрадываемся… Отпусти в точке — хап!', 'Hold to sneak up… Let go in the dot — snap!');
+  btns.innerHTML = `<button class="btn hunt-hold">🦭 ${L('Хап!', 'Snap!')}</button>`;
+  let r = 1, press = false;
+  const setR = () => { ring.style.setProperty('--r', r); ring.classList.toggle('ok', r <= zone); };
+  setR();
+  await new Promise(res => {
+    const miss = t => { r = 1; setR(); sfx.bad(); wiggle(fish); mgHint(t); near(); };
+    hold(btns.firstChild, () => { press = true; mgHint(''); }, () => {
+      if(!press) return; press = false;
+      if(r <= zone){ res(); return; }
+      miss(L('Рано! Рыбка отплыла — подкрадись ещё', 'Too soon! The fish swam off — sneak up again'));
+    });
     mgTick(function tick(dt){
-      if(c.done) return;
-      c.k = Math.min(1, c.k + dt/c.T);
-      knob.style.left = c.k*100 + '%';
-      const inZone = c.k >= c.a && c.k <= c.b;
-      knob.classList.toggle('on', c.pressing && (c.hold ? inZone : true));
-      if(c.hold && inZone && c.pressing){ c.held += dt; if(Math.random() < dt*6) sfx.tick(); }
-      if(c.hold) zfill.style.width = Math.min(100, c.held/((c.b - c.a)*c.T*0.7)*100) + '%';
-      const ok = c.hold ? c.k > c.b && c.held >= (c.b - c.a)*c.T*0.7 : c.got >= c.need;
-      if(ok || c.k >= 1 || (c.hold && c.k > c.b)){ c.done = true; mgTicks.delete(tick); res(ok); }
+      if(!press) return;
+      r -= dt/T; S.x += ((F.x - S.f*9) - S.x)*Math.min(1, dt*2); place();
+      if(r <= 0) miss(L('Ой, рыбка заметила! Отпускай, когда кружок в точке', 'Oops, the fish noticed! Let go when the ring is in the dot'));
+      setR();
     });
   });
-  let slow = first ? 1.2 : 1;
-  for(let i = 0; i < fd.steps.length; i++){
-    mgHint(i ? L('Ещё рывок!', 'Another pull!') : L('Клюёт! Тяни!', 'A bite! Reel it in!'));
-    if(await step(fd.steps[i], slow)){
-      dots[i].classList.add('on'); sfx.ding(); splash(8, 1.3);
-      pull = 1 + i*0.25;   // рыбка всё ближе: поплавок прыгает
-      tween(0.3, k => bob.position.y += Math.sin(k*Math.PI)*0.04, ease.lin);
-    } else {
-      i--; slow = Math.min(1.7, slow*1.2); wiggle(ui); sfx.bad();
-      mgHint(L('Рыбка вильнула хвостиком! Ещё разок', 'The fish wiggled away! Try again'));
-      await wait(0.6);
-    }
-  }
-  cur = null; mgEnding = true;
-  await wait(0.2);
+  ui.classList.remove('snap'); ui.classList.add('caught'); S.x = F.x - S.f*6; place();
+  sfx.chomp(); dot(3); say.textContent = L('Хап! Поймали! 🐟', 'Snap! Got it! 🐟');
+  mgEnding = true;
+  await wait(0.5);
+  S.x = 50; S.y = 4; F.x = 50; F.y = 4; place();   // наверх, к лунке
+  await wait(0.55);
   mgClose();
+}
+// тюлень прыгает в лунку и потом выныривает обратно (малыш на своей лунке и на острове)
+async function huntDiveIn(s, hole){
+  const p0 = s.root.position.clone(), r0 = s.root.rotation.y, sc = s.root.scale.x;
+  const d = new V3(hole.x - p0.x, 0, hole.z - p0.z); s.root.rotation.y = Math.atan2(d.x, d.z);
+  sfx.whoosh();
+  await tween(0.55, k => { s.root.position.lerpVectors(p0, hole, k); s.root.position.y += Math.sin(k*Math.PI)*0.9 - k*0.4; s.inner.rotation.x = k*1.2; s.root.scale.setScalar(sc*(1 - k*k*0.6)); }, ease.lin);
+  sfx.splash(); burst(TEX.puff, hole.clone().add(new V3(0, 0.1, 0)), 10, 1.5, 0.45);
+  s.root.visible = false; s.root.scale.setScalar(sc); s.inner.rotation.x = 0;
+  return {p0, r0, sc};
+}
+async function huntDiveOut(s, b, hole){
+  s.root.visible = true; s.root.rotation.y = b.r0; s.flap = 1;
+  burst(TEX.puff, hole.clone().add(new V3(0, 0.1, 0)), 10, 1.6, 0.45);
+  await tween(0.6, k => { s.root.position.lerpVectors(hole, b.p0, k); s.root.position.y += Math.sin(k*Math.PI)*1.1; s.inner.rotation.x = -(1 - k)*Math.PI*2; }, ease.out);
+  s.root.position.copy(b.p0); s.inner.rotation.x = 0; s.flap = 0;
+  sfx.thud(); squash(s, 0.2, 0.25);
+}
+// hole — лунка, cam — [центр, размер, lift] для focusCam, pick — кто клюнет (рыбалка на острове выбирает сама),
+// diver — кто ныряет (малыш: прыгает в лунку и выныривает; без него — ныряем «за кадром», например в больнице)
+async function fishCast({hole, cam, pick = pickCatch, diver = null}){
+  focusCam(...cam);
+  const fd = pick(), first = !save.sea.n;
+  const splash = (n = 6, sp = 1) => burst(TEX.puff, hole.clone().add(new V3(0, 0.1, 0)), n, sp, 0.4);
+  const back = diver ? await huntDiveIn(diver, hole) : null;
+  if(!diver){ sfx.splash(); splash(8, 1.2); }
+  // пока малыш под водой — из лунки поднимаются пузырьки
+  mgTick(dt => { if(Math.random() < dt*6) emit(TEX.dot, hole.clone().add(new V3((Math.random() - 0.5)*0.5, 0.05, (Math.random() - 0.5)*0.5)), {v:new V3(0, 0.9, 0), life:0.6, size:0.12, grow:0.3}); });
+  await sealHunt(fd, first);
   sfx.splash(); splash(12, 1.8);
   const fish = makeSeaFish(fd); fish.position.copy(hole); fish.scale.setScalar(1.4); scene.add(fish);
-  scene.remove(bob, line, rod); lineGeo.dispose();
   // улов записываем сразу: вдруг вкладку закроют посреди полёта рыбки
   const sea = save.sea, fresh = !sea.got.includes(fd.id);
   sea.n++; if(!fd.food) sea.r = sea.n;
   if(fresh) sea.got.push(fd.id);
   persist();
-  await tween(0.5, k => { fish.position.y = hole.y + Math.sin(k*Math.PI/2)*1.1; fish.rotation.z = Math.sin(k*Math.PI*4)*0.4; }, ease.out);
+  await Promise.all([
+    tween(0.5, k => { fish.position.y = hole.y + Math.sin(k*Math.PI/2)*1.1; fish.rotation.z = Math.sin(k*Math.PI*4)*0.4; }, ease.out),
+    diver ? huntDiveOut(diver, back, hole) : null]);
   return {fd, fish, fresh};
 }
 // карточка «новая рыбка»: картинка, имя, короткий факт (первый улов каждого вида)
 const seaThumbs = {};
 function seaThumb(fd){ return seaThumbs[fd.id] || (seaThumbs[fd.id] = objThumb(makeSeaFish(fd), new V3(0, 0.15, 1))); }
 async function seaCard(fd){
-  mgOpen(fd.food ? L('Новая рыбка!', 'A new fish!') : L('Привет из тёплых морей!', 'Hello from the warm seas!'));
+  mgOpen(fd.food ? L('Новая рыбка!', 'A new fish!') : fd.isle ? L('Редкая рыбка! ✨', 'A rare fish! ✨') : L('Привет из тёплых морей!', 'Hello from the warm seas!'));
   const panel = mgNode('div', 'mg-panel walk-end sea-card', `
     <img src="${seaThumb(fd)}" alt="${fd.name}">
     <p class="ttl display">${fd.name}</p>
     <p class="fact">${fd.fact}</p>
-    <p class="tip">${fd.food ? L('Тюлени едят её на обед 🐟', 'Seals eat it for lunch 🐟')
+    <p class="tip">${fd.isle ? (save.home.rooms && save.home.rooms.ocean ? L('Редкая рыбка острова! Теперь она плавает за стеклом в 🐠 океанариуме', 'A rare island fish! Now it swims behind the glass in the 🐠 oceanarium')
+        : L('Редкая рыбка острова! Когда в иглу появится 🐠 океанариум, она поселится там', 'A rare island fish! When the igloo gets a 🐠 oceanarium, it will move in there'))
+      : fd.food ? L('Тюлени едят её на обед 🐟', 'Seals eat it for lunch 🐟')
       : L('Эту рыбку принесло тёплое течение. Теперь она будет жить в аквариуме в домике малыша 🏠', 'A warm current brought this fish here. Now it will live in the tank in the pup’s igloo 🏠')}</p>
     <p class="got">${L(`Рыбки моря: ${save.sea.got.length} из ${SEA_FISH.length}`, `Sea fish: ${save.sea.got.length} of ${SEA_FISH.length}`)}</p>
     <button class="btn" id="seaOk">${L('Ура!', 'Yay!')}</button>`);

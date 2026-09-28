@@ -225,7 +225,7 @@ async function hug(e0){
   await wait(1.1);
   await (s.p.peng ? pengBye(s) : tuckIn(s));   // пингвин в кроватку не хочет — у него свой танец
   $('#curedShells').textContent = `+${earned} 🐚` + (save.pet ? `  +${PATIENT_XP} 💗` : '');
-  $('#btnNext').textContent = shift.n >= SHIFT_SIZE ? L('Итоги смены ⭐', 'Shift results ⭐') : L('Следующий пациент', 'Next patient');
+  $('#btnNext').textContent = adoptPending() ? L('Кто там плывёт? 🦭', 'Who is swimming there? 🦭') : shift.n >= SHIFT_SIZE ? L('Итоги смены ⭐', 'Shift results ⭐') : L('Следующий пациент', 'Next patient');
   $('#curedImg').src = img;
   $('#curedTitle').textContent = L(`${s.p.name} ${s.p.f ? 'здорова' : 'здоров'}!`, `${s.p.name} is well!`);
   const thx = thanksFor(s.p, Object.keys(wearIds(s)).length > 0);
@@ -240,6 +240,7 @@ async function nextPatient(){
   $('#card').hidden = true; unfocusCam();
   await wakeUp(old);
   await leave(old);
+  if(adoptPending()){ shift = null; setBusy(false); return adopt(); }   // первый пациент вылечен — приплывает свой малыш, смена начнётся заново
   if(shift.n === SHIFT_SIZE - 1 && !shift.event){ shift.event = true; await runEvent(); }
   if(shift.n >= SHIFT_SIZE){ setBusy(false); return showResults(); }
   await spawnPatient();

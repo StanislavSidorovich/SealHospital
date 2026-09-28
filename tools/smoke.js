@@ -28,6 +28,8 @@ const MODES = {
   run: { pet: 1, run: `funPre = 'run'; petDo('fun')`, wait: 3, clicks: ['.adv-map .isle.on'] },
   dive: { pet: 1, run: `funPre = 'dive'; petDo('fun')`, wait: 3 },
   isle: { pet: 1, run: `funPre = 'isle'; petDo('fun')`, wait: 3 },
+  hunt: { pet: 1, run: `petFeed(petSeal)`, wait: 3 },
+  'isle-fish': { pet: 1, run: `funPre = 'isle'; petDo('fun'); setTimeout(() => { const o = islRoot.userData.fish[1]; ISL.R.pos.copy(o.pos); setTimeout(() => islFish(o), 600); }, 2500)`, wait: 3 },
   chase: { pet: 1, run: `funPre = 'chase'; petDo('fun')`, wait: 3 },
   'slide-race': { run: `${HIDE} slideGame('race')` },
   'slide-time': { run: `${HIDE} slideGame('time')` },

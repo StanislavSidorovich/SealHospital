@@ -51,7 +51,7 @@ let homeMode = false;   // малыш у себя в иглу (js/home.js); petM
 const gg = (m, f) => save.pet && save.pet.f ? f : m;   // род: «сыт / сыта»
 const coatOf = id => PET_COATS.find(c => c.id === id) || PET_COATS[0];
 const hexCss = c => '#' + c.toString(16).padStart(6, '0');
-const adoptPending = () => !save.pet && save.shifts >= 1;
+const adoptPending = () => !save.pet && (save.shifts >= 1 || save.progress >= 1);   // малыш приплывает после первого вылеченного пациента (решение папы 28.09)
 // GitHub Pages кеширует файлы ~10 минут: если data.js ещё старый, sanitizePet не знает новых полей — подставим
 function petFix(){ const p = save.pet; if(!p) return; if(!Number.isInteger(p.stage)) p.stage = 0; if(!p.pat) p.pat = {d:'', n:0}; if(!Number.isFinite(p.seen)) p.seen = Number.isFinite(p.t) ? p.t : Date.now();
   if(!p.walk) p.walk = {d:'', n:0}; if(!Array.isArray(p.finds)) p.finds = []; if(!p.tricks) p.tricks = {}; }
@@ -351,8 +351,8 @@ async function adopt(){
   focusCam(worldOf(petSeal, new V3(0, -0.7, 0)), 3.2, 0.95);
   await wait(0.6);
 
-  mgOpen(L('Малыш приплыл снова!', 'The pup is back!'));
-  const ask = mgNode('div', 'mg-panel adopt', `<p>${L('Он так тебя полюбил, что хочет остаться жить у тебя. Возьмёшь его?', 'He loves you so much that he wants to stay and live with you. Will you take him in?')}</p><button class="btn" id="adoptYes">${L('Конечно! ♡', 'Of course! ♡')}</button>`);
+  mgOpen(L('Смотри, кто приплыл!', 'Look who swam over!'));
+  const ask = mgNode('div', 'mg-panel adopt', `<p>${L('Малыш видел, как ты лечишь, и очень хочет остаться жить у тебя. Возьмёшь его?', 'The pup saw you healing and really wants to stay and live with you. Will you take him in?')}</p><button class="btn" id="adoptYes">${L('Конечно! ♡', 'Of course! ♡')}</button>`);
   await new Promise(r => mgOn(ask.querySelector('#adoptYes'), 'click', r));
   sfx.tap(); ask.classList.add('away'); await wait(0.3); mgClose();
   setMood(petSeal, 'happy'); sfx.hug(); petSeal.flap = 1;
@@ -516,10 +516,8 @@ function petTap(e){
 async function petFeed(s){
   const p = save.pet;
   let n = Math.max(1, Math.min(3, Math.ceil((1 - p.needs.food)/0.34)));
-  // сначала рыбалка у своей лунки: первая рыбка сразу к малышу, остальные — из миски
-  await turnTo(s, 0.8, 0.3);   // вполоборота к лунке: мордочку всё равно видно
-  const c = await fishCast({hole:PET_HOLE, cam:[PET_HOLE.clone().add(new V3(-0.75, 0.45, 0.35)), 3.3*Math.max(1, petK()*0.75), -0.2], side:1});
-  await turnTo(s, 0, 0.3);
+  // сначала охота у своей лунки (малыш сам ныряет, fishCast): первая рыбка сразу к малышу, остальные — из миски
+  const c = await fishCast({hole:PET_HOLE, cam:[PET_HOLE.clone().add(new V3(-0.75, 0.45, 0.35)), 3.3*Math.max(1, petK()*0.75), -0.2], diver:s});
   if(await fishLand(c, () => worldOf(s, s.mouthLocal))){
     s.mouthO.visible = true; s.smile.visible = false; sfx.chomp(); floatText(L('Ням!', 'Nom!'), headTop(s));
     await wait(0.35); s.mouthO.visible = false; s.smile.visible = true;

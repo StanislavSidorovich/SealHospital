@@ -173,10 +173,13 @@ function sanitizeNb(a){
   return {ping:{in:!!p.in, xp:Number.isFinite(p.xp) ? Math.max(0, p.xp) : 0,
     q:{d:typeof q.d === 'string' ? q.d : '', id:typeof q.id === 'string' ? q.id : '', ok:!!q.ok, got:!!q.got}}};
 }
-// sea = {got:[виды из SEA_FISH, пойманные хоть раз — южные живут в аквариуме], n — сколько всего поймали, r — на каком улове была последняя южная гостья}
+// sea = {got:[виды из SEA_FISH, пойманные хоть раз — южные живут в аквариуме], n — сколько всего поймали, r — на каком улове была последняя южная гостья,
+//        d:{d — день, n — уловов на острове в этот день (первые ISL_FISH_DAY — с ракушкой)}} (js/minigames.js, js/island.js)
 function sanitizeSea(a){
   a = a && typeof a === 'object' ? a : {};
-  return {got:[...new Set(strList(a.got))], n:Number.isFinite(a.n) ? a.n : 0, r:Number.isFinite(a.r) ? a.r : 0};
+  const d = a.d && typeof a.d === 'object' ? a.d : {};
+  return {got:[...new Set(strList(a.got))], n:Number.isFinite(a.n) ? a.n : 0, r:Number.isFinite(a.r) ? a.r : 0,
+    d:{d:typeof d.d === 'string' ? d.d : '', n:Number.isFinite(d.n) ? Math.max(0, d.n) : 0}};
 }
 // adv = {best:{уровень: звёзды 0…3}, cups:[уровни, где спасли всех рыбок — кубок на полке в домике], runs, day:{d, n} — забегов сегодня,
 //        tips:[какие подсказки забега уже показали: lane, boost, snow, tickle],

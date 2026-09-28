@@ -577,23 +577,43 @@ body.map-on #corner>:not(#bag){display:none!important}
 .run-pause .got{font-size:16px;font-weight:700;margin:0 0 12px;text-align:center}
 @media (prefers-reduced-motion:reduce){ .isle.on{animation:none} }
 
-/* рыбалка: полоса с кружком — натапать или удержать (minigames.js, fishCast) */
-.reel{position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);max-width:440px;margin:0 auto;box-sizing:border-box;
-  background:var(--paper);border:3px solid var(--ink);border-radius:24px;box-shadow:0 5px 0 var(--ink);padding:10px 16px 14px;pointer-events:none;animation:rise .35s ease-out}
-.reel-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
-.reel-say{font-size:19px;line-height:1.15}
-.reel-steps{display:flex;gap:5px;flex:none}
-.reel-steps i{width:16px;height:16px;border-radius:50%;border:2.5px solid var(--ink);background:#fff}
-.reel-steps i.on{background:var(--mint-d)}
-.reel-bar{position:relative;height:34px;border:3px solid var(--ink);border-radius:18px;background:#DDEFF8;margin:0 12px}
-.reel-bar .zone{position:absolute;top:0;bottom:0;background:var(--pink);opacity:0;overflow:hidden}
-.reel.is-hold .reel-bar .zone{opacity:1}
-.reel-bar .zone b{position:absolute;left:0;top:0;bottom:0;background:var(--pink-d)}
-.reel-bar .knob{position:absolute;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:#fff;border:3px solid var(--ink);box-sizing:border-box;box-shadow:0 3px 0 var(--ink)}
-.reel-bar .knob.on{background:var(--mint-d);scale:1.15}
-.reel-taps{display:flex;justify-content:center;gap:8px;min-height:30px;margin-top:10px}
-.reel-taps i{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--ink);background:var(--pink);transition:scale .15s,opacity .15s}
-.reel-taps i.pop{scale:.3;opacity:.25}
+/* охота: малыш ловит рыбку, как настоящий тюлень — нырок, усы, погоня, хап (minigames.js, sealHunt) */
+.hunt{position:absolute;left:14px;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);max-width:440px;margin:0 auto;box-sizing:border-box;
+  background:var(--paper);border:3px solid var(--ink);border-radius:24px;box-shadow:0 5px 0 var(--ink);padding:10px 12px 12px;animation:rise .35s ease-out}
+.hunt-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;min-height:44px}
+.hunt-say{font-size:18px;line-height:1.15}
+.hunt-steps{display:flex;gap:5px;flex:none}
+.hunt-steps i{width:16px;height:16px;border-radius:50%;border:2.5px solid var(--ink);background:#fff}
+.hunt-steps i.on{background:var(--mint-d)}
+.hunt-sea{position:relative;height:min(250px,31vh);border:3px solid var(--ink);border-radius:18px;overflow:hidden;
+  background:linear-gradient(#D6EAF5 0 9%,#8FD0EA 9%,#3E8DB8 100%)}
+.hunt-hole{position:absolute;left:50%;top:0;width:64px;height:9%;margin-left:-32px;background:#8FD0EA;border-left:3px solid #fff;border-right:3px solid #fff}
+.hunt-seal,.hunt-fish,.hunt-ring,.hunt-arrow{position:absolute;transform:translate(-50%,-50%);transition:left .4s ease-out,top .4s ease-out}
+.hunt-seal{width:86px;z-index:3}
+.hunt-seal svg{display:block;width:100%;transform:scaleX(var(--f,1));transition:transform .2s}
+.hunt:not(.under) .hunt-seal{top:4%!important}
+.hunt-fish{width:74px;opacity:0;z-index:2;transition:left .35s ease-out,top .35s ease-out,opacity .4s}
+.hunt.seen .hunt-fish{opacity:1}
+.hunt.caught .hunt-fish{opacity:0}
+.hunt-dark{position:absolute;inset:0;background:#122C45;opacity:0;transition:opacity .6s;pointer-events:none;z-index:4}
+.hunt.dark .hunt-dark{opacity:.72}
+.hunt.dark.feel .hunt-dark{opacity:.6}
+.hunt.feel .whisk{stroke:#FFE38A;stroke-width:3.5}
+.hunt-rings{position:absolute;inset:0;z-index:5;pointer-events:none}
+.hunt-rings i{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border:3px solid #BFF6FF;border-radius:50%;animation:huntRing 1.2s ease-out forwards}
+@keyframes huntRing{from{transform:scale(.4);opacity:1}to{transform:scale(4.5);opacity:0}}
+.hunt-arrow{font-size:54px;line-height:1;color:var(--pink-d);font-family:Arial,sans-serif;text-shadow:0 0 0 #fff,2px 2px 0 #fff,-2px -2px 0 #fff,2px -2px 0 #fff,-2px 2px 0 #fff;z-index:5}
+.hunt-arrow.pop{animation:huntPop .3s ease-out}
+@keyframes huntPop{from{scale:.3}60%{scale:1.3}}
+.hunt-ring{width:150px;height:150px;border:4px solid #fff;border-radius:50%;box-sizing:border-box;opacity:0;z-index:5;scale:var(--r,1);transition:left .4s,top .4s,border-color .15s;pointer-events:none}
+.hunt.snap .hunt-ring{opacity:1}
+.hunt-ring.ok{border-color:var(--mint-d)}
+.hunt-ring i{position:absolute;left:50%;top:50%;width:calc(150px*var(--z,.3));height:calc(150px*var(--z,.3));transform:translate(-50%,-50%);scale:calc(1/var(--r,1));border-radius:50%;background:rgba(255,155,184,.55);border:2px dashed #fff;box-sizing:border-box}
+.hunt-btns{display:flex;gap:10px;justify-content:center;margin-top:10px}
+.hunt-btns .btn{min-height:58px;font-size:22px;flex:1;max-width:260px;touch-action:none;user-select:none;-webkit-user-select:none}
+.hunt-btns .hunt-lr{max-width:none;font-size:34px;font-family:Arial,sans-serif}
+.hunt-hold:active{background:var(--mint-d);translate:0 3px;box-shadow:0 1px 0 var(--ink)}
+@media (prefers-reduced-motion:reduce){ .hunt-rings i{animation-duration:2s} }
 .sea-card img{width:120px;height:120px;display:block;margin:-6px auto -8px}
 .sea-card .fact{font-size:16px;font-weight:700;line-height:1.35;margin:0 0 8px}
 .fish-panel .sub{font-size:15px;font-weight:800;margin:6px 0 0}

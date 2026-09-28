@@ -78,6 +78,21 @@ const ISL_PL = {
   storm: {x:33,  z:32.4, at:[33, 30], make:islLighthouse}
 };
 
+/* ---------- 🎣 охота на острове (Спринт 7, задача 2) ----------
+   Три места: лунка у берега, мостки на севере, лунка на дальней льдинке. Подошла — внизу «🎣 Порыбачить ▶»: малыш встаёт
+   у лунки и ныряет за рыбкой сам (охота, как у своей лунки, — fishCast/sealHunt в minigames.js). Северная рыбка — малышу на обед
+   (сыт — в ведёрко домой), южная гостья и редкие рыбки острова — в «Рыбки моря» и сразу плывут в 🐠 океанариуме (ocean.js).
+   У каждого места своя редкая рыбка (SEA_FISH с isle: ключ места), ночью (20–6 ч) везде клюёт рыбка-фонарик.
+   Место: hole — лунка [x, z], stand — где стоит малыш (сбоку, чтобы камера видела обоих). Новое место — строчка здесь
+   (и, если хочешь, своя рыбка в SEA_FISH с isle:'ключ'). */
+const ISL_FISH = [
+  {k:'shore', hole:[-24.7, 20.8], stand:[-22.6, 21.5], name:L('Лунка у берега', 'Shore ice hole')},
+  {k:'dock',  hole:[-16.6, -36.8], stand:[-14.5, -36.1], name:L('Мостки', 'The jetty'), water:true},
+  {k:'floe',  hole:[41.4, 5.8], stand:[43.5, 6.5], name:L('Лунка на льдинке', 'Ice hole on the floe')}
+];
+const ISL_FISH_NEW = 5, ISL_FISH_DAY = 3;   // ракушки за новую рыбку; сколько уловов в день дают по 🐚
+const islNight = () => { const h = new Date().getHours(); return h >= 20 || h < 6; };
+
 /* ---------- модельки ---------- */
 function islBlob(g, col, sx, sy, sz, x = 0, y = 0, z = 0, ol = 1.06){
   const m = addOutline(new THREE.Mesh(SMALL, typeof col === 'number' ? toon(col) : col), ol); m.scale.set(sx, sy, sz); m.position.set(x, y, z); g.add(m); return m;
@@ -153,6 +168,21 @@ function islLighthouse(g){   // маяк на островке: полосата
   const gl = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX, transparent:true, depthWrite:false, color:0xFFE9A8})); gl.scale.setScalar(2.6); gl.position.copy(lamp.position); g.add(gl); g.userData.glow = gl;
   const door = new THREE.Mesh(new THREE.CircleGeometry(0.5, 16, 0, Math.PI), new THREE.MeshBasicMaterial({color:0x5C6E91})); door.position.set(0, 0.01, 1.62); g.add(door);
 }
+function islDock(g){   // мостки рыбака на севере: доски в море, сваи, ведёрко
+  for(let i = 0; i < 9; i++) islBox(g, i % 2 ? 0xB88A5E : 0xA87B52, 1.8, 0.16, 0.95, 0, 0.27, -4 + i, 1.02);
+  for(const [x, z] of [[-0.8, -1], [0.8, -1], [-0.8, -3.8], [0.8, -3.8]]) islCyl(g, 0x8C6A52, 0.1, 0.1, 1.4, x, -0.3, z, 10, 1.1);
+  islCyl(g, 0x7FB8F0, 0.24, 0.19, 0.34, 0.55, 0.52, -2.2, 16, 1.08);
+}
+function islHoleMake(water){   // лунка: тёмная вода в ледяном ободке (на мостках — просто круги на воде)
+  const g = new THREE.Group();
+  if(!water){
+    const w = new THREE.Mesh(new THREE.CircleGeometry(0.55, 24), new THREE.MeshBasicMaterial({color:0x2F6F99})); w.rotation.x = -Math.PI/2; w.position.y = 0.03; g.add(w);
+    const rim = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.1, 8, 24), toon(0xD6EAF5)), 1.08); rim.rotation.x = -Math.PI/2; rim.position.y = 0.05; g.add(rim);
+  }
+  const rp = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.34, 24), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.6, depthWrite:false}));
+  rp.rotation.x = -Math.PI/2; rp.position.y = 0.06; g.add(rp); g.userData.rp = rp;
+  return g;
+}
 function islPadMake(){   // гриб-батут: ножка и розовая шляпка в горошек
   const g = new THREE.Group();
   islCyl(g, 0xFFF6E8, 0.22, 0.28, 0.5, 0, 0.25, 0, 14, 1.08);
@@ -226,6 +256,17 @@ function islBuild(){
   // домик Пинга — если он живёт по соседству
   const ph = nbHouse(); ph.scale.setScalar(2.4); ph.position.set(-5, islTerrain(-5, 17), 17); ph.rotation.y = 0.3; G.add(ph); G.userData.pingHouse = ph;
   ISL_SOLID.push({dome:true, x:-5, z:17, r:1.2, y:islTerrain(-5, 17), on:() => ph.visible});
+  // 🎣 места рыбалки: мостки, лунки, табличка, подпись и голубое кольцо там, где встать
+  { const dk = new THREE.Group(); dk.position.set(-15, 0, -33); islDock(dk); G.add(dk);
+    ISL_SOLID.push({x:-15, z:-33, w:1.8, d:9, h:0.35}); }
+  G.userData.fish = ISL_FISH.map(F => {
+    const hy = F.water ? -0.05 : islTerrain(...F.hole), hole = islHoleMake(F.water); hole.position.set(F.hole[0], hy, F.hole[1]); G.add(hole);
+    const pos = new V3(F.stand[0], islGround(...F.stand), F.stand[1]);
+    const lbl = textSprite(`🎣 ${F.name}`); lbl.scale.set(3.8, 1.42, 1); lbl.position.set(F.hole[0], Math.max(hy, pos.y) + 2.6, F.hole[1]); G.add(lbl);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.05, 32), new THREE.MeshBasicMaterial({color:0x7FB8F0, transparent:true, opacity:0.75, depthWrite:false}));
+    ring.rotation.x = -Math.PI/2; ring.position.set(pos.x, pos.y + 0.06, pos.z); G.add(ring);
+    return {k:'fish:' + F.k, F, fish:true, pos, lbl, ring, hole, hy};
+  });
   // батуты, снеговики, камушки
   G.userData.pads = ISL_PADS.map(pd => { const m = islPadMake(); m.position.set(pd.x, islGround(pd.x, pd.z), pd.z); G.add(m); pd.m = m; return m; });
   for(const [x, z, s] of [[-6, -14, 1], [15, 5, 0.9], [-26, -8, 1.1], [3, 20, 0.8]]) islSnowman(G, x, z, s);
@@ -280,7 +321,7 @@ async function isleGo(s){
   const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
   homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
   let done; const fin = new Promise(r => done = r); ISL.done = done;
-  homeB.addEventListener('click', () => { sfx.tap(); done(null); });
+  homeB.addEventListener('click', () => { if(ISL && ISL.fishing) return; sfx.tap(); done(null); }); ISL.homeB = homeB;
   mgTick(dt => { if(ISL) islStep(dt); });
   islIntro();
   const k = await fin;
@@ -329,19 +370,21 @@ function islIntro(){
 }
 function islHud(){
   if(!ISL) return;
-  ISL.hud.innerHTML = `<span class="pill">🌟 <b>${save.isl.got.length}/${ISL_STARS.length}</b></span>`;
+  const sea = save.sea.got.length;
+  ISL.hud.innerHTML = `<span class="pill">🌟 <b>${save.isl.got.length}/${ISL_STARS.length}</b></span>`
+    + (sea ? `<span class="pill">🐟 <b>${sea}/${SEA_FISH.length}</b></span>` : '');
 }
 function islStarsShow(){ for(const st of islRoot.userData.stars){ const got = save.isl.got.includes(st.i); st.sp.visible = st.gl.visible = !got; } }
 // коснулась подписи места — малыш идёт туда сам
 function islHit(cx, cy){
   let best = null, bd = 60;
-  for(const o of Object.values(islRoot.userData.pl)){
+  for(const o of [...Object.values(islRoot.userData.pl), ...islRoot.userData.fish]){
     if(!o.lbl.visible) continue;
     const w = o.lbl.getWorldPosition(new V3()); if(w.distanceTo(camera.position) > 40) continue;
     const q = toScreen(w), d = Math.hypot(q.x - cx, q.y - cy);
     if(d < bd){ bd = d; best = o; }
   }
-  return best ? {p:() => best.pos, r:1.6} : null;
+  return best ? {p:() => best.pos, r:best.fish ? 0.6 : 1.6} : null;
 }
 
 /* ---------- кадр ---------- */
@@ -371,6 +414,13 @@ function islStep(dt){
     if(o.hide || !o.ring.visible) continue;
     if(d < nd && Math.abs(P.y - o.pos.y) < 2.2){ nd = d; near = o; }
   }
+  for(const o of U.fish){
+    const d = Math.hypot(P.x - o.pos.x, P.z - o.pos.z);
+    o.lbl.material.opacity = Math.max(0, Math.min(1, (34 - o.lbl.position.distanceTo(camL))/10));
+    o.ring.scale.setScalar(1 + Math.sin(now*3 + 1)*0.08);
+    const rp = o.hole.userData.rp, k = (now*0.6 + o.pos.x) % 1; rp.scale.setScalar(0.6 + k*1.4); rp.material.opacity = 0.6*(1 - k);
+    if(d < Math.min(nd, 2.2) && Math.abs(P.y - o.pos.y) < 1.2){ nd = d; near = o; }
+  }
   if(near !== I.near){ I.near = near; islGoShow(); }
   // плавник кружит, флажок треплется, лампа маяка мерцает
   const fin = U.pl.chase.g.userData.fin; if(fin) fin.rotation.y = now*0.7;
@@ -385,6 +435,12 @@ function islStep(dt){
 function islGoShow(){
   const I = ISL, o = I.near, el = I.go;
   if(!o){ el.hidden = true; return; }
+  if(o.fish){
+    el.innerHTML = `<button class="btn">🎣 ${L('Порыбачить', 'Go fishing')} ▶</button>`;
+    el.hidden = false; sfx.tick();
+    el.querySelector('button').addEventListener('click', e => { e.stopPropagation(); sfx.tap(); islFish(o); });
+    return;
+  }
   const S = ST_PLACES[o.k], name = o.k === 'pet' ? L('Домой, в уголок', 'Home to my corner') : `${S.ic} ${S.name}`;
   el.innerHTML = o.lock ? `<p>${S.ic} ${S.name}</p><p class="lock">${o.lock}</p>`
     : `<button class="btn">${name} ▶</button>`;
@@ -403,6 +459,61 @@ function islStarGot(st){
     sfx.hug(); addShells(ISL_ALL); burst(TEX.heart, headTop(ISL.s), 20, 2.4, 0.34);
     mgHint(L(`Все звёздочки острова! Ты ${pg('настоящий следопыт', 'настоящая следопытка')} ✨ +${ISL_ALL} 🐚`, `Every star on the island! You are a true explorer ✨ +${ISL_ALL} 🐚`));
   } else floatText(`🌟 ${sv.got.length}/${ISL_STARS.length}`, headTop(ISL.s), '#D9527E');
+}
+// кто клюнет: ночью — фонарик (пока не пойман), у своего места — его редкая рыбка (не позже 3-го заброса), иначе как у лунки малыша
+function islPick(F){
+  const got = id => save.sea.got.includes(id), own = SEA_FISH.find(f => f.isle === F.k), lan = seaDef('lantern');
+  const t = ISL.fishT[F.k] = (ISL.fishT[F.k] || 0) + 1;
+  if(islNight() && !got(lan.id) && (Math.random() < 0.5 || t >= 2)) return lan;
+  if(own && !got(own.id) && (Math.random() < 0.4 || t >= 3)) return own;
+  if(own && Math.random() < 0.12) return own;          // уже знакомая — изредка снова в гости
+  if(islNight() && Math.random() < 0.15) return lan;
+  return pickCatch();
+}
+async function islFish(o){
+  const I = ISL; if(!I || I.fishing) return;
+  I.fishing = true; I.fishT = I.fishT || {};
+  const R = I.R, s = I.s, F = o.F, sv = save.sea;
+  if(!sv.d) sv.d = {d:'', n:0};
+  I.go.hidden = true; I.homeB.hidden = true;
+  const st = mgStash();
+  R.hold = false; R.tgt = null; R.goal = null; R.vel.set(0, 0, 0); R.key.set(0, 0, 0); R.slide = 0;
+  // малыш подходит к лунке и поворачивается к ней, камера — сбоку-сверху, чтобы видно было и малыша, и поплавок
+  const hole = new V3(F.hole[0], o.hy, F.hole[1]), from = R.pos.clone(), to = o.pos.clone();
+  const yaw0 = R.yaw, dy = Math.atan2(hole.x - to.x, hole.z - to.z) - yaw0, dyaw = Math.atan2(Math.sin(dy), Math.cos(dy));
+  const mid = ISL_POS.clone().add(hole).lerp(ISL_POS.clone().add(to), 0.5);
+  const D = Math.max(8, 6.5/2/(Math.tan(THREE.MathUtils.degToRad(camera.fov)/2)*Math.min(1.4, camera.aspect)));   // в кадре ≈6,5 м по ширине
+  const cP = mid.clone().add(new V3(0.08, 0.5, 1).multiplyScalar(D)), cL = mid.clone().add(new V3(0, -0.9, 0));
+  const camT = dt => { runCam.pos.lerp(cP, Math.min(1, dt*2.5)); runCam.look.lerp(cL, Math.min(1, dt*2.5)); };
+  mgTick(camT);
+  await tween(0.5, k => { R.pos.lerpVectors(from, to, k); R.yaw = yaw0 + dyaw*k; roamPose(R, 0.016); }, ease.out);
+  if(!tipSeen('islfish')){ tipDone('islfish'); toast(L('У каждой рыбалки — своя редкая рыбка. А ночью 🌙 клюёт светящаяся!', 'Every fishing spot has its own rare fish. And at night 🌙 a glowing one bites!'), 3200); }
+  const c = await fishCast({hole:ISL_POS.clone().add(hole), cam:[mid, 3], pick:() => islPick(F), diver:s});
+  unfocusCam();
+  // северная — малышу на обед (сыт — в ведёрко домой), гостьи и редкие — в «Рыбки моря» и в океанариум
+  const p = save.pet, hungry = p.needs.food < 0.95;
+  const ate = await fishLand(c, () => hungry ? worldOf(s, s.mouthLocal) : headTop(s).add(new V3(0, 1.2, 0)));
+  if(ate && hungry){
+    p.needs.food = Math.min(1, p.needs.food + 0.34);
+    s.mouthO.visible = true; s.smile.visible = false; sfx.chomp(); floatText(L('Ням!', 'Nom!'), headTop(s));
+    await wait(0.35); s.mouthO.visible = false; s.smile.visible = true;
+  } else if(ate){
+    save.fish++; sfx.pop();
+    toast(L(`${save.pet.name} ${gg('сыт', 'сыта')} — рыбка в ведёрко домой! Там ${save.fish} 🐟`, `${save.pet.name} is full — the fish goes in the bucket at home! It holds ${save.fish} 🐟`), 2600);
+  }
+  // ракушки: за новую рыбку и за первые уловы дня
+  const today = ymd(); if(sv.d.d !== today) sv.d = {d:today, n:0};
+  sv.d.n++;
+  const sh = c.fresh ? ISL_FISH_NEW : sv.d.n <= ISL_FISH_DAY ? 1 : 0;
+  persist();
+  if(sh) addShells(sh, toScreen(headTop(s)));
+  if(c.fresh && save.home.rooms && save.home.rooms.ocean) floatText(L('🐠 Поплыла в океанариум!', '🐠 Off to the oceanarium!'), headTop(s), '#2F7FB8');
+  hop(s, 0.3, 0.4); s.happyUntil = now + 2;
+  // обратно гулять: камера плавно возвращается за спину
+  if(!ISL) return;
+  mgRestore(st); islHud();
+  R.cam.copy(runCam.pos); R.camLook.copy(runCam.look);
+  I.fishing = false; I.homeB.hidden = false; I.near = null; I.idleT = 0;
 }
 // Пинг бродит у домика; малыш рядом — увязывается следом, далеко ушла — возвращается домой
 function islPingStep(dt){
