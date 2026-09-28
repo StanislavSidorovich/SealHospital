@@ -568,7 +568,7 @@ body.mg-on #homeCard,body.mg-on #homeBar{display:none!important}
 .run-end .cup{background:#FFF1C9;border:2px solid #C9962E;border-radius:14px;padding:6px 10px}
 .run-end .earned{text-align:center;margin:0 0 10px!important}
 /* пауза в забеге: в углу только звук и 🏠 */
-body.run-on #corner>:not(#bag):not(#btnRunHome){display:none!important}
+body.run-on #corner>:not(#bag):not(#btnRunHome), body.walk-on #corner>:not(#bag):not(#btnRunHome){display:none!important}
 body.map-on #corner>:not(#bag){display:none!important}
 .isle.soon{min-height:52px}
 .isle.soon .ic{width:auto;padding:0 8px;border-radius:22px;font-size:22px;letter-spacing:2px}

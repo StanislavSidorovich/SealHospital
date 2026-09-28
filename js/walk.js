@@ -4,7 +4,7 @@
    на четырёх что-то есть — ракушка, рыбка из воды, горстка ракушек, а в конце снежная горка. Раз в день под ней новая
    находка в коллекцию. Куда приземлишься, видно только на первых двух льдинках, дальше пунктир наполовину; 5-я и 6-я
    качаются. Промах — «плюх!», плывём на остров и прыгаем сначала (собранные находки не пропадают).
-   «В яблочко» и прогулка без «плюх» — ракушки.
+   «В яблочко» и прогулка без «плюх» — ракушки. 🏠 в углу — домой, не догуляв (собранное остаётся).
    Трюки: «Дай ласту», «Прыжок», «Кувырок», «Мяч на носу» открываются по мере роста; каждое занятие +1 ⭐,
    три звезды — трюк выучен. Проиграть нельзя: малыш иногда путает трюк, это смешно, и пробуем ещё раз.
    Подключается после pet.js и до game.js. */
@@ -199,6 +199,15 @@ async function petWalk(s){
     if(Math.hypot(q.x - e.clientX, q.y - e.clientY) < r){ onTap = null; res(e); } else if(miss) mgHint(miss);
   }; });
   const frame = (a, b) => camGlide(a.clone().lerp(b, 0.5).setY(0.55 + 0.5*sc), 3.2 + a.distanceTo(b)*0.8, 0.9);
+  // 🏠 домой посреди прогулки: ждём касания — сразу, летим или плывём — как только приземлимся
+  const QUIT = {}, tmp = [];   // tmp — что сценки-находки поставили на сцену (убрать, если ушли не доделав)
+  let quit = false, quitNow; const quitP = new Promise(r => quitNow = r).then(() => QUIT);
+  const or = pr => Promise.race([pr, quitP]);
+  const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
+  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
+  homeB.addEventListener('click', () => { if(quit) return; quit = true; sfx.tap(); quitNow(); });
+  document.body.classList.add('walk-on');   // в углу только 🏠 и рюкзак (как в забегах)
+  mgCleanup.push(() => { homeB.remove(); document.body.classList.remove('walk-on'); });
 
   // 🎯 рогатка: пунктир полёта и кружок, куда приземлимся (зелёные — попадём на льдинку)
   const arc = new THREE.Group(), dotM = new THREE.MeshBasicMaterial({color:0x3B3A4A}), dots = [];
@@ -252,7 +261,7 @@ async function petWalk(s){
   await waddleTo(s, WALK_EDGE);
   let at = WALK_EDGE.clone(), atFloe = null;   // atFloe — на какой льдинке стоим (null — своя, у домика)
   const evDone = new Set();                     // находки, которые уже собрали (после «плюх» не повторяются)
-  for(let i = 0; i < WALK_N; i++){
+  walk: for(let i = 0; i < WALK_N && !quit; i++){
     const f = WALK_FLOES[i];
     let fell = false;
     for(;;){
@@ -263,8 +272,10 @@ async function petWalk(s){
       mgHint(i === 0 && tut ? L('Потяни малыша назад, как рогатку, и отпусти! 🎯', 'Pull the pup back like a slingshot and let go! 🎯')
         : i >= WALK_SHOW ? L('Прикинь на глаз, куда долетишь 🎯', 'Guess by eye how far you will fly 🎯')
         : L('Тяни назад и отпускай — на льдинку с кружком', 'Pull back and let go — to the floe with the ring'));
-      const shot = await aim(f, i < WALK_SHOW, i >= 4, i === 0 && tut, at);
-      ringAt = null; sfx.tap();
+      const shot = await or(aim(f, i < WALK_SHOW, i >= 4, i === 0 && tut, at));
+      ringAt = null;
+      if(shot === QUIT) break walk;
+      sfx.tap();
       const L0 = shot.L;
       const onFloe = g => Math.hypot(L0.x - g.position.x, L0.z - g.position.z) < floeR(g)*0.92;
       if(onFloe(f)){   // долетели!
@@ -294,21 +305,30 @@ async function petWalk(s){
       // плюх! — плывём на остров и начинаем сначала (собранное не пропадает)
       res.plop++; fell = true;
       await plop(s, at, L0, shot.dist);
+      if(quit) break walk;
       mgHint(L('Плывём на остров — и снова вперёд! 💪', 'Swimming back to the island — and off we go again! 💪'));
       at = WALK_EDGE.clone(); atFloe = null;
       break;
     }
     if(fell){ i = -1; continue; }
     at = floeTop(f); atFloe = f;
-    if(evDone.has(i)) continue;
+    if(quit || evDone.has(i)) continue;
     evDone.add(i);
     const ev = WALK_EV.indexOf(i);
     if(ev < 0) continue;
     camGlide(at.clone().add(new V3(0, 0.45 + 0.4*sc, 0.4)), 3.3*(0.6 + 0.4*k), 0.7, 0, 0.45);   // находку смотрим почти спереди
     await turnTo(s, 0, 0.3);
-    await WALK_EVENTS[kinds[ev]]({s, at, res, gift, tapAt, setRing:v => ringAt = v, hint:mgHint, ticks,
-      handlers:(t, m, u) => { onTap = t; onMove = m; onUp = u; }});
+    await or(WALK_EVENTS[kinds[ev]]({s, at, res, gift, tapAt, setRing:v => ringAt = v, hint:mgHint, ticks, own:o => (tmp.push(o), o),
+      handlers:(t, m, u) => { onTap = t; onMove = m; onUp = u; }}));
     ringAt = null; onTap = onMove = onUp = null; ticks.clear();
+    tmp.forEach(o => typeof o === 'function' ? o() : scene.remove(o)); tmp.length = 0;
+  }
+  if(quit){   // ушли, не догуляв: собранное остаётся, малыш прыгает домой
+    arc.visible = false; hand.hidden = true; s.inner.scale.set(1, 1, 1); mgHint('');
+    floatText(L('Домой!', 'Home!'), headTop(s)); sfx.arf(); await hop(s, 0.3, 0.4); await wait(0.5);
+    flash(); s.root.position.copy(PET_SPOT); s.root.rotation.set(0, 0, 0); s.swimming = false; s.inner.position.y = 0;
+    unfocusCam(); mgClose(); walkLayout();
+    return res.shells || res.find || res.fish ? undefined : false;   // что-то нашли — прогулка засчитана
   }
 
   // итоги прогулки: что нашли и полка находок
@@ -339,10 +359,10 @@ async function petWalk(s){
     <div class="finds">${cells}</div>
     <p class="tip">${foundAll() ? L('Все находки собраны! Ты настоящий следопыт ♡', 'All finds collected! You are a real explorer ♡') : res.find ? L('Под снегом ещё много всего. Новая находка — завтра ✨', 'There is still lots under the snow. A new find tomorrow ✨') : L(`Сегодняшнюю находку ты уже ${pg('нашёл', 'нашла')}. Новая спрячется под снегом завтра ✨`, 'You already found today\'s treasure. A new one will hide under the snow tomorrow ✨')}</p>
     <button class="btn" id="walkHome">${L('Домой ♡', 'Home ♡')}</button>`);
-  await new Promise(r => mgOn(end.querySelector('#walkHome'), 'click', r));
+  await or(new Promise(r => mgOn(end.querySelector('#walkHome'), 'click', r)));
   sfx.tap(); end.classList.add('away'); await wait(0.3);
-  mgHint(L('Плывём домой…', 'Swimming home…'));
-  await swimHome(s, at);
+  if(quit){ flash(); s.root.position.copy(PET_SPOT); s.root.rotation.set(0, 0, 0); unfocusCam(); }   // 🏠 в углу — сразу домой, без заплыва
+  else { mgHint(L('Плывём домой…', 'Swimming home…')); await swimHome(s, at); }
   mgClose(); walkLayout();
   s.happyUntil = now + 2;
 }
@@ -406,9 +426,9 @@ async function swimHome(s, from){
 /* находки на льдинках: каждая — маленькая сценка, малыш «находит», Сабрина забирает */
 const WALK_EVENTS = {
   // ракушка торчит из снега: малыш её учуял
-  async shell({s, at, res, tapAt, setRing, hint}){
+  async shell({s, at, res, tapAt, setRing, hint, own}){
     const sh = makeShell(0xFFC2D1, true), pos = at.clone().add(new V3(0.55, 0.06, 0.45));
-    sh.position.copy(pos); sh.rotation.set(0.5, 0.8, 0.2); scene.add(sh);
+    sh.position.copy(pos); sh.rotation.set(0.5, 0.8, 0.2); scene.add(own(sh));
     sniff(s, pos, L('Ой, что это?', 'Oh, what is that?'));
     setRing(pos.clone().add(new V3(0, 0.1, 0))); hint(L('Малыш что-то учуял! Нажми на ракушку', 'The pup smells something! Tap the shell'));
     await tapAt(pos, 90, L('Ракушка — в кружке, нажми на неё', 'The shell is in the ring, tap it'));
@@ -417,11 +437,11 @@ const WALK_EVENTS = {
     s.happyUntil = now + 2; await hop(s, 0.3, 0.4);
   },
   // горстка ракушек: собрать три
-  async shells({s, at, res, hint, handlers}){
+  async shells({s, at, res, hint, handlers, own}){
     const cols = [0xFFD2A8, 0xD9C8FF, 0xBDE8D6], list = [];
     [[-0.85, 0.3], [0.85, 0.4], [0.1, 0.95]].forEach(([x, z], i) => {
       const sh = makeShell(cols[i], false); sh.position.copy(at).add(new V3(x, 0.07, z)); sh.rotation.y = Math.random()*6;
-      sh.scale.setScalar(0.01); scene.add(sh); list.push(sh);
+      sh.scale.setScalar(0.01); scene.add(own(sh)); list.push(sh);
       wait(i*0.15).then(() => { sfx.pop(); return tween(0.3, q => sh.scale.setScalar(Math.max(0.01, 1.35*q)), ease.back); });
     });
     floatText(L('Ракушки!', 'Shells!'), headTop(s)); sfx.arf();
@@ -438,10 +458,10 @@ const WALK_EVENTS = {
     s.happyUntil = now + 2; floatText(L('Все!', 'All!'), headTop(s)); await hop(s, 0.3, 0.4);
   },
   // рыбка выпрыгивает из воды рядом с льдинкой — поймай её, малыш съест
-  async fish({s, at, res, hint, handlers, ticks}){
+  async fish({s, at, res, hint, handlers, ticks, own}){
     const fish = makeFish(), sc = petScale(), side = Math.random() < 0.5 ? -1 : 1;
     const a = at.clone().add(new V3(1.25*side, -0.3, 0.9)), b = at.clone().add(new V3(0.3*side, -0.3, 1.55));   // дуга не выходит за край телефона
-    fish.visible = false; scene.add(fish);
+    fish.visible = false; scene.add(own(fish));
     let t = -0.6, caught = false, jumps = 0;
     const T = 1.3;   // сколько рыбка в воздухе
     hint(L('Смотри! Рыбка! Нажми на неё, когда выпрыгнет', 'Look! A fish! Tap it when it jumps out'));
@@ -470,16 +490,16 @@ const WALK_EVENTS = {
     floatText(L('Ням!', 'Nom!'), headTop(s)); s.happyUntil = now + 2;
   },
   // снежная горка: потри пальцем, малыш помогает копать; раз в день — новая находка
-  async dig({s, at, res, gift, hint, handlers, setRing}){
+  async dig({s, at, res, gift, hint, handlers, setRing, own}){
     const pos = at.clone().add(new V3(0.6, 0, 0.55));
     const mound = addOutline(new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 10, 0, Math.PI*2, 0, Math.PI/2), toon(0xFFFFFF)), 1.06);
-    mound.position.copy(pos); mound.scale.set(1, 0.8, 1); scene.add(mound);
+    mound.position.copy(pos); mound.scale.set(1, 0.8, 1); scene.add(own(mound));
     const t = gift ? TREASURES.filter(x => !save.pet.finds.includes(x.id))[Math.floor(Math.random()*(TREASURES.length - save.pet.finds.length))] : null;
     sniff(s, pos, gift ? L('Тут что-то блестит!', 'Something shines here!') : L('Копаем?', 'Shall we dig?'));
     const center = pos.clone().add(new V3(0, 0.2, 0));
     setRing(center); hint(L('Потри снег пальцем — копаем!', 'Rub the snow with your finger — dig!'));
     let dug = 0, down = false, lx = 0, ly = 0, rubT = 0;
-    const spark = setInterval(() => { if(gift && dug < 1) emit(TEX.star, center.clone().add(new V3((Math.random() - 0.5)*0.5, 0.25, 0.2)), {v:new V3(0, 0.4, 0), life:0.5, size:0.14, spin:4}); }, 700);
+    const spark = setInterval(() => { if(gift && dug < 1) emit(TEX.star, center.clone().add(new V3((Math.random() - 0.5)*0.5, 0.25, 0.2)), {v:new V3(0, 0.4, 0), life:0.5, size:0.14, spin:4}); }, 700); own(() => clearInterval(spark));
     await new Promise(done => handlers(
       e => { down = true; lx = e.clientX; ly = e.clientY; },
       e => {
