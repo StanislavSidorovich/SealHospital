@@ -942,3 +942,7 @@ body.fn-dip-on #corner{visibility:hidden}
 .sl-podium span{background:#fff;border:2px solid var(--ink);border-radius:12px;padding:3px 10px}
 .sl-podium span.me{background:#FFE3EC}
 .sl-podium small{font-weight:600;opacity:.7}
+/* прогулка-рогатка (js/walk.js): пальчик показывает «тяни назад» */
+.sling-hand{position:absolute;font-size:42px;margin:-10px 0 0 -18px;pointer-events:none;animation:slinghand 1.3s ease-in-out infinite}
+@keyframes slinghand{0%{translate:0 0;opacity:0}20%{opacity:1}70%{translate:0 90px;opacity:1}100%{translate:0 90px;opacity:0}}
+@media (prefers-reduced-motion:reduce){ .sling-hand{animation:none} }
