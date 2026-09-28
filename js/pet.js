@@ -332,7 +332,7 @@ async function petMiss(){
   if(!petMode || busy || s !== petSeal) return;
   s.happyUntil = now + 4; setMood(s, 'happy'); s.flap = 1;
   sfx.arf(); sfx.star(); burst(TEX.heart, headTop(s), 14, 2.2, 0.34); hop(s, 0.35, 0.45);
-  if(!growPending()) toast(L(`${p.name}: «Я скучал${gg('', 'а')}! Как хорошо, что ты пришла!» ♡`, `${p.name}: “I missed you! I am so glad you came!” ♡`), 3800);
+  if(!growPending()) toast(L(`${p.name}: «Я скучал${gg('', 'а')}! Как хорошо, что ты ${pg('пришёл', 'пришла')}!» ♡`, `${p.name}: “I missed you! I am so glad you came!” ♡`), 3800);
 }
 $('#btnPet').addEventListener('click', () => { sfx.tap(); goPet(!petMode); });
 

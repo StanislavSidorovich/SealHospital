@@ -343,7 +343,7 @@ function chSharkMiss(){
   const S = CH.sh;
   floatText(L(['Мимо!', 'Эх!', 'Ускользнула!'], ['Missed!', 'Aww!', 'Slipped away!'])[Math.floor(Math.random()*3)], chAt(CH.S + S.off + 0.8, S.y + 1), '#3B3A4A');
   CH.dodges++;
-  if(CH.dodges === 1) chSay(L('Увернулась! Так держать 👍', 'Dodged it! Keep it up 👍'), 1600);
+  if(CH.dodges === 1) chSay(L(`${gg('Увернулся', 'Увернулась')}! Так держать 👍`, 'Dodged it! Keep it up 👍'), 1600);
 }
 function chWarn(on){
   const S = CH.sh;

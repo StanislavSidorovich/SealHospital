@@ -144,7 +144,7 @@ async function spawnPatient(){
   await mgLupa(seal, p.ail, a => { S.found.add(a); renderCard(); }, at => { shift.secrets++; addShells(3, at); });
   unfocusCam(); setBusy(false);
   S.stage = 'treat'; renderCard();
-  toast(L('Всё нашла! Теперь лечи — выбирай внизу', 'Found it all! Now treat — pick below'));
+  toast(L(`Всё ${pg('нашёл', 'нашла')}! Теперь лечи — выбирай внизу`, 'Found it all! Now treat — pick below'));
 }
 
 const TREAT = {
@@ -299,7 +299,7 @@ function openSettings(){
   $('#storeNote').textContent = '';
   keepSave().then(ok => { $('#storeNote').textContent = ok === null ? '' : ok ? L('🔒 Браузер обещал не стирать сохранение.', '🔒 The browser promised to keep your save.') : L('Браузер может стереть сохранение, если кончится место: лучше скопируй код и спрячь его.', 'The browser may erase your save if it runs out of space: better copy the code and keep it safe.'); });
   $('#dadStats').open = false;
-  renderWhoRow();
+  renderWhoRow(); renderPlayers();
   $('#settings').hidden = false;
 }
 async function copyCode(){
@@ -521,7 +521,7 @@ function whoReset(){
   $('#whoName').value = ''; whoDraftG = 'f'; whoRenderGender();
 }
 function whoFinish(name, g){
-  save.who = {name, g, asked:true}; persist();
+  save.who = {name, g, asked:true}; persist(); playersSync(); renderPlayers();
   applyPname(); renderWhoRow(); if(typeof mailApplyWho === 'function') mailApplyWho();
   $('#who').hidden = true;
   if(!whoFromSettings) $('#intro').hidden = false;
@@ -530,6 +530,17 @@ function applyPname(){
   $('#introText').textContent = L(`Доктор ${pname()}, к тебе приплывают пациенты! За смену — три тюленя: осмотри, вылечи, обними и уложи спать. За каждого — ракушки 🐚 для лавки.`,
     `Doctor ${pname()}, patients are swimming in! Three seals per shift: check them, heal them, hug them and tuck them in. Every patient earns you shells 🐚 for the shop.`);
 }
+function renderPlayers(){
+  const box = $('#playersList'); box.textContent = '';
+  for(const p of PLAYERS.list){
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.id = p.id;
+    b.textContent = (p.id === PLAYERS.cur ? '🦭 ' : '') + (p.name || L('Новый игрок', 'New player'));
+    b.classList.toggle('on', p.id === PLAYERS.cur);
+    b.addEventListener('click', () => { if(p.id === PLAYERS.cur) return; sfx.tap(); playerSwitch(p.id); });
+    box.appendChild(b);
+  }
+}
+$('#btnPlayerAdd').addEventListener('click', () => { sfx.tap(); playerSwitch(null); });
 function renderWhoRow(){ $('#whoRow').hidden = isSabrinaPlayer(); $('#whoRowName').textContent = pname(); }
 $('#btnWhoMe').addEventListener('click', () => { sfx.tap(); whoFinish(L('Сабрина', 'Sabrina'), 'f'); });
 $('#btnWhoOther').addEventListener('click', () => {
@@ -563,7 +574,7 @@ $('#btnInstall').addEventListener('click', async () => {
 }
 
 buildTools(); renderMute(); renderMusic(); renderAlbumCount(); renderBucket();
-if(save.progress){ const st = $('#introStat'); st.textContent = L(`Ты уже вылечила пациентов: ${save.progress} · ракушек: ${save.shells} 🐚`, `Patients healed: ${save.progress} · shells: ${save.shells} 🐚`); st.hidden = false; $('#btnStart').textContent = L('Начать смену', 'Start a shift'); }
+if(save.progress){ const st = $('#introStat'); st.textContent = L(`Ты уже ${pg('вылечил', 'вылечила')} пациентов: ${save.progress} · ракушек: ${save.shells} 🐚`, `Patients healed: ${save.progress} · shells: ${save.shells} 🐚`); st.hidden = false; $('#btnStart').textContent = L('Начать смену', 'Start a shift'); }
 if(save.pet){ $('#introStat').textContent += ` · ${save.pet.name} ${petMissed() ? L(gg('соскучился', 'соскучилась'), 'misses you') : L('ждёт тебя', 'is waiting for you')} 🦭`; $('#btnIntroPet').hidden = false; }
 else if(adoptPending()){ $('#introStat').textContent += L(' · Кто-то ждёт тебя у льдины…', ' · Someone is waiting for you by the ice…'); $('#btnStart').textContent = L('Открыть больницу', 'Open the hospital'); }
 renderPetBtn();

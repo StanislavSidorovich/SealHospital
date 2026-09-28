@@ -9,10 +9,24 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, album, progress, muted, music, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story, who}.
+// Всё сохранение живёт под одним ключом sh.save: {version, who, album, progress, muted, music, free, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story, storm, sl, pt, bg}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
-const SAVE_KEY = 'sh.save', SAVE_VERSION = 1;
+// Игроки на устройстве (Фаза 11, часть 2): sh.players = [{id, name}], sh.player = кто играет сейчас. У каждого своё сохранение.
+// Первый игрок ('p1') живёт под прежним ключом sh.save — у Сабрины ничего не переезжает; остальные — под sh.save.<id>.
+// Список и выбор — настройка устройства (как язык), в код сохранения не входят; код переносит того, кто играет сейчас.
+const PLAYERS_KEY = 'sh.players', PLAYER_KEY = 'sh.player';
+const saveKeyOf = id => id === 'p1' ? 'sh.save' : 'sh.save.' + id;
+function loadPlayers(){
+  const a = store.get(PLAYERS_KEY, null);
+  const list = (Array.isArray(a) ? a : []).filter(p => p && typeof p.id === 'string' && /^p\d{1,3}$/.test(p.id)).map(p => ({id:p.id, name:typeof p.name === 'string' ? p.name.slice(0, 12) : ''}));
+  if(!list.length) list.push({id:'p1', name:''});
+  let cur = store.get(PLAYER_KEY, 'p1');
+  if(!list.some(p => p.id === cur)) cur = list[0].id;
+  return {list, cur};
+}
+const PLAYERS = loadPlayers();
+const SAVE_KEY = saveKeyOf(PLAYERS.cur), SAVE_VERSION = 1;
 const MIGRATIONS = [
   // 0 → 1: раньше было три отдельных ключа sh.album, sh.progress, sh.muted
   () => ({album:store.get('sh.album', []), progress:store.get('sh.progress', 0), muted:store.get('sh.muted', false)})
@@ -221,6 +235,23 @@ function loadSave(){
 }
 const save = loadSave();
 const persist = () => store.set(SAVE_KEY, save);
+// имя активного игрока — в списке (показывается в ⚙️ «Игроки»); список запоминаем при любом изменении
+function playersSave(){ store.set(PLAYERS_KEY, PLAYERS.list); store.set(PLAYER_KEY, PLAYERS.cur); }
+function playersSync(){
+  const me = PLAYERS.list.find(p => p.id === PLAYERS.cur);
+  if(save.who.asked && me.name !== save.who.name){ me.name = save.who.name; }
+  playersSave();
+}
+// Переключиться на другого игрока (или завести нового: id = null) — сцена собирается из сохранения при запуске, поэтому перезагружаем страницу.
+function playerSwitch(id){
+  persist();
+  if(!id){
+    let n = 1; while(PLAYERS.list.some(p => p.id === 'p' + n)) n++;
+    id = 'p' + n; PLAYERS.list.push({id, name:''});
+  }
+  PLAYERS.cur = id; playersSave(); location.reload();
+}
+playersSync();
 const pname = () => save.who.name;                          // имя игрока (по умолчанию — Сабрина)
 const pg = (m, f) => save.who.g === 'm' ? m : f;             // род игрока: pg('вылечил', 'вылечила')
 const isSabrinaPlayer = () => save.who.name === L('Сабрина', 'Sabrina') && save.who.g === 'f';   // папины письма и записки — только у неё

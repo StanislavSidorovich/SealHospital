@@ -126,7 +126,7 @@ async function glWhisper(){
   if(save.dive.gloom.st !== 1) return;
   save.dive.gloom.st = 2; persist(); D.glSoon = true;
   D.pause = true; D.hold = false; D.tgt = null;
-  await dvCard({ttl:L('Ты слышала? 🌑', 'Did you hear that? 🌑'),
+  await dvCard({ttl:L(`Ты ${pg('слышал', 'слышала')}? 🌑`, 'Did you hear that? 🌑'),
     txt:L('Уползая, Мгла тихонько всхлипывала: «хнык… хнык…» Кажется, она не злая, а грустная. Она вся в нефтяной мути и ничего не видит — поэтому и хватает всех подряд. А ещё Мгла боится света. В бухте светится планктон ✨ Давай в следующий раз отмоем Мглу светом!', 'As it crawled away, the Gloom was quietly sobbing: “sniff… sniff…” Maybe it is not mean, just sad. It is covered in oily murk and cannot see anything — that is why it grabs everyone. And the Gloom is afraid of light. There is glowing plankton in the bay ✨ Next time, let\'s wash the Gloom clean with light!'),
     btn:L('Поможем Мгле! ✨', 'Let\'s help the Gloom! ✨')});
   if(DV === D) D.pause = false;
@@ -366,7 +366,7 @@ function glOctoStep(dt){
   o.rotation.z = Math.sin(now*1.6 + O.ph)*0.12; o.rotation.y = Math.sin(now*0.7)*0.3;
 }
 function glOctoTap(){
-  const O = DV.glOcto, at = dvW(O.o.position).add(new V3(0, 1, 0)), says = [L('Спасибо, что отмыла меня! 💜', 'Thank you for washing me clean! 💜'), L('Я сторожу бочку!', 'I\'m guarding the barrel!'), L('Теперь я всё-всё вижу!', 'Now I can see everything!'), L('Обнимашки восемью лапками! 🐙', 'An eight-arm hug! 🐙')];
+  const O = DV.glOcto, at = dvW(O.o.position).add(new V3(0, 1, 0)), says = [L(`Спасибо, что ${pg('отмыл', 'отмыла')} меня! 💜`, 'Thank you for washing me clean! 💜'), L('Я сторожу бочку!', 'I\'m guarding the barrel!'), L('Теперь я всё-всё вижу!', 'Now I can see everything!'), L('Обнимашки восемью лапками! 🐙', 'An eight-arm hug! 🐙')];
   sfx.boing(); burst(TEX.heart, at, 8, 1.4, 0.26); floatText(says[O.sayI++ % says.length], at, '#8E6FD8');
 }
 // строчка в энциклопедии моря (dvBook)

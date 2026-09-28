@@ -102,7 +102,7 @@ async function iceBoard(sec, say){
       if(sc.ok === ICE_N){
         sfx.good(); sfx.hug(); row.classList.add('win'); go.disabled = true;
         burstDom({x:innerWidth/2, y:innerHeight*0.45});
-        P.querySelector('.ice-say').textContent = L('Разгадала! 🎉', 'Cracked it! 🎉');
+        P.querySelector('.ice-say').textContent = L(`${pg('Разгадал', 'Разгадала')}! 🎉`, 'Cracked it! 🎉');
         await wait(1.2); P.classList.add('away'); await wait(0.25);
         return res({n, tips, g});
       }
@@ -214,7 +214,7 @@ async function iceEnd(r, how){
   for(;;){
     const k = await new Promise(res => P.querySelectorAll('[data-k]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); res(b.dataset.k); })));
     if(k === 'tell'){
-      const t = L(`🧊 Я разгадала Ледяной код ICE-${how.code} за ${r.n} ${plural(r.n, 'попытку', 'попытки', 'попыток')}! ${iceItems(r.g).replace(/<[^>]+>/g, '')} ${'⭐'.repeat(stars)}`,
+      const t = L(`🧊 Я ${pg('разгадал', 'разгадала')} Ледяной код ICE-${how.code} за ${r.n} ${plural(r.n, 'попытку', 'попытки', 'попыток')}! ${iceItems(r.g).replace(/<[^>]+>/g, '')} ${'⭐'.repeat(stars)}`,
         `🧊 I cracked the ice code ICE-${how.code} in ${r.n} ${r.n === 1 ? 'guess' : 'guesses'}! ${iceItems(r.g).replace(/<[^>]+>/g, '')} ${'⭐'.repeat(stars)}`);
       const h = await iceShare(t);
       if(h === 'copied') toast(L('Скопировано! Вставь в WhatsApp 📋', 'Copied! Paste it into WhatsApp 📋'));

@@ -768,7 +768,7 @@ async function dvBookGift(){
   sv.book = true; if(!owns('pic_sea')) save.owned.push('pic_sea'); persist();
   sfx.hug(); burst(TEX.heart, headTop(DV.s), 16, 2.2, 0.3);
   await dvCard({img:typeof homeThumb === 'function' ? homeThumb('pic_sea') : '', ttl:L('Энциклопедия собрана! 📖', 'The sea book is complete! 📖'),
-    txt:L('Ты познакомилась со всеми жителями бухты. Подарок для иглу — картина «Морские жители» 🖼️', 'You met everyone in the bay. A gift for the igloo — the "Sea friends" picture 🖼️')});
+    txt:L(`Ты ${pg('познакомился', 'познакомилась')} со всеми жителями бухты. Подарок для иглу — картина «Морские жители» 🖼️`, 'You met everyone in the bay. A gift for the igloo — the "Sea friends" picture 🖼️')});
 }
 // книжка: все жители, незнакомые — силуэтами (как Покедекс)
 async function dvBook(){
@@ -916,7 +916,7 @@ async function dvTurtle(c){
   addShells(DV_TURTLE, toScreen(at));
   await wait(1.2);
   const fresh = !save.dive.seen.includes('turtle'); if(fresh){ save.dive.seen.push('turtle'); DV.fresh++; persist(); }
-  await dvCard({img:dvThumb('turtle'), ttl:L('Ты спасла черепаху! 🐢', 'You saved the turtle! 🐢'),
+  await dvCard({img:dvThumb('turtle'), ttl:L(`Ты ${pg('спас', 'спасла')} черепаху! 🐢`, 'You saved the turtle! 🐢'),
     txt:`${dvDef('turtle').fact} ${L('Старые сети и пакеты в море очень опасны для черепах и тюленей. Поэтому мусор — только в урну ♡', 'Old nets and plastic bags are very dangerous for turtles and seals. That is why rubbish always goes in the bin ♡')}`,
     got:fresh ? L('📖 Новый житель в энциклопедии!', '📖 New in the sea book!') : ''});
   dvHud();
@@ -1040,7 +1040,7 @@ function dvBallOut(){
   const gl = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW_TEX, transparent:true, depthWrite:false})); gl.scale.setScalar(1.6); b.add(gl);
   dvTap({k:'ball', r:0.5, p:() => b.position.clone(), on:() => DV.ball === b && !DV.carry, go:() => {
     DV.carry = b; b.children[0].visible = false; sfx.pop(); sfx.arf();
-    mgHint(L('Нашла мячик! Отнеси его акуле 🦈', 'You found the ball! Take it to the shark 🦈'));
+    mgHint(L(`${pg('Нашёл', 'Нашла')} мячик! Отнеси его акуле 🦈`, 'You found the ball! Take it to the shark 🦈'));
   }});
 }
 async function dvGiveBall(){

@@ -334,7 +334,7 @@ async function petWalk(s){
     ${res.find ? `<p class="got">${L('Новая находка:', 'New find:')} ${res.find.ic} ${res.find.name}!</p>` : ''}
     ${res.box ? `<p class="got">🎁 ${L('Коробка с игрой:', 'A game box:')} ${res.box.ic} ${res.box.name()}! ${L('Она в иглу 🎲', 'It is in the igloo 🎲')}</p>` : ''}
     <div class="finds">${cells}</div>
-    <p class="tip">${foundAll() ? L('Все находки собраны! Ты настоящий следопыт ♡', 'All finds collected! You are a real explorer ♡') : res.find ? L('Под снегом ещё много всего. Новая находка — завтра ✨', 'There is still lots under the snow. A new find tomorrow ✨') : L('Сегодняшнюю находку ты уже нашла. Новая спрячется под снегом завтра ✨', 'You already found today\'s treasure. A new one will hide under the snow tomorrow ✨')}</p>
+    <p class="tip">${foundAll() ? L('Все находки собраны! Ты настоящий следопыт ♡', 'All finds collected! You are a real explorer ♡') : res.find ? L('Под снегом ещё много всего. Новая находка — завтра ✨', 'There is still lots under the snow. A new find tomorrow ✨') : L(`Сегодняшнюю находку ты уже ${pg('нашёл', 'нашла')}. Новая спрячется под снегом завтра ✨`, 'You already found today\'s treasure. A new one will hide under the snow tomorrow ✨')}</p>
     <button class="btn" id="walkHome">${L('Домой ♡', 'Home ♡')}</button>`);
   await new Promise(r => mgOn(end.querySelector('#walkHome'), 'click', r));
   sfx.tap(); end.classList.add('away'); await wait(0.3);

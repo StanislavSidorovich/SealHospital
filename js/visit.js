@@ -528,7 +528,7 @@ async function vsBall(vis, pup){
 
 /* ---------- вкладка 🏝️ в «Вместе» (js/coop.js) ---------- */
 if(typeof CO_GAMES !== 'undefined') CO_GAMES.visit = {ic:'🏝️', name:() => L('В гости', 'Visit'),
-  say:() => L('Позови к себе на льдину — или поплыви в гости сам! Там вместе ухаживаете за малышом и оттуда выбираете игру.', 'Invite someone to your ice floe — or go visiting yourself! Look after the pup together and pick a game from there.'),
+  say:() => L(`Позови к себе на льдину — или поплыви в гости ${pg('сам', 'сама')}! Там вместе ухаживаете за малышом и оттуда выбираете игру.`, 'Invite someone to your ice floe — or go visiting yourself! Look after the pup together and pick a game from there.'),
   wins:() => save.coop.visit.n ? `🏝️ ${L(`Встреч в гостях: ${save.coop.visit.n}`, `Visits: ${save.coop.visit.n}`)}` : '',
   picks:() => `${save.pet ? `<button data-k="vhost" class="wide"><span class="ic">🏝️</span><b>${L('Позвать к себе', 'Invite over')}</b><small>${L('на льдину к малышу', 'to your pup\'s ice floe')}</small></button>` : ''}
     <button data-k="vjoin" class="wide"><span class="ic">⛵</span><b>${L('Поплыть в гости', 'Go visiting')}</b><small>${L('у меня есть код', 'I have a code')}</small></button>`};
