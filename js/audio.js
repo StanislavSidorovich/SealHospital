@@ -186,6 +186,7 @@ function musicMood(){
   if(b.contains('fin-on')) return 'fest';
   if(b.contains('storm-on')) return 'storm';
   if(b.contains('visit-on')) return 'pet';   // в гостях на чужой льдине (js/visit.js)
+  if(b.contains('isle-on')) return 'pet';   // 🗺️ гуляем по острову (js/island.js)
   if(b.contains('dive-on')) return 'sea';
   if(b.contains('run-on')) return R && R.paused ? 'map' : 'run';
   if(b.contains('map-on')) return 'map';

@@ -26,6 +26,7 @@ const MODES = {
   tricks: { pet: 1, run: `funPre = 'tricks'; petDo('fun')`, wait: 3 },
   run: { pet: 1, run: `funPre = 'run'; petDo('fun')`, wait: 3, clicks: ['.adv-map .isle.on'] },
   dive: { pet: 1, run: `funPre = 'dive'; petDo('fun')`, wait: 3 },
+  isle: { pet: 1, run: `funPre = 'isle'; petDo('fun')`, wait: 3 },
   chase: { pet: 1, run: `funPre = 'chase'; petDo('fun')`, wait: 3 },
   'slide-race': { run: `${HIDE} slideGame('race')` },
   'slide-time': { run: `${HIDE} slideGame('time')` },

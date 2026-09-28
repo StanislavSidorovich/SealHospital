@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, who, album, progress, muted, music, free, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story, storm, sl, pt, bg}.
+// Всё сохранение живёт под одним ключом sh.save: {version, who, album, progress, muted, music, free, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story, storm, sl, pt, bg, isl}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 // Игроки на устройстве (Фаза 11, часть 2): sh.players = [{id, name}], sh.player = кто играет сейчас. У каждого своё сохранение.
@@ -67,7 +67,14 @@ function sanitize(d){
     storm:sanitizeStorm(d.storm),   // 🌪️ Великий шторм (js/storm.js)
     sl:sanitizeSlide(d.sl),         // 🛷 Ледяная горка (js/slide.js)
     pt:sanitizePt(d.pt),            // 🐙🐻‍❄️ гости-пациенты (js/guests.js)
-    bg:sanitizeBg(d.bg)};           // 🎲 Игротека (js/boardgames.js)
+    bg:sanitizeBg(d.bg),            // 🎲 Игротека (js/boardgames.js)
+    isl:sanitizeIsl(d.isl)};        // 🗺️ прогулка по острову (js/island.js)
+}
+// isl = {got:[номера найденных звёздочек острова], n — сколько раз гуляли по острову} (js/island.js)
+function sanitizeIsl(a){
+  a = a && typeof a === 'object' ? a : {};
+  const got = Array.isArray(a.got) ? [...new Set(a.got.filter(i => Number.isInteger(i) && i >= 0 && i < 64))] : [];
+  return {got, n:Number.isFinite(a.n) ? Math.max(0, Math.floor(a.n)) : 0};
 }
 // bg = {got:[коробки игр на полке], n:{игра: сколько партий}, w:{игра: побед}, day:{d, n — партий сегодня (ракушки за первые)}, box — день коробки с прогулки}
 function sanitizeBg(a){

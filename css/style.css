@@ -991,3 +991,15 @@ body.bg-on #corner>:not(#bag){display:none!important}
 .mc:disabled{cursor:default}
 .mc:disabled .fr{opacity:.85;box-shadow:none}
 @media (prefers-reduced-motion:reduce){ .mc .bk,.mc .fr{transition:none} }
+/* 🗺️ Остров пешком (js/island.js, js/roam.js): большая кнопка прыжка справа внизу, «Идём ▶» у знака — слева от неё */
+.isl-jump{position:absolute;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);width:84px;height:84px;border-radius:50%;
+  border:3px solid var(--ink);background:#FFE38A;box-shadow:0 5px 0 var(--ink);font-size:40px;font-weight:800;color:var(--ink);cursor:pointer;
+  touch-action:none;-webkit-user-select:none;user-select:none}
+.isl-jump:active{transform:translateY(3px);box-shadow:0 2px 0 var(--ink)}
+.isl-go{position:absolute;left:16px;right:116px;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);max-width:360px;text-align:center;
+  background:var(--paper);border:2.5px solid var(--ink);border-radius:20px;box-shadow:0 4px 0 var(--ink);padding:8px 10px;animation:hintpop .3s ease-out}
+.isl-go p{margin:0;font-weight:800;font-size:18px}
+.isl-go .lock{font-weight:600;font-size:15px;margin-top:4px}
+.isl-go .btn{width:100%;min-height:52px;font-size:21px;padding:6px 10px}
+body.isle-on .mg-hint.bottom{bottom:calc(env(safe-area-inset-bottom,0px) + 118px)}
+body.isle-on .mg{touch-action:none}
