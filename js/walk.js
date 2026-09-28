@@ -2,8 +2,9 @@
    Кнопка ⚽ «Поиграть» в уголке малыша открывает выбор: мяч (petPlay в pet.js), прогулка или трюки.
    Прогулка: малыш прыгает рогаткой (потяни назад и отпусти) по 7 льдинкам за своим домиком, раскладка своя на каждый день;
    на четырёх что-то есть — ракушка, рыбка из воды, горстка ракушек, а в конце снежная горка. Раз в день под ней новая
-   находка в коллекцию. Дальние льдинки: пунктир только наполовину, 5-я и 6-я качаются. Промах — «плюх!», сам выбирается;
-   после двух промахов льдинка шире и не качается, после трёх подплывает. «В яблочко» и прогулка без «плюх» — ракушки.
+   находка в коллекцию. Куда приземлишься, видно только на первых двух льдинках, дальше пунктир наполовину; 5-я и 6-я
+   качаются. Промах — «плюх!», плывём на остров и прыгаем сначала (собранные находки не пропадают).
+   «В яблочко» и прогулка без «плюх» — ракушки.
    Трюки: «Дай ласту», «Прыжок», «Кувырок», «Мяч на носу» открываются по мере роста; каждое занятие +1 ⭐,
    три звезды — трюк выучен. Проиграть нельзя: малыш иногда путает трюк, это смешно, и пробуем ещё раз.
    Подключается после pet.js и до game.js. */
@@ -39,6 +40,7 @@ function emojiTex(e){
    0, 2, 4 — «кочки» поменьше. Промахнулся — «плюх!», малыш сам выбирается обратно, пробуем ещё. */
 const WALK_N = 7, WALK_EV = [1, 3, 5, 6];      // сколько льдинок и на каких сценки-находки
 const WALK_PULL = 1.7, WALK_MAX = 5.6;          // рогатка: метров полёта на метр натяжки, дальше не летит
+const WALK_SHOW = 2;                            // на скольких первых льдинках видно, куда приземлишься
 const WALK_EYE = 0.38;                          // «в яблочко»: так близко к середине льдинки
 const WALK_DRIFT = 0.8;                         // на сколько качается туда-сюда дальняя льдинка
 const WALK_CLEAN = 3;                           // ракушек за прогулку без «плюх» (и +1 за каждое «в яблочко»; в первых двух за день)
@@ -246,21 +248,21 @@ async function petWalk(s){
   sfx.arf(); floatText(L('Гулять!', 'Walk!'), headTop(s));
   await waddleTo(s, WALK_EDGE);
   let at = WALK_EDGE.clone(), atFloe = null;   // atFloe — на какой льдинке стоим (null — своя, у домика)
+  const evDone = new Set();                     // находки, которые уже собрали (после «плюх» не повторяются)
   for(let i = 0; i < WALK_N; i++){
     const f = WALK_FLOES[i];
-    let miss = 0;
+    let fell = false;
     for(;;){
       const to = floeTop(f);
       frame(at, to);
       await faceTo(s, to);
       ringAt = () => floeTop(f).add(new V3(0, 0.1, 0));
       mgHint(i === 0 && tut ? L('Потяни малыша назад, как рогатку, и отпусти! 🎯', 'Pull the pup back like a slingshot and let go! 🎯')
-        : miss ? L('Ещё разок! Тяни и отпускай 🎯', 'Once more! Pull and let go 🎯')
-        : i >= 3 ? L('Дальняя льдинка! Прикинь на глаз, куда долетишь', 'A far floe! Guess by eye how far you will fly')
+        : i >= WALK_SHOW ? L('Прикинь на глаз, куда долетишь 🎯', 'Guess by eye how far you will fly 🎯')
         : L('Тяни назад и отпускай — на льдинку с кружком', 'Pull back and let go — to the floe with the ring'));
-      const shot = await aim(f, i < 3 || miss > 0, i >= 4 && miss < 2, i === 0 && tut && !miss, at);
+      const shot = await aim(f, i < WALK_SHOW, i >= 4, i === 0 && tut, at);
       ringAt = null; sfx.tap();
-      const L0 = shot.L, own = atFloe ? floeTop(atFloe) : null;
+      const L0 = shot.L;
       const onFloe = g => Math.hypot(L0.x - g.position.x, L0.z - g.position.z) < floeR(g)*0.92;
       if(onFloe(f)){   // долетели!
         await slingHop(s, at, L0, shot.dist);
@@ -270,33 +272,33 @@ async function petWalk(s){
           res.eye++; sfx.ding(); burst(TEX.star, L0.clone().add(new V3(0, 0.3, 0)), 8, 1.4, 0.22);
           floatText(L('В яблочко! 🎯', 'Bullseye! 🎯'), headTop(s), '#2F9E72');
           if(bonus){ addShells(1, toScreen(L0)); res.shells++; }
-        } else if(!miss) floatText(L(['Оп!', 'Хоп!', 'Есть!'], ['Hop!', 'Boing!', 'Got it!'])[i % 3], headTop(s));
+        } else floatText(L(['Оп!', 'Хоп!', 'Есть!'], ['Hop!', 'Boing!', 'Got it!'])[i % 3], headTop(s));
         if(tut){ tut = false; if(typeof tipDone === 'function') tipDone('sling'); }
         if(off > 0.25) await waddleTo(s, floeTop(f), 0.45);
         break;
       }
-      const other = (!atFloe && Math.hypot(L0.x - PET_POS.x, L0.z - PET_POS.z) < 2.8) || WALK_FLOES.some(g => g !== f && onFloe(g));
-      if(other){   // слабовато или не на ту льдинку — прыгнули и вернулись
-        await slingHop(s, at, L0, shot.dist);
-        floatText(shot.dist < 2 ? L('Слабовато! Тяни сильнее', 'Too weak! Pull harder') : L('Ой, не туда! 🙃', 'Oops, wrong way! 🙃'), headTop(s));
-        if(L0.distanceTo(at) > 0.3){ await wait(0.3); await slingHop(s, L0, at, L0.distanceTo(at)); }
+      if(atFloe ? onFloe(atFloe) : Math.hypot(L0.x - PET_POS.x, L0.z - PET_POS.z) < 2.8){   // слабовато: прыгнул по своей льдине
+        await slingHop(s, at, L0, shot.dist); at = L0;
+        floatText(L('Слабовато! Тяни сильнее', 'Too weak! Pull harder'), headTop(s));
         continue;
       }
-      // плюх! — малыш сам выбирается обратно
-      miss++; res.plop++;
-      await plop(s, at, L0, shot.dist, own || PET_POS.clone().setY(0.25), own ? floeR(atFloe) : 2.8);
-      if(miss === 2){   // помогаем: льдинка больше не качается и становится шире
-        const u = f.userData; u.r *= 1.25; u.f.scale.set(u.r, 1, u.r); u.fm.scale.setScalar(u.r);
-        sfx.pop(); burst(TEX.star, floeTop(f).add(new V3(0, 0.3, 0)), 8, 1.4, 0.24);
-        floatText(L('Льдинка стала побольше 😊', 'The floe got bigger 😊'), floeTop(f).add(new V3(0, 0.6, 0)), '#2F9E72');
+      if(WALK_FLOES.some(g => g !== f && onFloe(g))){   // не на ту льдинку — прыгнули и вернулись
+        await slingHop(s, at, L0, shot.dist);
+        floatText(L('Ой, не туда! 🙃', 'Oops, wrong way! 🙃'), headTop(s));
+        await wait(0.3); await slingHop(s, L0, at, L0.distanceTo(at));
+        continue;
       }
-      if(miss === 3){   // и подплывает поближе
-        const d = floeTop(f).sub(at).setY(0).multiplyScalar(0.3), p0 = f.position.clone();
-        await tween(0.8, q => f.position.copy(p0).sub(d.clone().multiplyScalar(q)), ease.io);
-        f.userData.x0 = f.position.x;
-      }
+      // плюх! — плывём на остров и начинаем сначала (собранное не пропадает)
+      res.plop++; fell = true;
+      await plop(s, at, L0, shot.dist);
+      mgHint(L('Плывём на остров — и снова вперёд! 💪', 'Swimming back to the island — and off we go again! 💪'));
+      at = WALK_EDGE.clone(); atFloe = null;
+      break;
     }
+    if(fell){ i = -1; continue; }
     at = floeTop(f); atFloe = f;
+    if(evDone.has(i)) continue;
+    evDone.add(i);
     const ev = WALK_EV.indexOf(i);
     if(ev < 0) continue;
     camGlide(at.clone().add(new V3(0, 0.45 + 0.4*sc, 0.4)), 3.3*(0.6 + 0.4*k), 0.7, 0, 0.45);   // находку смотрим почти спереди
@@ -337,23 +339,24 @@ async function slingHop(s, from, to, dist){
   burst(TEX.puff, to.clone().add(new V3(0, 0.1, 0)), 6, 1, 0.4);
   await squash(s, 0.22, 0.3);
 }
-// недолёт или перелёт: «плюх!» в воду, подплыть к краю своей льдинки и выбраться обратно
-async function plop(s, from, to, dist, home, homeR){
-  const r = s.root, h = 0.5 + dist*0.22, water = to.clone().setY(-0.55);
+// недолёт или перелёт: «плюх!» в воду — и вплавь обратно на свою льдину у домика
+async function plop(s, from, to, dist){
+  const r = s.root, sc = petScale(), h = 0.5 + dist*0.22, water = to.clone().setY(-0.55);
   s.root.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
   s.flap = 0.8; sfx.whoosh();
   await tween(0.45 + dist*0.07, k => { r.position.lerpVectors(from, water, k); r.position.y = from.y + (water.y - from.y)*k + Math.sin(k*Math.PI)*h; }, ease.lin);
   s.flap = 0; sfx.splash(); burst(TEX.puff, water.clone().setY(0.1), 12, 1.8, 0.45);
   s.swimming = true;
   floatText(L(['Плюх!', 'Буль!', 'Брр!'], ['Splash!', 'Blub!', 'Brr!'])[Math.floor(Math.random()*3)], water.clone().setY(1.2), '#3B8FC4');
-  await wait(0.35);
-  const out = water.clone().sub(home).setY(0), edge = home.clone().add(out.normalize().multiplyScalar(homeR*0.95)).setY(-0.55);
-  await faceTo(s, edge);
-  await tween(0.4 + water.distanceTo(edge)*0.25, k => { r.position.lerpVectors(water, edge, k); r.position.y = -0.55; }, ease.io);
+  await wait(0.5);
+  const shore = WALK_EDGE.clone().add(new V3(0.9, 0, -0.9)).setY(-0.55);
+  const follow = () => focusCam(r.position.clone().setY(0.6 + 0.5*sc), 4.2, 0.2, WALK_UP);
+  await faceTo(s, shore);
+  await tween(Math.max(1.2, water.distanceTo(shore)*0.12), k => { r.position.lerpVectors(water, shore, k); r.position.y = -0.55; follow(); }, ease.io);
   sfx.splash(); s.swimming = false; s.inner.position.y = 0;
-  await tween(0.55, k => { r.position.lerpVectors(edge, from, k); r.position.y += Math.sin(k*Math.PI)*0.9; }, ease.lin);
-  r.position.copy(from); sfx.thud(); await squash(s);
-  shakeOff(s);
+  await tween(0.55, k => { r.position.lerpVectors(shore, WALK_EDGE, k); r.position.y += Math.sin(k*Math.PI)*0.9; follow(); }, ease.lin);
+  r.position.copy(WALK_EDGE); sfx.thud(); await squash(s);
+  await shakeOff(s);
 }
 function shakeOff(s){   // отряхнулся от воды
   sfx.drip();
