@@ -105,6 +105,7 @@ const STORY = [
     items:[
       {ic:'🚪', t:L('Загляни в иглу', 'Peek into the igloo'), ok:() => save.home.v, go:'home'},
       {ic:'🛋️', t:L('Обставь 5 мест в иглу', 'Furnish 5 spots in the igloo'), n:() => [Object.keys(save.home.s).length, 5], go:'home'},
+      {ic:'🐠', t:L('Построй в иглу океанариум', 'Build an oceanarium in the igloo'), ok:() => !!save.home.rooms.ocean, go:'home'},
       {ic:'🐟', t:L('Поймай 5 разных рыбок моря', 'Catch 5 different sea fish'), n:() => [save.sea.got.length, 5], go:'hosp'},
       {ic:'📸', t:L('Сфотографируй 8 жителей бухты', 'Photograph 8 bay creatures'), n:() => [save.dive.seen.length, 8], go:'dive'},
       {ic:'🦀', t:L('Позови 3 жителей бухты в аквариум', 'Invite 3 bay creatures to the fish tank'), n:() => [save.dive.tank.length, 3], go:'dive'},

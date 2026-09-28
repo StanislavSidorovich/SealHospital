@@ -122,3 +122,10 @@
 - «Идём ▶» у знака: `document.querySelector('.isl-go button').click()` → остров закрывается, через ≈1 с открывается место (`stGo`). Выход — `#btnRunHome`.
 - Держать палец — мышью в headless Edge: `mouse.move(x, y); mouse.down(); … mouse.up()` (малыш идёт, пока держишь). Касание по подписи места (≈60 px вокруг) — идёт туда сам, поэтому для «держи палец» бери точку подальше от подписей.
 - Проверено 28.09 на 375×812 (headless Edge, 60 к/с): ходьба и холм со звёздочкой, горка на пузике, причал → «Бухта» (ныряем), прыжок-кувырок из воды, маяк закрыт до главы 8, лавка открывается, 🏠 — обратно в уголок с тостом.
+
+## 🐠 Океанариум (js/ocean.js)
+
+- Быстро: сохранение с малышом, `save.home.v = true; await homeEnter(); ocOrder()` → `#ocBuy` (в `?test=1` строится сразу) → `await ocGo()`. Сразу в комнату: `save.home.rooms = {ocean: 2}` и `homeEnter().then(ocGo)` (так делает `smoke.js`, режим `ocean`).
+- Жители: `save.sea.got`, `save.adv.fish`, `save.dive.tank` (`crab, starfish, jelly, anemone, urchin, octopus`), гости: `save.dive.shark.friend` (+`tooth: 2` — останавливается у стекла), `save.dive.turt`, `save.dive.gloom.st >= 3` (Клякса). Состояние — объект `OC` (`OC.res`, `OC.pals`, `OC.vis`, `OC.schools`).
+- Касания без пальца: `ocTap(x, y)` (CSS-пиксели), `ocKnock(точка)`, `ocFeed()`, `ocDive()`, `ocBack()`. Стройка «на завтра»: `save.home.build = {id:'ocean', d:'вчера'}` → `ocReady()`.
+- Малыш занят (`busy`) — `homeLeave()` отвечает «Сначала закончи»: подожди `busy === false`.

@@ -344,7 +344,7 @@ codeBox.addEventListener('input', () => { $('#codeAsk').hidden = true; codeNew =
    Раз в кадр смотрим, где сейчас игрок (statPlace), и копим секунды по местам в save.st.g. Время идёт, только
    пока вкладка видна и экран трогали последние STAT_IDLE секунд: телефон, забытый на столе, не считается. */
 const STAT_IDLE = 60;
-const STAT_NAMES = {hosp:['🏥 Больница', '🏥 Hospital'], pet:['🦭 Малыш', '🦭 Pup'], home:['🏠 Иглу', '🏠 Igloo'], map:['🗺️ Карта забегов', '🗺️ Run map'],
+const STAT_NAMES = {hosp:['🏥 Больница', '🏥 Hospital'], pet:['🦭 Малыш', '🦭 Pup'], home:['🏠 Иглу', '🏠 Igloo'], ocean:['🐠 Океанариум', '🐠 Oceanarium'], map:['🗺️ Карта забегов', '🗺️ Run map'],
   run:['🏃 Забег', '🏃 Run'], road:['☁️ Дорога к Туче', '☁️ Road to the Cloud'], cloud:['⛈️ Бой с Тучей', '⛈️ Cloud battle'], gull:['🕊️ Чайка', '🕊️ Gull'],
   bay:['🌊 Потеряшка: Бухта', '🌊 Lost pup: Bay'], grot:['🕯️ Потеряшка: Грот', '🕯️ Lost pup: Grotto'], snow:['❄️ Потеряшка: Метель', '❄️ Lost pup: Blizzard'],
   dive:['🤿 Бухта под водой', '🤿 Underwater bay'], chase:['🦈 Салки с акулой', '🦈 Shark tag'], slide:['🛷 Ледяная горка', '🛷 Ice slide'], gloom:['🌑 Мгла', '🌑 Gloom'],
@@ -365,6 +365,7 @@ function statPlace(){
   if(b.contains('chase-on')) return 'chase';
   if(b.contains('slide-on')) return 'slide';
   if(b.contains('isle-on')) return 'isle';
+  if(b.contains('ocean-on')) return 'ocean';
   if(b.contains('dive-on')) return 'dive';
   if(b.contains('run-on')) return CR ? 'road' : CO ? 'cloud' : GL ? 'gull' : Q ? (Q.L && Q.L.id) || 'bay' : 'run';
   if(b.contains('map-on')) return 'map';

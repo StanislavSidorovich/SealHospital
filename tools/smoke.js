@@ -21,6 +21,7 @@ const MODES = {
   hospital: { run: `$('#btnStart').click()` },
   pet: { run: PET },
   home: { pet: 1, run: `homeEnter()`, wait: 3 },
+  ocean: { pet: 1, run: `save.home.rooms = {ocean: 2}; homeEnter().then(() => ocGo())`, wait: 5 },
   ball: { pet: 1, run: `funPre = 'ball'; petDo('fun')`, wait: 3 },
   walk: { pet: 1, run: `funPre = 'walk'; petDo('fun')`, wait: 3 },
   tricks: { pet: 1, run: `funPre = 'tricks'; petDo('fun')`, wait: 3 },
