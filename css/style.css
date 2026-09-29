@@ -499,6 +499,13 @@ body:not(.pet-mode) .night{opacity:0}
 body:not(.home-mode) #homeCard,body:not(.home-mode) #homeBar,body:not(.home-mode) .home-dim{display:none!important}
 body.home-mode #petCard,body.home-mode #petBar{display:none!important}
 body.mg-on #homeCard,body.mg-on #homeBar{display:none!important}
+/* 🐾 «Ходить» по иглу (js/homewalk.js): кнопка прыжка над нижней панелью */
+#hwJump{z-index:4;bottom:calc(env(safe-area-inset-bottom,0px) + 132px);width:72px;height:72px;font-size:34px}
+body:not(.home-mode) #hwJump,body.mg-on #hwJump{display:none!important}
+.tr-list{max-height:48vh;overflow:auto;text-align:left;margin:6px 0}
+.tr-list p{margin:5px 0;font-size:15px;line-height:1.3}
+.tr-list p span{display:inline-block;width:1.6em}
+.tr-list p.no{opacity:.6}
 .home-card p{margin:0 0 4px}
 .home-card .count{font-size:12.5px!important;font-weight:800!important;color:var(--soft);margin:0!important}
 .home-bar .tool.on .face{background:var(--mint);box-shadow:0 4px 0 var(--ink),0 0 0 4px var(--mint-d)}

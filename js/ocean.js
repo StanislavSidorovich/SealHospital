@@ -588,14 +588,7 @@ async function ocBack(){
   await waddleTo(s, hp(HOME_SPOT[0], HOME_SPOT[1]), 1.0); await turnTo(s, 0, 0.3);
   setBusy(false);
 }
-function ocRoomGo(){ if(homeRoom === 'hall') ocGo(); else ocBack(); }
-function ocRoomBtn(b){
-  if(!b) return;
-  b.hidden = !ocBuilt();
-  const hall = homeRoom === 'hall';
-  b.querySelector('.face').textContent = hall ? '🐠' : '🏠';
-  b.querySelector('.name').textContent = hall ? L('Океанариум', 'Oceanarium') : L('Прихожая', 'Hallway');
-}
+// кнопка «Комнаты» внизу и переходы между комнатами — в js/rooms.js (rmRoomBtn, rmRoomGo)
 function ocView(instant){
   const portrait = innerWidth < innerHeight, c = hp(0, -1.4, 1.4), size = portrait ? 8.6 : 10.5, lift = portrait ? -2.2 : -0.8, up = 0.38;
   if(!instant) return camGlide(c, size, 0.6, lift, up);
@@ -663,11 +656,17 @@ function ocHallTick(t, dt){
   if(U.builder) U.builder.position.y = Math.abs(Math.sin(t*4))*0.06;
   if(U.st === 'open' && (U.bt -= dt) < 0){ U.bt = 1.2 + Math.random(); emit(SOAP_TEX, OC_HALL.localToWorld(new V3((Math.random() - 0.5)*0.6, 0.3, 0.1)), {v:new V3(0, 0.5, 0.15), life:1.8, size:0.12}); }
 }
-function ocHallTap(cx, cy){
-  if(!OC_HALL.visible) return;
+function ocHallHit(cx, cy){
+  if(!OC_HALL.visible) return false;
   ocRay(cx, cy);
   const q = toScreen(OC_HALL.userData.mark.getWorldPosition(new V3()));
-  if(!ray.intersectObject(OC_HALL, true).length && Math.hypot(q.x - cx, q.y - cy) > 44) return;
+  return ray.intersectObject(OC_HALL, true).length > 0 || Math.hypot(q.x - cx, q.y - cy) <= 44;
+}
+function ocHallTap(cx, cy){   // true — касание было по арке (тогда другие арки не проверяем, js/rooms.js)
+  if(!ocHallHit(cx, cy)) return false;
+  ocHallAct(); return true;
+}
+function ocHallAct(){
   const st = ocState();
   if(st === 'open') return ocGo();
   if(st === 'build'){
@@ -679,6 +678,7 @@ function ocHallTap(cx, cy){
 // заказать стройку: окошко с ценой, как выбор мебели
 async function ocOrder(){
   if(busy || !mgRoot.hidden) return;
+  if(save.home.build && save.home.build.id !== 'ocean'){ sfx.tap(); return toast(L(`${ocWho()} ещё строит другую комнату. Подожди до завтра 🚧`, `${ocWho()} is still building another room. Wait until tomorrow 🚧`), 3400); }   // строитель один (js/rooms.js)
   setBusy(true);
   camGlide(OC_HALL.getWorldPosition(new V3()).add(new V3(0, 0.9, 0)), 3.6, 0.6, 0.6, 0.45);
   mgOpen(L('🐠 Океанариум', '🐠 Oceanarium'));

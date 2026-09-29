@@ -11,7 +11,7 @@
 |---|---|---|
 | `node tools/check.js` | 1–2 с | синтаксис всех js и `sw.js`; набор `<script>` в `index.html` = `CORE` в `sw.js` = файлы в `js/`; поля `sanitize()` = шапка `data.js` = список `sh.save` в `CLAUDE.md`; файлы из `manifest.json`; устаревшие фразы в `CLAUDE.md` (`STALE`); **предупреждения**: функции из документации, которых нет в коде, и «Ты нашла…» без `pg()`. `--strict` — предупреждения тоже ошибка |
 | `node tools/flows.js` | ≈20 с | сценарии с результатом: игроки на устройстве, код сохранения туда-обратно, старые ключи `sh.album/…`, битое сохранение, «новое устройство», род игрока. `--only=players`, `--verbose` |
-| `node tools/smoke.js` | ≈2–3 мин | все 32 режима в чистом браузере 375×812: 8 с случайных касаний и свайпов, ошибки консоли/страницы, зависание (<3 кадров/с), время до первого экрана, куча JS, текстуры/геометрии. `--all` — второй проход по-английски за мальчика, `--only=slide-race,storm-4`, `--sec=15`, `--jobs=3`, `--no-taps` |
+| `node tools/smoke.js` | ≈2–3 мин | все 39 режимов в чистом браузере 375×812: 8 с случайных касаний и свайпов, ошибки консоли/страницы, зависание (<3 кадров/с), время до первого экрана, куча JS, текстуры/геометрии. `--all` — второй проход по-английски за мальчика, `--only=slide-race,storm-4`, `--sec=15`, `--jobs=3`, `--no-taps` |
 
 - Новый режим — строчка в `MODES` (`tools/smoke.js`): `run` — выражение для страницы, `pet:1` — сначала зайти в уголок, `clicks` — что нажать после старта, `taps:false` — без случайных касаний. Сохранение для прогона — `makeSave()` там же (открыто всё: `free:true`).
 - Шум, который `smoke.js` нарочно не считает ошибкой: `navigator.vibrate`, недоступные шрифты Google, PeerJS/WebSocket без интернета, автозапуск звука (`IGNORE`). Всё остальное в консоли — ошибка.
@@ -135,3 +135,10 @@
 - Жители: `save.sea.got`, `save.adv.fish`, `save.dive.tank` (`crab, starfish, jelly, anemone, urchin, octopus`), гости: `save.dive.shark.friend` (+`tooth: 2` — останавливается у стекла), `save.dive.turt`, `save.dive.gloom.st >= 3` (Клякса). Состояние — объект `OC` (`OC.res`, `OC.pals`, `OC.vis`, `OC.schools`).
 - Касания без пальца: `ocTap(x, y)` (CSS-пиксели), `ocKnock(точка)`, `ocFeed()`, `ocDive()`, `ocBack()`. Стройка «на завтра»: `save.home.build = {id:'ocean', d:'вчера'}` → `ocReady()`.
 - Малыш занят (`busy`) — `homeLeave()` отвечает «Сначала закончи»: подожди `busy === false`.
+
+## 🚪 Комнаты иглу и 🐾 «Ходить» (js/rooms.js, gameroom.js, trophyroom.js, homewalk.js)
+
+- Быстро: сохранение с малышом и `save.home.rooms = {games: 2, trophy: 2, ocean: 2}` → `await homeEnter(); await rmGo('games' | 'trophy')` (так делает `smoke.js`, режимы `games`, `trophy`, `homewalk`). Стройка: `rmOrder('games')` → `#rmBuy` (в `?test=1` строится сразу), «на завтра» — `save.home.build = {id:'games', d:'вчера'}` → `rmReady('games')`. Назад — `rmBack()` (океанариум — `ocBack()`). Комната стоит далеко: `RM.games.pos` x=320, `RM.trophy.pos` x=380.
+- Малыш занят (`busy`) — подожди `busy === false`; чтобы не бродил сам: `homeIdleT = 999`. Мебель с ценой в проверке не «есть», пока её нет в `save.owned` (в комнате будут ➕) — для картинки пропиши `save.owned`.
+- Игровая: `gmPlay('memo')` (коробка) / `gmPlay(null)` (полка), `gmBoard()`. Трофеи: `trAct('cups' | 'medals' | 'finds' | 'album' | 'diploma')`; медали — `TR_MEDALS.map(trMedalOk)`. Панели закрываются `#trOk`, `#gmOk`.
+- Ходьба: `await hwToggle()` (или `#homeWalkBtn`), состояние — `HW` (`HW.R` — состояние roam: `pos`, `air`, `goal`, `hold`), `hwOn()`. Держать палец: мышь `down` в точке пола → малыш идёт туда (`HW.R.pos` — в метрах от центра комнаты); прыжок — `HW.R.jumpQ = true` или пробел. Касание вещи: экранная точка `toScreen(homeItems.bed.getWorldPosition(new V3()))` → пойдёт и поиграет; арки — `toScreen(RM.games.arch.userData.mark.getWorldPosition(new V3()))` + 40 px вниз (значок ➕ пустого места на стене рядом с аркой перехватит касание — ставь мебель). Без 60 к/с: headless Edge, как в «Ледяная горка».

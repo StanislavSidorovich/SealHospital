@@ -5,7 +5,7 @@
    в воде плывёт быстрее, чем ходит. Камера сзади-сверху и сама не крутится (на телефоне от этого укачивает).
    Мир описывает одна функция высоты ground(x, z): земля, горы, крыши, льдинки. Куда нельзя забраться шагом —
    туда можно запрыгнуть (крутой край = стенка). Ниже ROAM_DEEP — вода: малыш плывёт на уровне ROAM_SWIM.
-   Сейчас этим пользуется остров (js/island.js); потом — иглу с комнатами (Спринт 7, задача 5).
+   Этим пользуются остров (js/island.js) и «Ходить самой» в комнатах иглу (js/homewalk.js: камеру ведёт сама комната, nocam).
    roamStart({s, at, pos, ground, bounce, onGoal}) → R; каждый кадр roamStep(R, dt); выход — roamStop(R).
    Подключается после walk.js (squash, burst) и до island.js. */
 const ROAM_WALK = 4.4, ROAM_SWIMV = 6.2, ROAM_SLIDEV = 11;   // м/с: пешком, вплавь, на пузике с горы
@@ -14,8 +14,8 @@ const ROAM_DEEP = -0.3, ROAM_SWIM = -0.5;                     // где уже �
 const ROAM_STEEP = 1.7;                                       // круче этого шагом не забраться — только прыжком
 const ROAM_CAM = {w:10, min:10, up:0.62, look:0.8, fov:50};   // камера: сколько метров по ширине в кадре, ближе не подъезжает, насколько сверху
 
-function roamStart({s, at, pos, ground, bounce = null, onGoal = null}){
-  const R = {s, at, pos:pos.clone(), vy:0, vel:new V3(), yaw:0, air:false, water:false, slide:0, tumble:0,
+function roamStart({s, at, pos, ground, bounce = null, onGoal = null, vk = 1, nocam = false, noslide = false}){   // vk — во сколько раз медленнее/быстрее (в иглу тесно), nocam — камеру ведёт не roamCam, noslide — не ложиться на пузико со склона
+  const R = {s, at, pos:pos.clone(), vk, nocam, noslide, vy:0, vel:new V3(), yaw:0, air:false, water:false, slide:0, tumble:0,
     tgt:null, hold:false, pid:null, goal:null, key:new V3(), ground, bounce, onGoal, cam:new V3(), camLook:new V3(), camOn:false,
     puffT:0, stepT:0, jumpQ:false, still:0};
   R.pos.y = roamFloor(R, R.pos.x, R.pos.z);
@@ -76,12 +76,12 @@ function roamStep(R, dt){
   R.water = R.ground(P.x, P.z) < ROAM_DEEP;
   const onGround = !R.air;
   // на пузике: едем вниз по склону — разгоняемся; в гору и по ровному — снова лапками
-  let vmax = (R.water ? ROAM_SWIMV : ROAM_WALK)*(0.8 + 0.2*sc);
-  if(onGround && !R.water && want.lengthSq() > 0.01){
+  let vmax = (R.water ? ROAM_SWIMV : ROAM_WALK)*(0.8 + 0.2*sc)*R.vk;
+  if(onGround && !R.water && want.lengthSq() > 0.01 && !R.noslide){
     const ahead = R.ground(P.x + want.x*0.6, P.z + want.z*0.6), drop = (floor0 - ahead)/0.6;
     R.slide += ((drop > 0.18 ? Math.min(1, (drop - 0.18)*2.2) : 0) - R.slide)*Math.min(1, dt*(drop > 0.18 ? 3 : 5));
   } else if(!R.air) R.slide += (0 - R.slide)*Math.min(1, dt*5);
-  vmax += (ROAM_SLIDEV - vmax)*R.slide;
+  vmax += (ROAM_SLIDEV*R.vk - vmax)*R.slide;
   const tv = want.multiplyScalar(vmax);
   R.vel.lerp(tv, Math.min(1, dt*(R.air ? 3 : tv.lengthSq() ? 6 : 4)));
   // шаг по x и z отдельно: упёрлись в стенку по одной оси — скользим вдоль неё
@@ -116,7 +116,7 @@ function roamStep(R, dt){
     if(b){ R.air = true; R.vy = b; sfx.pop(); squash(s, 0.3, 0.25); burst(TEX.star, R.at.clone().add(P).add(new V3(0, 0.3, 0)), 8, 1.8, 0.24); }
   }
   roamPose(R, dt);
-  roamCam(R, dt);
+  if(!R.nocam) roamCam(R, dt);
 }
 // как выглядит малыш: куда смотрит, переваливается, лежит на пузике, плывёт, кувыркается
 function roamPose(R, dt){

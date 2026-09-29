@@ -496,11 +496,14 @@ async function homeEnter(){
     : L(`${save.pet.name} дома ♡`, `${save.pet.name} is home ♡`), first ? 5200 : 2200);
   homeIdleT = 12; setBusy(false);
   if(!first && typeof ocHallNews === 'function') ocHallNews();   // медведь достроил комнату — позвать туда
+  if(!first && typeof rmHallNews === 'function') rmHallNews();   // …или другую (js/rooms.js)
+  if(typeof hwNews === 'function') hwNews();   // один раз подсказать про «Ходить» (js/homewalk.js)
 }
 // выйти из домика (сразу, без анимации): малыш снова на своей льдине, камера — над уголком
 function homeExit(){
   if(!homeMode) return;
   flash();
+  if(typeof hwStop === 'function') hwStop();   // ходьба по комнате (js/homewalk.js)
   if(homeRoom !== 'hall'){ const R = HOME_ROOMS[homeRoom]; homeRoom = 'hall'; if(R.leave) R.leave(); }
   homeMode = false; homeEdit = false; homeDrag = null; document.body.classList.remove('home-mode'); homeRoot.visible = false;
   scene.fog = FOG; snow.visible = true; homeLights(false); $('#homeDim').classList.remove('on');
@@ -520,11 +523,12 @@ function renderHomeBtn(){
   b.hidden = !save.pet || !petMode;
   $('#homeIc').textContent = homeMode ? '🚪' : '🏠';
   b.setAttribute('aria-label', homeMode ? L('Выйти из домика', 'Leave the home') : L('Мой домик', 'My home'));
-  $('#homeAlert').hidden = homeMode || !save.pet || (save.home.v && !(typeof ocAlert === 'function' && ocAlert()));
+  $('#homeAlert').hidden = homeMode || !save.pet || (save.home.v && !(typeof ocAlert === 'function' && ocAlert()) && !(typeof rmAlert === 'function' && rmAlert()));
 }
 function homeUi(){
   if(!save.pet) return;
-  if(typeof ocRoomBtn === 'function') ocRoomBtn($('#homeRoomBtn'));
+  if(typeof rmRoomBtn === 'function') rmRoomBtn($('#homeRoomBtn'));
+  if(typeof hwBtn === 'function') hwBtn($('#homeWalkBtn'));
   const R = HOME_ROOMS[homeRoom]; if(R.ui) return R.ui();
   const name = save.pet.name, hall = roomSlots(), n = hall.filter(k => homeItems[k]).length;
   $('#homeName').textContent = L(`Здесь живёт ${name}`, `${name} lives here`);
@@ -539,13 +543,14 @@ function homeEditUi(){
 }
 function buildHomeBar(){
   const nav = $('#homeBar'); nav.innerHTML = '';
-  for(const [id, ic, name, fn] of [['homeEditBtn', '🛋️', L('Обустроить', 'Decorate'), () => { homeEdit = !homeEdit; homeIdleT = 12; homeUi(); }],
-                                   ['homeRoomBtn', '🐠', '', () => { if(typeof ocRoomGo === 'function') ocRoomGo(); }],   // в другую комнату (js/ocean.js)
+  for(const [id, ic, name, fn] of [['homeEditBtn', '🛋️', L('Обустроить', 'Decorate'), () => { if(!homeEdit && typeof hwStop === 'function') hwStop(); homeEdit = !homeEdit; homeIdleT = 12; homeUi(); }],
+                                   ['homeWalkBtn', '🐾', L('Ходить', 'Walk'), () => { if(typeof hwToggle === 'function') hwToggle(); }],   // ходить самой (js/homewalk.js)
+                                   ['homeRoomBtn', '🐠', '', () => { if(typeof rmRoomGo === 'function') rmRoomGo(); }],   // в другую комнату (js/rooms.js)
                                    ['homeOutBtn', '🚪', L('Выйти', 'Go out'), homeLeave]]){
     const b = document.createElement('button'); b.className = 'tool'; b.id = id;
     b.innerHTML = `<span class="face" aria-hidden="true">${ic}</span><span class="name">${name}</span>`;
     b.addEventListener('click', () => { sfx.tap(); fn(); });
-    if(id === 'homeRoomBtn') b.hidden = true;
+    if(id === 'homeRoomBtn' || id === 'homeWalkBtn') b.hidden = true;
     nav.appendChild(b);
   }
 }
@@ -569,6 +574,7 @@ function homeHitSlot(e){
 function homeTap(e){
   if(!petSeal || busy || !mgRoot.hidden) return;
   homeIdleT = 12;
+  if(typeof hwTap === 'function' && hwTap(e)) return;   // идёт ходьба (js/homewalk.js): палец ведёт малыша
   if(petPart(e)){   // малыш: письмо в зубах или погладить
     if(petLetterTap()) return;
     stroke = {id:e.pointerId, x:e.clientX, y:e.clientY, d:0, fx:0, done:false};
@@ -900,8 +906,9 @@ function homeTick(t, dt){
     if(u.glow && !homeLight){ const q = toScreen(u.glow.getWorldPosition(new V3())), dim = $('#homeDim').style; dim.setProperty('--x', q.x + 'px'); dim.setProperty('--y', q.y + 'px'); }
   }
   const R = HOME_ROOMS[homeRoom]; if(R.tick) R.tick(t, dt);
+  if(typeof hwTick === 'function') hwTick(dt);   // ходьба по комнате (js/homewalk.js)
   // малыш сам подходит к вещам, если долго ничего не нажимали
-  if(!busy && mgRoot.hidden && !homeEdit && !stroke && !homeDrag && !document.querySelector('.overlay:not([hidden])') && !petSeal.sleeping){
+  if(!busy && mgRoot.hidden && !homeEdit && !stroke && !homeDrag && !document.querySelector('.overlay:not([hidden])') && !petSeal.sleeping && !(typeof hwOn === 'function' && hwOn())){
     homeIdleT -= dt;
     if(homeIdleT < 0){ homeIdleT = 12 + Math.random()*6; homeWander(); }
   }
