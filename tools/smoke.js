@@ -29,6 +29,7 @@ const MODES = {
   walk: { pet: 1, run: `funPre = 'walk'; petDo('fun')`, wait: 3 },
   tricks: { pet: 1, run: `funPre = 'tricks'; petDo('fun')`, wait: 3 },
   run: { pet: 1, run: `funPre = 'run'; petDo('fun')`, wait: 3, clicks: ['.adv-map .isle.on'] },
+  run3: { pet: 1, run: `funPre = 'run'; petDo('fun')`, wait: 3, clicks: ['.adv-map [data-lv="bay3"]'] },
   dive: { pet: 1, run: `funPre = 'dive'; petDo('fun')`, wait: 3 },
   isle: { pet: 1, run: `funPre = 'isle'; petDo('fun')`, wait: 3 },
   hunt: { pet: 1, run: `petFeed(petSeal)`, wait: 3 },

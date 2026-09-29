@@ -235,7 +235,13 @@ const RUN_FISH = {
     {id:'berry',   name:L('Черничка', 'Blueberry'), col:0xB69CF2, pat:'dots',   pc:0xFFFFFF},
     {id:'lemon',   name:L('Лимончик', 'Lemon'),     col:0xFFE27A, pat:'stripes', pc:0x7FD1A8},
     {id:'marsh',   name:L('Зефирка', 'Marshmallow'), col:0xFFD0E2, pat:'crown', pc:0xFFD66B},
-    {id:'misty',   name:L('Туманчик', 'Misty'),     col:0xAFC3D8, pat:'bow',    pc:0xFFFFFF}]
+    {id:'misty',   name:L('Туманчик', 'Misty'),     col:0xAFC3D8, pat:'bow',    pc:0xFFFFFF}],
+  bay3: [
+    {id:'icy',     name:L('Сосулька', 'Icicle'),    col:0xCFEFFF, pat:'stripes', pc:0x5AA9D6},
+    {id:'coral',   name:L('Кораллик', 'Coral'),     col:0xFF7F7F, pat:'dots',   pc:0xFFE27A},
+    {id:'toffee',  name:L('Ириска', 'Toffee'),      col:0xE8B07A, pat:'crown',  pc:0xFFFFFF},
+    {id:'plum',    name:L('Сливка', 'Plum'),        col:0x9B7FD1, pat:'star',   pc:0xFFD66B},
+    {id:'kiwi',    name:L('Киви', 'Kiwi'),          col:0xA7E07A, pat:'bow',    pc:0xFF9BB8}]
 };
 const FISH_ALL = Object.entries(RUN_FISH).flatMap(([lv, l]) => l.map(f => ({...f, lv})));
 const fishDef = id => FISH_ALL.find(f => f.id === id);

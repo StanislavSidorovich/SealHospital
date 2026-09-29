@@ -365,6 +365,8 @@ function gullFlyWire(){
     floatText(L('Бух!', 'Bonk!'), gullPupTop(), '#6B6A7E');
     if(d && !d.hit){ d.hit = true; const s0 = d.o.scale.clone(); burst(TEX.puff, d.o.position.clone().add(new V3(0, 0.4, 0)), 10, 1.6, 0.5); tween(0.3, k => d.o.scale.set(s0.x*(1 + k*0.3), s0.y*(1 - k*0.75), s0.z*(1 + k*0.2))); }
   });
+  netOn('rar', m => { if(!Rok()) return; const a = R.arches[m.i]; GL.tu = 0.7; if(a && !a.hit) archBreak(a); });
+  netOn('rpg', m => { if(!Rok()) return; const p = R.pengs[m.i]; GL.tu = 0.7; if(p && !p.hit) pengTumble(p); });
   netOn('rsb', m => { if(Rok() && R.cloud) snowSpawn(m.tz, m.ln); });
   netOn('rsl', m => { if(!Rok()) return; const sb = R.snowballs[m.i]; if(sb && !sb.done){ sb.done = true; snowLand(sb); } });
   netOn('rsp', m => { if(!Rok()) return; const sb = R.snowballs[m.i]; if(sb && !sb.done){ sb.done = true; R.grp.remove(sb.o); R.grp.remove(sb.sh); gullPuff(sb.o.position.clone()); } });
@@ -444,6 +446,7 @@ function gullFlyTick(dt){
   for(const p of r.pick) if(!p.got && !p.flying){ p.o.rotation.y += dt*(p.secret ? -1.5 : 3); if(p.eye) p.eye.scale.setScalar(3.2 + Math.sin(t*4)*0.5); }
   for(const b of r.bubbles) if(!b.free) b.o.position.y = 0.25 + BUB_Y + Math.sin(t*2 + b.ph)*0.12;
   BOOST_TEX.offset.y = (BOOST_TEX.offset.y - dt*1.6) % 1;
+  runPengTick(r);   // пингвины катаются так же, как у бегущего
   gullBuoyBob(r);
   // Тучка
   if(r.cloud){

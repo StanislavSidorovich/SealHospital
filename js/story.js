@@ -53,6 +53,7 @@ const STORY = [
       {ic:'🎁', t:L('Найди 3 находки на прогулке', 'Find 3 treasures on walks'), n:() => [save.pet ? save.pet.finds.length : 0, 3], go:'walk'},
       {ic:'🎓', t:L('Выучи трюк на три звезды', 'Learn a trick to three stars'), ok:() => !!save.pet && Object.values(save.pet.tricks).some(v => v >= 3), go:'pet'},
       {ic:'🛷', t:L('Скатись с Ледяной горки Пинга', 'Ride Ping\'s Ice Slide'), n:() => [save.sl.n, 1], go:'slide'},
+      {ic:'🏔️', t:L('Пробеги «Забег по льдинам»', 'Finish the «Ice floe dash»'), n:() => [save.adv.best.bay1 || 0, 1], go:'run'},
       {ic:'✨', t:L('Малыш засиял', 'Your pup shines'), n:() => [save.pet ? save.pet.stage : 0, typeof SHINY === 'number' ? SHINY : 4], go:'pet'}
     ]},
   {ic:'🔎', name:L('Потеряшки', 'Lost pups'),

@@ -11,6 +11,9 @@
    (тень на льду заранее показывает куда). Догнал на ускорителе — пощекочи её, она роняет ракушки.
    На финише Тучка чихает радугой, становится доброй и живёт над уголком малыша.
    В конце флажок и три звезды: добежал, собрал ракушки, спас всех рыбок. Все рыбки — кубок на полку в домике.
+   Сложнее (разбор 29.09, папа: «как в первой версии, медленно»): скорость растёт от старта к финишу (lv.sp),
+   ледяные арки с сосульками — проскользнуть «ползком», проведя пальцем вниз (в прыжке — быстро вниз),
+   пингвины катаются поперёк дорожки (перепрыгни или объедь), уровень 3 «Пингвинья переправа» — всё вместе и быстрее.
    Дорожка стоит далеко в стороне (RUN_POS), камера летит за малышом (runCam, её подхватывает frame() в game.js).
    Подключается после home.js и до mail.js/game.js. */
 const RUN_POS = new V3(-200, 0, 0);          // старт дорожки; бежим в сторону −z
@@ -18,6 +21,7 @@ const RUN_SPEED = 5.2, RUN_G = 22, RUN_VY = 8.4;   // прыжок: высота
 const RUN_W = 3.6, LANE = 1.1;               // ширина дорожки и шаг между тремя полосами (−1 левая, 0, 1 правая)
 const BOOST_T = 1.5, BOOST_K = 1.6;          // ускоритель: сколько секунд и во сколько раз быстрее
 const RAMP_L = 2.4, RAMP_H = 0.75, RAMP_VY = 11;   // трамплин: длина, высота, толчок вверх (≈1 с в воздухе)
+const DUCK_T = 0.65;                         // «ползком» (свайп вниз): сколько секунд малыш распластан
 const runCam = {on:false, pos:new V3(), look:new V3()};
 const BUB_Y = 1.9;   // пузыри с рыбками висят над водой сбоку от дорожки и чуть выше малыша: он их не заслоняет
 const runRoot = new THREE.Group(); runRoot.visible = false; scene.add(runRoot);
@@ -36,8 +40,11 @@ const tipDone = k => { if(!tipSeen(k)){ save.adv.tips.push(k); persist(); } };
 // ramp [z] — трамплин (z — его верхний край), за ним дуга ракушек по полёту.
 // secret [z, ln, y] — золотая секретная ракушка (Mario Odyssey): одна на уровень, висит там, куда не попадёшь «просто так».
 // chase — Ворчливая Тучка летит впереди и кидает снежки раз в every[0]…every[1] секунд.
+// arch [z] — ледяная арка во всю ширину, с неё свисают сосульки: только «ползком» (свайп вниз);
+// peng [z, ph] — пингвин катается поперёк дорожки; ph — где он окажется, когда малыш подъедет (sin(ph): −1 левая … 1 правая).
+// sp [старт, финиш] — скорость малыша растёт по дорожке.
 const ISLES = [
-  {id:'bay', ic:'🏝️', name:L('Снежная бухта', 'Snowy Bay'), levels:['bay1', 'bay2']},
+  {id:'bay', ic:'🏝️', name:L('Снежная бухта', 'Snowy Bay'), levels:['bay1', 'bay2', 'bay3']},
   {id:'cave', ic:'🌌', name:L('Пещера северного сияния', 'Northern Lights Cave'), soon:true},
   {id:'village', ic:'🏘️', name:L('Деревня айсбергов', 'Iceberg Village'), soon:true}
 ];
@@ -47,7 +54,7 @@ const ISLES = [
 // len — где он кончается (с приземлением после трамплина). Остальные куски иногда зеркалятся (полосы меняются местами).
 // Рыбки в пузырях висят над водой и с дорожкой не спорят: их FISH_N штук на равных расстояниях.
 const LEVELS = {
-  bay1: {name:L('Забег по льдинам', 'Ice floe dash'), pick:9,
+  bay1: {name:L('Забег по льдинам', 'Ice floe dash'), pick:9, sp:[5.2, 6.8],
     intro:{len:44, it:[['line', 12, 3], ['drift', 30, 1], ['line', 40, 3, -1]]},
     pool:[
       {len:22, it:[['crack', 2, 1.6, 1], ['boost', 12, 0], ['drift', 20]]},
@@ -59,9 +66,11 @@ const LEVELS = {
       {len:15, it:[['line', 0, 3, -1], ['line', 6, 3, 0], ['line', 12, 3, 1]]},   // лесенка ракушек
       {len:16, it:[['boost', 0, 0], ['drift', 10, 1], ['line', 14, 2]]},
       {len:15, it:[['crack', 0, 1.6], ['line', 6, 3, -1], ['drift', 13, 0, -1], ['line', 12, 3, 1]]},
+      {len:17, it:[['line', 0, 4, 0], ['arch', 5], ['drift', 15, 0, 1]]},   // сосульки над ракушками
+      {len:18, it:[['arch', 0], ['line', 6, 3, -1], ['drift', 13], ['peng', 18, 0]]},
       {keep:true, len:30, it:[['drift', 0], ['boost', 8, 0], ['ramp', 16], ['secret', 19.2, -1, 3.4], ['crack', 18.8, 1.4]]}],
     finale:{len:14, it:[['drift', 0, 1], ['line', 8, 4]]}},
-  bay2: {name:L('Догони Тучку', 'Catch the Cloud'), chase:{every:[3.4, 5]}, after:'bay1', pick:8,
+  bay2: {name:L('Догони Тучку', 'Catch the Cloud'), chase:{every:[3.0, 4.6]}, after:'bay1', pick:9, sp:[5.4, 7.3],
     intro:{len:34, it:[['line', 14, 2], ['line', 25, 3, -1], ['drift', 28, 0, 0]]},
     pool:[
       {len:16, it:[['boost', 0, 1], ['line', 4, 2, 1], ['drift', 16]]},
@@ -71,8 +80,27 @@ const LEVELS = {
       {len:19, it:[['drift', 0, 1], ['boost', 12, -1], ['line', 16, 3, -1]]},
       {len:12, it:[['crack', 0, 2.0], ['line', 8, 2, 1], ['drift', 12, 0, -1], ['drift', 12, 0, 0]]},
       {len:14, it:[['line', 0, 3, -1], ['drift', 8, 0, 1], ['drift', 8, 0, 0], ['line', 12, 2, 0]]},
+      {len:16, it:[['peng', 4, 0.8], ['line', 8, 3, 0], ['arch', 15]]},
+      {len:15, it:[['arch', 0], ['boost', 6, 0], ['drift', 14]]},
+      {len:14, it:[['peng', 0, -1.3], ['peng', 7, 1.3], ['line', 10, 3, 0]]},
       {keep:true, len:18, it:[['line', 0, 2, -1], ['drift', 4, 0, 1], ['secret', 4, 1, 1.2], ['line', 13, 2, 1], ['drift', 16, 0, 0]]}],
-    finale:{len:26, it:[['line', 0, 2, 0], ['crack', 14, 2.2, 1], ['line', 22, 3]]}}
+    finale:{len:26, it:[['line', 0, 2, 0], ['crack', 14, 2.2, 1], ['line', 22, 3]]}},
+  // уровень 3: пингвины и сосульки, быстрее всех. Пингвин и арка есть в каждой дорожке дня (intro, finale, keep)
+  bay3: {name:L('Пингвинья переправа', 'Penguin Crossing'), after:'bay2', pick:9, sp:[5.8, 8.2],
+    intro:{len:40, it:[['line', 10, 3], ['peng', 22, 0], ['line', 28, 3, 1], ['arch', 37]]},
+    pool:[
+      {len:18, it:[['peng', 2, 1.3], ['peng', 10, -1.3], ['line', 14, 3, 0]]},
+      {len:20, it:[['arch', 0], ['line', 3, 3, 0], ['crack', 12, 2.0, 1], ['boost', 17, 1]]},
+      {len:16, it:[['drift', 0, 0, 0], ['drift', 0, 0, 1], ['peng', 9, -1.4], ['line', 12, 3, -1]]},
+      {len:18, it:[['arch', 0], ['arch', 7], ['line', 12, 3, 1], ['drift', 17]]},
+      {len:17, it:[['boost', 0, 0], ['peng', 9, 0.3], ['crack', 15, 1.8, 1]]},
+      {len:15, it:[['line', 0, 3, 1], ['drift', 5, 0, 1], ['drift', 5, 0, 0], ['arch', 13]]},
+      {len:14, it:[['peng', 0, 1.5], ['peng', 4.5, -0.2], ['peng', 9, 1.2], ['line', 11, 3, -1]]},   // пингвиний парад
+      {len:16, it:[['crack', 0, 2.2], ['arch', 8], ['line', 12, 3, -1]]},
+      {len:18, it:[['drift', 0], ['boost', 6, -1], ['peng', 14, -1.2]]},
+      {len:16, it:[['line', 0, 3, -1], ['arch', 6], ['drift', 13, 0, -1], ['drift', 13, 0, 0]]},
+      {keep:true, len:30, it:[['arch', 0], ['boost', 6, 0], ['ramp', 14], ['secret', 17.5, 1, 3.2], ['crack', 16.8, 1.6]]}],
+    finale:{len:22, it:[['peng', 2, 0.9], ['line', 6, 3, 0], ['arch', 12], ['line', 15, 4, 0]]}}
 };
 const CHUNK_GAP = 7, FISH_N = 5;
 // Задания дня (как миссии в Subway Surfers): каждый день три из списка, каждое — за один забег на любом уровне.
@@ -85,7 +113,9 @@ const QUESTS = [
   {id:'jumps12',  t:L('Прыгни 12 раз за забег', 'Jump 12 times in one dash'), ok:r => r.jumps >= 12},
   {id:'lanes10',  t:L('Смени полосу 10 раз ⬅️➡️', 'Change lanes 10 times ⬅️➡️'), ok:r => r.lanes >= 10},
   {id:'secret',   t:L('Найди золотую ракушку ✨', 'Find the golden shell ✨'), ok:r => r.secret},
-  {id:'tickle2',  t:L('Пощекочи Тучку 2 раза ☁️', 'Tickle the Cloud twice ☁️'), ok:r => (r.tickles || 0) >= 2, need:'bay2'}
+  {id:'tickle2',  t:L('Пощекочи Тучку 2 раза ☁️', 'Tickle the Cloud twice ☁️'), ok:r => (r.tickles || 0) >= 2, need:'bay2'},
+  {id:'peng3',    t:L('Перепрыгни 3 пингвинов 🐧', 'Jump over 3 penguins 🐧'), ok:r => (r.pengJ || 0) >= 3, need:'bay3'},
+  {id:'duck3',    t:L('Проползи под сосульками 3 раза ⬇️', 'Slide under the icicles 3 times ⬇️'), ok:r => (r.ducks || 0) >= 3, need:'bay3'}
 ];
 const QUEST_GIFT = 5, QUEST_HEARTS = 10;
 const lvOpen = id => !LEVELS[id].after || (save.adv.best[LEVELS[id].after] || 0) > 0;
@@ -105,7 +135,7 @@ function seeded(str){   // одинаковая строка — одинако�
   return () => { h = h + 0x6D2B79F5 | 0; let t = Math.imul(h ^ h >>> 15, 1 | h); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0)/4294967296; };
 }
 // где в предмете номер полосы (для зеркала): line/drift — 4-й, boost/secret — 3-й
-const LN_AT = {line:3, drift:3, boost:2, secret:2};
+const LN_AT = {line:3, drift:3, boost:2, secret:2, peng:2};   // у пингвина — фаза: минус — зеркально
 function dayLayout(id){
   const lv = LEVELS[id], rnd = seeded(advDayKey() + id);
   const pool = lv.pool.filter(c => !c.keep).map(c => [rnd(), c]).sort((a, b) => a[0] - b[0]).map(x => x[1]).slice(0, lv.pick - 1);
@@ -128,7 +158,8 @@ function dayLayout(id){
 const levelName = id => LEVELS[id].name;
 // где искать секрет — подсказка в итогах, пока не нашли
 const SECRET_TIP = {bay1:L('В полёте с трамплина сверни влево ⬅️', 'While flying off the ramp, swipe left ⬅️'),
-  bay2:L('Перепрыгни маленький сугроб справа ➡️', 'Jump over the little snowdrift on the right ➡️')};
+  bay2:L('Перепрыгни маленький сугроб справа ➡️', 'Jump over the little snowdrift on the right ➡️'),
+  bay3:L('С трамплина за сосульками сверни вправо ➡️', 'Off the ramp after the icicles, swipe right ➡️')};
 const SECRET_GIFT = 15;   // за первую находку секрета на уровне
 const SHELL_GOAL = 0.8;   // звезда за ракушки — если собрано 80% и больше
 // Ракушки с дорожки идут в копилку только в первых RUN_DAILY забегах за день, дальше на дорожке звёздочки
@@ -203,6 +234,27 @@ function makeRamp(){
   for(const sd of [-1, 1]){ const f = new THREE.Mesh(new THREE.CircleGeometry(0.2, 3), new THREE.MeshToonMaterial({color:sd < 0 ? 0xFF9BB8 : 0xFFD66B, side:THREE.DoubleSide})); f.position.set(sd*(RUN_W/2 - 0.35), RAMP_H + 0.45, 0.05); f.rotation.z = -Math.PI/2; g.add(f);
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6), inkMat); pole.position.set(sd*(RUN_W/2 - 0.2), RAMP_H + 0.35, 0.05); g.add(pole); }
   return g;
+}
+// ледяная арка во всю ширину: столбики, перекладина со снежной шапкой и бахрома сосулек (ice — их можно стряхнуть)
+const ICICLE_GEO = new THREE.ConeGeometry(0.1, 1, 6);
+function makeArch(){
+  const g = new THREE.Group(), ice = new THREE.Group(), m = toon(0xD6EAF5);
+  for(const sd of [-1, 1]){ const p = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 2.0, 10), m), 1.1); p.position.set(sd*(RUN_W/2 + 0.12), 1.0, 0); g.add(p); }
+  const bar = addOutline(new THREE.Mesh(new THREE.BoxGeometry(RUN_W + 0.7, 0.34, 0.42), toon(0xBFE6F7)), 1.06); bar.position.y = 2.0; g.add(bar);
+  const cap = addOutline(new THREE.Mesh(SPH, toon(0xFFFFFF)), 1.04); cap.scale.set((RUN_W + 0.8)/2, 0.16, 0.26); cap.position.y = 2.2; g.add(cap);
+  const im = toon(0xA8DDF5);
+  for(let i = 0; i < 10; i++){
+    const h = 0.75 + ((i*7) % 5)*0.09, c = addOutline(new THREE.Mesh(ICICLE_GEO, im), 1.12);
+    c.scale.set(1, h, 1); c.rotation.x = Math.PI; c.position.set(-RUN_W/2 + 0.2 + i*(RUN_W - 0.4)/9, 1.83 - h/2, 0); ice.add(c);
+  }
+  g.add(ice); g.userData.ice = ice;
+  return g;
+}
+const PENG_COLS = [0x3B3A4A, 0x46557A, 0x5C6FA6, 0x4A5A6E];
+function makeRunPeng(i){   // пингвин-катальщик: маленький, в шарфике не нуждается
+  const m = makePenguin({name:'', f:i % 2 === 0, color:PENG_COLS[i % PENG_COLS.length]});
+  m.root.scale.setScalar(0.38);
+  return m;
 }
 function makeFinish(){   // ворота-финиш: два столбика, верёвка с флажками, надпись
   const g = new THREE.Group(), cols = [0xFF9BB8, 0xFFD66B, 0x86DDB5, 0x9BD3F0, 0xB69CF2];
@@ -285,7 +337,8 @@ function runBuild(id, opt = {}){
   const lv = {...LEVELS[id], ...dayLayout(id)}, grp = new THREE.Group(); runRoot.add(grp);
   const r = {id, lv, grp, z:-4, y:0, vy:0, air:false, sp:RUN_SPEED, splash:0, tumble:0, shells:0, fish:0, total:0, fishTotal:0,
     lane:0, x:0, boost:0, ramp:null, bumpT:0,
-    pick:[], drifts:[], cracks:[], bubbles:[], boosts:[], ramps:[], snowballs:[], puffT:0, slow:null, newFish:[], secret:false, jumps:0, lanes:0, bonks:0,
+    pick:[], drifts:[], cracks:[], bubbles:[], boosts:[], ramps:[], snowballs:[], arches:[], pengs:[], puffT:0, slow:null, newFish:[], secret:false, jumps:0, lanes:0, bonks:0,
+    duck:0, duckQ:false, ducks:0, pengJ:0,
     taught:{jump:save.adv.runs > 0, fish:save.adv.runs > 0}, state:'ready',   // подсказки с замедлением про прыжок и рыбок — только в самом первом забеге
     stars:opt.stars !== undefined ? !!opt.stars : runsToday() >= RUN_DAILY};   // сегодня уже бегали — на дорожке звёздочки вместо ракушек
   const shell = (z, x, y, extra) => {
@@ -315,8 +368,11 @@ function runBuild(id, opt = {}){
     if(k === 'boost'){ const b = makeBoost(); b.position.copy(runAt(z, it[2]*LANE, 0.02)); grp.add(b); r.boosts.push({o:b, z, ln:it[2]}); }
     if(k === 'ramp'){
       const m = makeRamp(); m.position.copy(runAt(z)); grp.add(m); r.ramps.push({z});
-      for(let i = 1; i <= 5; i++){ const t = i*0.17, y = RAMP_H + RAMP_VY*t - RUN_G*t*t/2; shell(z + RUN_SPEED*t, 0, y + 0.1); }   // дуга по полёту с трамплина
+      const v = lvSpAt(lv, z);
+      for(let i = 1; i <= 5; i++){ const t = i*0.17, y = RAMP_H + RAMP_VY*t - RUN_G*t*t/2; shell(z + v*t, 0, y + 0.1); }   // дуга по полёту с трамплина
     }
+    if(k === 'arch'){ const a = makeArch(); a.position.copy(runAt(z, 0, -0.25)); grp.add(a); r.arches.push({o:a, z, hit:false, ok:false}); }
+    if(k === 'peng'){ const m = makeRunPeng(r.pengs.length); grp.add(m.root); r.pengs.push({m, z, ph:it[2] || 0, x:0, hit:false, jumped:false}); }
   }
   const fin = makeFinish(); fin.position.copy(runAt(lv.len)); grp.add(fin); r.finish = fin;
   if(lv.chase){   // Тучка впереди
@@ -326,14 +382,25 @@ function runBuild(id, opt = {}){
   }
   R = r;
 }
+// скорость растёт от старта к финишу (lv.sp); без sp — как раньше, ровно RUN_SPEED
+const lvSpAt = (lv, z) => { const [a, b] = lv.sp || [RUN_SPEED, RUN_SPEED]; return a + (b - a)*Math.max(0, Math.min(1, z/lv.len)); };
+const runBase = () => lvSpAt(R.lv, R.z);
 const runPupAt = () => new V3(RUN_POS.x + R.x, 0.25 + R.y, RUN_POS.z - R.z);
 const inCrack = z => R.cracks.some(c => z > c.z0 + 0.15 && z < c.z1 - 0.15);
 
 /* ---------- касания и события забега ---------- */
 function runJump(){
   if(R.air || R.splash > 0 || R.tumble > 0.25 || R.ramp) return;
-  R.air = true; R.vy = RUN_VY; R.jumps++; sfx.whoosh();
+  R.air = true; R.vy = RUN_VY; R.jumps++; R.duck = 0; R.duckQ = false; sfx.whoosh();
   if(R.slow === 'jump'){ R.slow = null; R.taught.jump = true; runSayHint(L('Ура! Так и прыгай 👍', 'Yay! Jump just like that 👍'), 1600); }
+}
+// свайп вниз: на льду — «ползком» (распластался, под сосульками проедешь), в прыжке — быстро вниз и сразу ползком
+function runDuck(){
+  if(R.splash > 0 || R.tumble > 0.25 || R.ramp) return;
+  if(R.air){ R.vy = Math.min(R.vy, -13); R.duckQ = true; sfx.whoosh(); return; }
+  if(R.duck <= 0) sfx.rub();
+  R.duck = DUCK_T;
+  if(R.slow === 'duck'){ R.slow = null; tipDone('duck'); runSayHint(L('Вжик! Под сосульками — только ползком 👍', 'Whoosh! Under the icicles — only flat on your belly 👍'), 1800); }
 }
 function runSayHint(t, ms){ mgHint(t); setTimeout(() => { if(R && R.state === 'go' && !R.slow && mgHintEl.textContent === t) mgHint(''); }, ms); }
 function runLane(dir){   // на соседнюю полосу; у края — мягкий бортик
@@ -389,20 +456,54 @@ function runScatter(){
   R.shells -= n; runDrop(n, runPupAt().add(new V3(0, 0.6, 0)), 4.5);
   runHud();
 }
-function runCrash(d){   // сугроб: кувырок через голову, сугроб — «пуф» и приплюснулся
-  const s = petSeal; d.hit = true; R.bonks++; R.tumble = 0.7; gEv('rc', {i:R.drifts.indexOf(d)}); R.sp = RUN_SPEED*0.45; R.boost = 0;
+function runBonk(){   // врезался (сугроб, сосульки, пингвин): кувырок, скорость падает, пара ракушек вперёд
+  const s = petSeal; R.bonks++; R.tumble = 0.7; R.sp = runBase()*0.45; R.boost = 0; R.duck = 0;
   sfx.plop(); sfx.arf(); floatText(L(['Ой!', 'Бух!', 'Упс!'], ['Oops!', 'Bonk!', 'Whoops!'])[Math.floor(Math.random()*3)], headTop(s));
+  runScatter(); cloudLaugh();
+  if(!R.saidOops){ R.saidOops = true; runSayHint(L('Ничего! Ракушки впереди — подбери их снова', 'No problem! The shells are ahead — pick them up again'), 2200); }
+}
+function runCrash(d){   // сугроб: кувырок через голову, сугроб — «пуф» и приплюснулся
+  d.hit = true; gEv('rc', {i:R.drifts.indexOf(d)});
   burst(TEX.puff, d.o.position.clone().add(new V3(0, 0.4, 0)), 10, 1.6, 0.5);
   const s0 = d.o.scale.clone();
   tween(0.3, k => d.o.scale.set(s0.x*(1 + k*0.3), s0.y*(1 - k*0.75), s0.z*(1 + k*0.2)));
-  runScatter(); cloudLaugh();
-  if(!R.saidOops){ R.saidOops = true; runSayHint(L('Ничего! Ракушки впереди — подбери их снова', 'No problem! The shells are ahead — pick them up again'), 2200); }
+  runBonk();
+}
+function archBreak(a){   // сосульки осыпаются (у бегущего и у чайки)
+  a.hit = true; const ice = a.o.userData.ice; sfx.sparkle();
+  burst(TEX.star, a.o.position.clone().add(new V3(0, 1.4, 0)), 12, 2, 0.24);
+  tween(0.5, k => { ice.position.y = -1.6*k*k; ice.scale.setScalar(1 - k*0.6); }, ease.lin).then(() => ice.visible = false);
+}
+function runArchHit(a){
+  archBreak(a); gEv('rar', {i:R.arches.indexOf(a)}); runBonk();
+  floatText(L('Дзынь!', 'Clink!'), headTop(petSeal).add(new V3(0, 0.5, 0)), '#3E8DB8');
+  if(!R.saidDuck){ R.saidDuck = true; runSayHint(L('Под сосульками — проведи пальцем вниз ⬇️', 'Under the icicles — swipe down ⬇️'), 2400); }
+}
+function pengTumble(p){   // пингвин шлёпнулся на пузико и встаёт
+  p.hit = true; const o = p.m.root;
+  floatText(L('Ай-ай!', 'Whoa!'), o.position.clone().add(new V3(0, 1.1, 0)), '#46557A');
+  tween(0.35, k => o.rotation.x = -k*1.4).then(() => wait(0.6)).then(() => tween(0.4, k => o.rotation.x = -(1 - k)*1.4));
+}
+function runPengHit(p){ pengTumble(p); gEv('rpg', {i:R.pengs.indexOf(p)}); runBonk(); }
+// пингвины катаются поперёк: место зависит от того, сколько малышу до них ехать (у чайки выходит так же)
+function runPengTick(r){
+  for(const p of r.pengs){
+    const d = p.z - r.z, o = p.m.root;
+    if(d > 34 || d < -8) continue;
+    if(!p.hit){
+      const x = Math.max(-LANE*1.15, Math.min(LANE*1.15, Math.sin(d*0.45 + p.ph)*LANE*1.3));
+      const vx = x - p.x; p.x = x;
+      o.rotation.y = Math.abs(vx) > 1e-4 ? (vx > 0 ? 1 : -1)*Math.PI/2*0.8 : o.rotation.y;
+      o.rotation.z = Math.sin(now*9 + p.ph)*0.12;
+    }
+    o.position.copy(runAt(p.z, p.x, -0.05));
+  }
 }
 function runSplash(){   // трещина: плюх в воду и сам выпрыгивает
   const c = R.cracks.find(c => c.buoy && R.z > c.z0 - 0.4 && R.z < c.z1 + 0.4);
   if(c) return runBuoy(c);   // чайка бросила туда спасательный круг — отскок, без «плюх»
   gEv('rfx', {k:'spl'});
-  R.splash = 0.35; R.bonks++; R.air = false; R.vy = 0; R.sp = RUN_SPEED*0.55; R.boost = 0;
+  R.splash = 0.35; R.bonks++; R.air = false; R.vy = 0; R.sp = runBase()*0.55; R.boost = 0; R.duck = 0;
   sfx.splash(); burst(TEX.puff, runPupAt().setY(0.1), 10, 1.6, 0.45);
   floatText(L('Плюх!', 'Splash!'), headTop(petSeal), '#3E8DB8');
   runScatter(); cloudLaugh();
@@ -543,6 +644,7 @@ function runSlowHint(k){
   if(k === 'fish') return L('Рыбка в пузыре! Нажми на пузырь 🫧', 'A fish in a bubble! Tap the bubble 🫧');
   if(k === 'lane') return R.slowLn < R.lane ? L('Ракушки слева! Проведи пальцем влево ⬅️', 'Shells on the left! Swipe left ⬅️') : L('Ракушки справа! Проведи пальцем вправо ➡️', 'Shells on the right! Swipe right ➡️');
   if(k === 'snow') return L('Снежок! Уезжай в сторону ⬅️ ➡️ или прыгай', 'A snowball! Swipe aside ⬅️ ➡️ or jump');
+  if(k === 'duck') return L('Сосульки! Проведи пальцем вниз ⬇️ — проползёшь', 'Icicles! Swipe down ⬇️ to slide under');
   return '';
 }
 function runStep(dt){
@@ -554,18 +656,22 @@ function runStep(dt){
     if(!r.taught.jump && d0 && d0.z - r.z < 2.9 && d0.z > r.z && !r.air) r.slow = 'jump';   // прыжок перелетает сугроб, если до него 0,9…3 м
     else if(!r.taught.fish && b0 && !b0.free && b0.z - r.z < 8 && b0.z > r.z) r.slow = 'fish';
     else if(!tipSeen('lane') && l0 && l0.z - r.z < 6.5 && r.lane !== l0.ln && !r.air){ r.slow = 'lane'; r.slowLn = l0.ln; }
+    else { const a0 = r.arches.find(a => !a.hit && a.z > r.z); if(!tipSeen('duck') && a0 && a0.z - r.z < 3.6 && !r.air && r.duck <= 0) r.slow = 'duck'; }
   }
+  if(r.slow === 'duck' && !r.arches.some(a => !a.hit && a.z > r.z)){ r.slow = null; mgHint(''); }
+  const p0 = r.pengs.find(p => p.z > r.z);
+  if(r.state === 'go' && p0 && !p0.told && p0.z - r.z < 14){ p0.told = true; if(!tipSeen('peng')){ tipDone('peng'); runSayHint(L('Пингвин катается! Перепрыгни или объедь 🐧', 'A penguin is sliding! Jump over or go around 🐧'), 2400); } }
   if(r.slow === 'fish' && (r.bubbles[0].free || r.bubbles[0].z < r.z - 0.5)){ r.slow = null; r.taught.fish = true; mgHint(''); }
   if(r.slow === 'lane' && !(r.lines || []).some(l => l.ln === r.slowLn && l.z > r.z - 1)){ r.slow = null; mgHint(''); }
   if(r.slow === 'snow' && !r.snowballs.some(sb => !sb.done)){   // снежок упал: дальше без замедления
     r.slow = null; tipDone('snow');
     runSayHint(r.lane !== r.slowLn ? L('Увернулись! 👍', 'Dodged it! 👍') : L('Прыгай или уезжай в сторону ⬅️ ➡️', 'Jump or swipe aside ⬅️ ➡️'), 1800);
   }
-  const ts = r.slow ? (r.slow === 'jump' && r.drifts[0].z - r.z < 1.6 ? 0.04 : r.slow === 'lane' ? 0.1 : 0.12) : 1, d = dt*ts;
+  const ts = r.slow ? (r.slow === 'jump' && r.drifts[0].z - r.z < 1.6 ? 0.04 : r.slow === 'duck' ? 0.06 : r.slow === 'lane' ? 0.1 : 0.12) : 1, d = dt*ts;
   const z0 = r.z;   // где был малыш кадр назад: ракушки и сугробы проверяем на всём пройденном отрезке
   if(r.state === 'go' || r.state === 'end'){
     if(r.boost > 0) r.boost -= d;
-    const want = r.state === 'end' ? 0 : RUN_SPEED*(r.boost > 0 ? BOOST_K : 1);
+    const want = r.state === 'end' ? 0 : runBase()*(r.boost > 0 ? BOOST_K : 1);
     r.sp += (want - r.sp)*Math.min(1, d*(r.state === 'end' ? 1.6 : r.boost > 0 ? 4 : 1.4));
     r.z += r.sp*d;
   }
@@ -576,7 +682,7 @@ function runStep(dt){
   if(r.state === 'go' && !r.air && r.splash <= 0){
     const m = r.ramps.find(m => r.z > m.z - RAMP_L && r.z < m.z + 0.3);
     if(m && r.z < m.z){ r.ramp = m; r.y = Math.max(0, (r.z - (m.z - RAMP_L))/RAMP_L)*RAMP_H; }
-    else if(r.ramp){ r.ramp = null; r.air = true; r.vy = RAMP_VY; r.sp = Math.max(r.sp, RUN_SPEED); sfx.boost(); floatText(L('Уиии!', 'Wheee!'), headTop(s), '#D9527E'); }
+    else if(r.ramp){ r.ramp = null; r.air = true; r.vy = RAMP_VY; r.sp = Math.max(r.sp, runBase()); r.duck = 0; sfx.boost(); floatText(L('Уиии!', 'Wheee!'), headTop(s), '#D9527E'); }
   }
   // вверх-вниз: прыжок, плюх в трещину, приземление
   if(r.splash > 0){
@@ -586,14 +692,24 @@ function runStep(dt){
     r.y += r.vy*d - RUN_G*d*d/2; r.vy -= RUN_G*d;   // точная парабола: высота прыжка не зависит от частоты кадров
     if(r.y <= 0 && r.vy < 0){
       if(inCrack(r.z)) runSplash();
-      else { r.y = 0; r.air = false; sfx.plop(); burst(TEX.puff, runPupAt().setY(0.35), 5, 0.9, 0.35); squash(s, 0.18, 0.25); }
+      else { r.y = 0; r.air = false; sfx.plop(); burst(TEX.puff, runPupAt().setY(0.35), 5, 0.9, 0.35);
+        if(r.duckQ){ r.duckQ = false; r.duck = DUCK_T; } else squash(s, 0.18, 0.25); }
     }
   } else if(r.state === 'go' && !r.ramp && inCrack(r.z)) runSplash();
   if(r.tumble > 0) r.tumble = Math.max(0, r.tumble - d);
+  if(r.duck > 0) r.duck = Math.max(0, r.duck - d);
   // сугробы (во всю ширину или на одной полосе) и стрелки-ускорители
   const near = z => z > z0 - 0.6 && z < r.z + 0.6;
   if(r.state === 'go'){
     for(const dr of r.drifts) if(!dr.hit && near(dr.z) && r.y < 0.5 && r.splash <= 0 && (dr.ln === undefined || Math.abs(r.x - dr.ln*LANE) < 0.75)) runCrash(dr);
+    for(const a of r.arches) if(!a.hit && !a.ok && near(a.z) && r.splash <= 0){
+      if(r.duck > 0 && r.y < 0.3){ a.ok = true; r.ducks++; if(r.ducks <= 2) floatText(L('Вжик!', 'Swish!'), headTop(s), '#3E8DB8'); }
+      else runArchHit(a);
+    }
+    for(const p of r.pengs) if(!p.hit && !p.past && near(p.z) && r.splash <= 0 && Math.abs(r.x - p.x) < 0.75){
+      if(r.y < 0.55) runPengHit(p);
+      else { p.past = true; r.pengJ++; sfx.boing(); floatText(L('Хоп!', 'Hop!'), headTop(s), '#5C6FA6'); }
+    }
     for(const b of r.boosts) if(!b.used && b.z > z0 - 1.1 && b.z < r.z + 1.1 && r.y < 0.4 && Math.abs(r.x - b.ln*LANE) < 0.65) runBoost(b);
     const b0 = r.boosts.find(b => !b.used && b.z > r.z);
     if(b0 && !b0.hinted && !tipSeen('boost') && b0.z - r.z < 9 && !r.slow){ b0.hinted = true; runSayHint(L('Впереди стрелки — заезжай на них 🚀', 'Arrows ahead — ride over them 🚀'), 2400); }
@@ -613,12 +729,15 @@ function runStep(dt){
   for(const p of r.pick) if(p.secret && !p.got) p.o.rotation.y -= dt*1.5;   // золотая крутится медленнее обычных
   for(const b of r.bubbles) if(!b.free) b.o.position.y = 0.25 + BUB_Y + Math.sin(now*2 + b.ph)*0.12;
   if(r.cloud) cloudStep(d, dt);
+  runPengTick(r);
   // малыш: едет на пузике, в прыжке задирает нос, в кувырке крутится, на повороте наклоняется
   const pos = runPupAt(); s.root.position.copy(pos);
   s.root.rotation.set(0, Math.PI, (wantX - r.x)*0.35 + (r.bumpT > 0 ? Math.sin(r.bumpT*40)*0.08 : 0));
   if(r.slow) mgHint(runSlowHint(r.slow));
   s.inner.rotation.x = r.tumble > 0 ? -(1 - r.tumble/0.7)*Math.PI*2 : r.air ? Math.max(-0.35, Math.min(0.3, -r.vy*0.04)) : r.ramp ? -0.3 : 0;
   s.inner.position.y = r.tumble > 0 ? Math.sin((1 - r.tumble/0.7)*Math.PI)*0.5 : 0;
+  if(r.duck > 0){ const k = Math.min(1, (DUCK_T - r.duck)/0.08, r.duck/0.1); s.inner.scale.set(1 + 0.25*k, 1 - 0.45*k, 1 + 0.15*k); r.ducked = true; }
+  else if(r.ducked){ r.ducked = false; s.inner.scale.set(1, 1, 1); }
   s.wobble = r.air ? 0 : Math.sin(now*9)*0.03;
   s.flap = r.air ? 0.8 : r.boost > 0 ? 0.6 : 0.15;
   r.puffT -= dt;
@@ -627,7 +746,7 @@ function runStep(dt){
   // вода и камера едут следом. На узком экране (телефон стоя) камера отъезжает дальше, чтобы видеть все три полосы
   runWater.position.set(RUN_POS.x, -0.05, pos.z - 30);
   const ck = petK() - 1;   // подрос — камера выше и дальше, чтобы малыш не закрывал дорожку
-  const far = Math.max(1, Math.min(1.4, 0.6/camera.aspect)), zoom = Math.max(0, r.sp/RUN_SPEED - 1)*1.2;
+  const far = Math.max(1, Math.min(1.4, 0.6/camera.aspect)), zoom = Math.max(0, r.sp/(r.lv.sp ? r.lv.sp[0] : RUN_SPEED) - 1)*1.2;
   const cx = RUN_POS.x + r.x*0.55;
   runCam.pos.set(cx + 0.3, (4.6 + ck*4.5)*far**1.8 + Math.max(0, r.y)*0.35, pos.z + (10.5 + ck*6)*far + zoom);
   runCam.look.set(RUN_POS.x + r.x*0.75, 0.9 + ck*0.6 + Math.max(0, r.y)*0.3, pos.z - 7 - ck*2 - (far - 1)*6);
@@ -690,7 +809,7 @@ async function advMap(){
   return lv;
 }
 
-/* ---------- управление: касание — прыжок, провести влево/вправо — полоса, вверх — прыжок ----------
+/* ---------- управление: касание — прыжок, провести влево/вправо — полоса, вверх — прыжок, вниз — ползком ----------
    Прыжок — когда палец отпустили, не сдвинув (иначе каждый свайп был бы ещё и прыжком).
    Пузырь с рыбкой и Тучку ловим сразу при касании. На компьютере — стрелки и пробел. */
 function runControls(){
@@ -708,6 +827,7 @@ function runControls(){
     const dx = e.clientX - g.x, dy = e.clientY - g.y;
     if(Math.abs(dx) > 28 && Math.abs(dx) > Math.abs(dy)){ g.used = true; runLane(Math.sign(dx)); }
     else if(dy < -34 && -dy > Math.abs(dx)){ g.used = true; runJump(); }
+    else if(dy > 30 && dy > Math.abs(dx)){ g.used = true; runDuck(); }
   });
   const up = e => {
     if(!g || e.pointerId !== g.id) return;
@@ -721,6 +841,7 @@ function runControls(){
     if(e.key === 'ArrowLeft'){ e.preventDefault(); runLane(-1); }
     else if(e.key === 'ArrowRight'){ e.preventDefault(); runLane(1); }
     else if(e.key === 'ArrowUp' || e.key === ' '){ e.preventDefault(); runJump(); }
+    else if(e.key === 'ArrowDown'){ e.preventDefault(); runDuck(); }
   });
 }
 
@@ -767,7 +888,7 @@ async function petRun(s, id){
   flash();
   runRoot.visible = false; runCam.on = false; homeLights(false);
   if(R){ runRoot.remove(R.grp); R = null; } runHudEl = null;
-  s.root.position.copy(PET_SPOT); s.root.rotation.set(0, 0, 0); s.inner.rotation.set(0, 0, 0); s.inner.position.set(0, 0, 0); s.wobble = 0; s.flap = 0;
+  s.root.position.copy(PET_SPOT); s.root.rotation.set(0, 0, 0); s.inner.rotation.set(0, 0, 0); s.inner.position.set(0, 0, 0); s.inner.scale.set(1, 1, 1); s.wobble = 0; s.flap = 0;
   camOff.copy(cam0); camOffWant.copy(cam0);
   s.happyUntil = now + 3; setMood(s, 'happy');
   runSay = result ? (result.friend ? L('Смотри, Тучка теперь живёт у нас! ☁️💗', 'Look, the Cloud lives with us now! ☁️💗') : L(`Какое приключение! Звёзд: ${result.stars} ⭐`, `What an adventure! Stars: ${result.stars} ⭐`)) : '';
