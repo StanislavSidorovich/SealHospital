@@ -8,7 +8,8 @@
    с горы — на пузике, из воды — кувырком. Пинг, если живёт по соседству, бродит у своего домика и увязывается следом.
    🎈 Места для вещей-умений (js/gear.js): ледяные столбы (двойной прыжок шариком), трамплин с горы (ледянка), течение
    у дальней льдинки (ласты-турбо) — у каждого по звёздочкам; без вещи подойдёшь — подсказка, что купить в лавке.
-   Вход: ⚽ «Поиграть» → 🗺️ «Гулять по острову». Сохранение: save.isl = {got:[номера звёздочек], n — сколько раз гуляли}.
+   🗝️ В скалах на востоке — ущелье и вход в пещеру, по острову спрятаны 3 ключа (js/cave.js: cvIslBuild, cvIslStep, cvEnter, cvStep).
+   Вход: ⚽ «Поиграть» → 🗺️ «Гулять по острову». Сохранение: save.isl = {got:[номера звёздочек], n — сколько раз гуляли, cave — пещера}.
    Подключается после story.js (ST_PLACES, stGate, stGo) и roam.js, до game.js. */
 const ISL_POS = new V3(-1400, 0, 1400);
 const ISL_STAR = 2, ISL_ALL = 25;           // ракушки за новую звёздочку и за все
@@ -295,10 +296,11 @@ function islBuild(){
   // батуты, снеговики, камушки
   G.userData.pads = ISL_PADS.map(pd => { const m = islPadMake(); m.position.set(pd.x, islGround(pd.x, pd.z), pd.z); G.add(m); pd.m = m; return m; });
   for(const [x, z, s] of [[-6, -14, 1], [15, 5, 0.9], [-26, -8, 1.1], [3, 20, 0.8]]) islSnowman(G, x, z, s);
-  for(const [x, z, s] of [[-12, 0, 0.8], [6, -2, 0.6], [16, 16, 0.9], [-30, 18, 0.7], [26, -14, 0.8], [-18, -26, 0.9]]){
+  for(const [x, z, s] of [[-12, 0, 0.8], [6, -2, 0.6], [16, 16, 0.9], [-30, 18, 0.7], [23, -12, 0.8], [-18, -26, 0.9]]){
     const r = addOutline(new THREE.Mesh(new THREE.DodecahedronGeometry(s), toon(0xB9C2D0)), 1.05); r.scale.y = 0.6; r.position.set(x, islGround(x, z) + s*0.2, z); r.rotation.y = x; G.add(r);
   }
   islGearBuild(G);
+  if(typeof cvIslBuild === 'function') cvIslBuild(G);   // 🗝️ ущелье, вход в пещеру и ключи (js/cave.js)
   // подписи и кольца — на земле у места
   for(const o of Object.values(pl)){
     const x = o.P.x, z = o.P.z, y = o.P.water ? 0 : islGround(x, z);
@@ -408,7 +410,7 @@ async function isleGo(s){
   const story = typeof stNextSteps === 'function' ? stNextSteps().map(x => x.it.go) : [];
   for(const o of Object.values(pl)) o.mark.visible = story.includes(o.k) && !o.lock;
   islRoot.userData.pingHouse.visible = typeof nbIn === 'function' && nbIn();
-  islStarsShow();
+  islStarsShow(); if(typeof cvIslShow === 'function') cvIslShow();
   if(islRoot.userData.pingHouse.visible){
     const p = makePenguin(PENG); p.root.scale.setScalar(0.62); islRoot.add(p.root);
     ISL.ping = {s:p, pos:new V3(-3, 0, 20), vel:new V3(), yaw:0, home:new V3(-3, 0, 20), follow:false, hopT:0};
@@ -429,6 +431,7 @@ async function isleGo(s){
   // обратно в уголок малыша
   mgClose(); homeB.remove(); flash();
   document.body.classList.remove('run-on', 'isle-on');
+  if(typeof cvOff === 'function') cvOff();   // ушли домой прямо из пещеры — вернуть небо и свет
   roamStop(ISL.R); ISL.gear.off();
   if(ISL.ping) islRoot.remove(ISL.ping.s.root);
   ISL = null; islRoot.visible = false; runCam.on = false; roamView(false);
@@ -471,16 +474,20 @@ function islIntro(){
 }
 function islHud(){
   if(!ISL) return;
+  if(ISL.cave){ ISL.hud.innerHTML = cvHudPill(); return; }   // в пещере — только ключи, кристаллики и сундуки
   const sea = save.sea.got.length;
   ISL.hud.innerHTML = `<span class="pill">🌟 <b>${save.isl.got.length}/${ISL_STARS.length}</b></span>`
     + (sea ? `<span class="pill">🐟 <b>${sea}/${SEA_FISH.length}</b></span>` : '')
-    + (gearN() ? `<span class="pill">${GEAR.filter(owns).map(id => shopItem(id).ic).join('')}</span>` : '');
+    + (gearN() ? `<span class="pill">${GEAR.filter(owns).map(id => shopItem(id).ic).join('')}</span>` : '')
+    + (typeof cvHudPill === 'function' ? cvHudPill() : '');
 }
 function islStarsShow(){ for(const st of islRoot.userData.stars){ const got = save.isl.got.includes(st.i); st.sp.visible = st.gl.visible = !got; } }
 // коснулась подписи места — малыш идёт туда сам
 function islHit(cx, cy){
+  if(ISL && ISL.cave) return cvHit(cx, cy);
   let best = null, bd = 60;
-  for(const o of [...Object.values(islRoot.userData.pl), ...islRoot.userData.fish]){
+  const U = islRoot.userData;
+  for(const o of [...Object.values(U.pl), ...U.fish, ...(U.cave ? [U.cave] : [])]){
     if(!o.lbl.visible) continue;
     const w = o.lbl.getWorldPosition(new V3()); if(w.distanceTo(camera.position) > 40) continue;
     const q = toScreen(w), d = Math.hypot(q.x - cx, q.y - cy);
@@ -493,6 +500,7 @@ function islHit(cx, cy){
 function islStep(dt){
   const I = ISL, R = I.R, P = R.pos, U = islRoot.userData;
   I.t += dt;
+  if(I.cave){ cvStep(dt); return; }   // 🗝️ в пещере — свой мир (js/cave.js)
   roamStep(R, dt);
   islGearStep(dt);
   U.sea.position.y = -0.05 + Math.sin(now*0.8)*0.03;
@@ -524,6 +532,8 @@ function islStep(dt){
     const rp = o.hole.userData.rp, k = (now*0.6 + o.pos.x) % 1; rp.scale.setScalar(0.6 + k*1.4); rp.material.opacity = 0.6*(1 - k);
     if(d < Math.min(nd, 2.2) && Math.abs(P.y - o.pos.y) < 1.2){ nd = d; near = o; }
   }
+  const cm = typeof cvIslStep === 'function' ? cvIslStep(dt) : null;
+  if(cm && Math.hypot(P.x - cm.pos.x, P.z - cm.pos.z) < nd) near = cm;
   if(near !== I.near){ I.near = near; islGoShow(); }
   // плавник кружит, флажок треплется, лампа маяка мерцает
   const fin = U.pl.chase.g.userData.fin; if(fin) fin.rotation.y = now*0.7;
@@ -538,6 +548,12 @@ function islStep(dt){
 function islGoShow(){
   const I = ISL, o = I.near, el = I.go;
   if(!o){ el.hidden = true; return; }
+  if(o.cave){
+    el.innerHTML = `<button class="btn">🗝️ ${L('В пещеру', 'Into the cave')} ▶</button>`;
+    el.hidden = false; sfx.tick();
+    el.querySelector('button').addEventListener('click', e => { e.stopPropagation(); sfx.tap(); cvEnter(); });
+    return;
+  }
   if(o.fish){
     el.innerHTML = `<button class="btn">🎣 ${L('Порыбачить', 'Go fishing')} ▶</button>`;
     el.hidden = false; sfx.tick();

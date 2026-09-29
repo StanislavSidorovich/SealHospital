@@ -70,11 +70,16 @@ function sanitize(d){
     bg:sanitizeBg(d.bg),            // 🎲 Игротека (js/boardgames.js)
     isl:sanitizeIsl(d.isl)};        // 🗺️ прогулка по острову (js/island.js)
 }
-// isl = {got:[номера найденных звёздочек острова], n — сколько раз гуляли по острову} (js/island.js)
+// isl = {got:[номера найденных звёздочек острова], n — сколько раз гуляли по острову,
+//        cave:{keys, open, chest — буквы ключей r/b/y: найденные ключи, открытые двери, открытые сундуки; gem — номера 💎; n — сколько раз заходили}} (js/island.js, js/cave.js)
 function sanitizeIsl(a){
   a = a && typeof a === 'object' ? a : {};
   const got = Array.isArray(a.got) ? [...new Set(a.got.filter(i => Number.isInteger(i) && i >= 0 && i < 64))] : [];
-  return {got, n:Number.isFinite(a.n) ? Math.max(0, Math.floor(a.n)) : 0};
+  const c = a.cave && typeof a.cave === 'object' ? a.cave : {};
+  const kk = v => Array.isArray(v) ? [...new Set(v.filter(k => k === 'r' || k === 'b' || k === 'y'))] : [];
+  const cave = {keys:kk(c.keys), open:kk(c.open), chest:kk(c.chest), gem:Array.isArray(c.gem) ? [...new Set(c.gem.filter(i => Number.isInteger(i) && i >= 0 && i < 32))] : [],
+    n:Number.isFinite(c.n) ? Math.max(0, Math.floor(c.n)) : 0};
+  return {got, n:Number.isFinite(a.n) ? Math.max(0, Math.floor(a.n)) : 0, cave};
 }
 // bg = {got:[коробки игр на полке], n:{игра: сколько партий}, w:{игра: побед}, day:{d, n — партий сегодня (ракушки за первые)}, box — день коробки с прогулки}
 function sanitizeBg(a){
