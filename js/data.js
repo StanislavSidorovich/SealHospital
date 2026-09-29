@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, who, album, progress, muted, music, free, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story, storm, sl, pt, bg, isl}.
+// Всё сохранение живёт под одним ключом sh.save: {version, who, album, progress, muted, music, free, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story, storm, sl, pt, bg, isl, sw}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 // Игроки на устройстве (Фаза 11, часть 2): sh.players = [{id, name}], sh.player = кто играет сейчас. У каждого своё сохранение.
@@ -68,7 +68,8 @@ function sanitize(d){
     sl:sanitizeSlide(d.sl),         // 🛷 Ледяная горка (js/slide.js)
     pt:sanitizePt(d.pt),            // 🐙🐻‍❄️ гости-пациенты (js/guests.js)
     bg:sanitizeBg(d.bg),            // 🎲 Игротека (js/boardgames.js)
-    isl:sanitizeIsl(d.isl)};        // 🗺️ прогулка по острову (js/island.js)
+    isl:sanitizeIsl(d.isl),         // 🗺️ прогулка по острову (js/island.js)
+    sw:sanitizeSwim(d.sw)};         // 🏊 заплыв (js/swimrace.js)
 }
 // isl = {got:[номера найденных звёздочек острова], n — сколько раз гуляли по острову,
 //        cave:{keys, open, chest — буквы ключей r/b/y: найденные ключи, открытые двери, открытые сундуки; gem — номера 💎; n — сколько раз заходили}} (js/island.js, js/cave.js)
@@ -97,6 +98,14 @@ function sanitizeSlide(a){
   a = a && typeof a === 'object' ? a : {};
   const num = v => Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0, dy = a.day && typeof a.day === 'object' ? a.day : {};
   return {n:num(a.n), bt:Number.isFinite(a.bt) && a.bt > 0 ? Math.round(a.bt*10)/10 : 0, st:Math.min(3, num(a.st)), win:num(a.win), gold:!!a.gold, flips:num(a.flips), net:num(a.net),
+    day:{d:typeof dy.d === 'string' ? dy.d.slice(0, 20) : '', n:num(dy.n), st:Math.min(3, num(dy.st))}};
+}
+// sw = {n — сколько раз доплыли, best — лучшие звёзды (0…3), bt — лучшее время (с, 0 — ещё нет), win — сколько раз приплыли первыми с друзьями,
+//       sec — находили короткий путь черепахи, day:{d, n — заплывов сегодня (ракушки за первые два), st — звёзды сегодня}} (js/swimrace.js)
+function sanitizeSwim(a){
+  a = a && typeof a === 'object' ? a : {};
+  const num = v => Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0, dy = a.day && typeof a.day === 'object' ? a.day : {};
+  return {n:num(a.n), best:Math.min(3, num(a.best)), bt:Number.isFinite(a.bt) && a.bt > 0 ? Math.round(a.bt*10)/10 : 0, win:num(a.win), sec:!!a.sec,
     day:{d:typeof dy.d === 'string' ? dy.d.slice(0, 20) : '', n:num(dy.n), st:Math.min(3, num(dy.st))}};
 }
 // storm = {st — сколько частей шторма пройдено (0…4), n — сколько раз прошли весь шторм, d — день последней игры (toDateString), net — сколько раз вместе} (js/storm.js)

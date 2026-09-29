@@ -974,6 +974,19 @@ body.fn-dip-on #corner{visibility:hidden}
 .sl-podium span{background:#fff;border:2px solid var(--ink);border-radius:12px;padding:3px 10px}
 .sl-podium span.me{background:#FFE3EC}
 .sl-podium small{font-weight:600;opacity:.7}
+/* 🏊 Заплыв (js/swimrace.js): кружок такта вокруг малыша — сжимается к кольцу, касание в этот миг — рывок */
+.sw-beat{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:2}
+.sw-beat i{position:absolute;left:-40px;top:-40px;width:80px;height:80px;border-radius:50%;box-sizing:border-box}
+.sw-beat .c{border:4px solid rgba(255,255,255,.95);box-shadow:0 0 0 2.5px var(--ink)}
+.sw-beat .o{border:4px solid var(--pink);transform:scale(var(--r,1));opacity:calc(1.6 - var(--r,1)*.5)}
+.sw-beat b{position:absolute;left:30px;top:-44px;font:800 18px/1 Nunito,sans-serif;color:var(--ink);text-shadow:0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
+.sw-beat.leap .c{border-color:#FFD66B;background:rgba(255,214,107,.25)}
+.sw-beat.leap b{left:-12px;top:-66px;font-size:30px}
+.sw-beat.hit .c{animation:swhit .3s ease-out}
+.sw-beat.miss .c{animation:swmiss .3s ease-out}
+@keyframes swhit{0%{transform:scale(1.35);background:rgba(255,155,184,.5)}100%{transform:scale(1)}}
+@keyframes swmiss{0%{transform:translateX(-4px)}50%{transform:translateX(4px)}100%{transform:none}}
+@media (prefers-reduced-motion:reduce){.sw-beat.hit .c,.sw-beat.miss .c{animation:none}}
 /* прогулка-рогатка (js/walk.js): пальчик показывает «тяни назад» */
 .sling-hand{position:absolute;font-size:42px;margin:-10px 0 0 -18px;pointer-events:none;animation:slinghand 1.3s ease-in-out infinite}
 @keyframes slinghand{0%{translate:0 0;opacity:0}20%{opacity:1}70%{translate:0 90px;opacity:1}100%{translate:0 90px;opacity:0}}

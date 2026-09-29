@@ -121,14 +121,15 @@ const TR_MEDALS = [
   {ic:'🗺️', name:L('Путешественник', 'Explorer'), how:L('Найди все звёздочки острова', 'Find all the island stars'), n:() => [save.isl.got.length, ISL_STARS.length]},
   {ic:'🎲', name:L('Игрок', 'Player'),            how:L('Выиграй 5 настольных игр', 'Win 5 board games'),            n:() => [Math.min(5, Object.values(save.bg.w).reduce((a, b) => a + b, 0)), 5]},
   {ic:'🛷', name:L('Ледяной гонщик', 'Ice racer'), how:L('Найди золотую ракушку на горке', 'Find the golden shell on the slide'), n:() => [save.sl.gold ? 1 : 0, 1]},
+  {ic:'🏊', name:L('Пловец', 'Swimmer'),          how:L('Найди короткий путь черепахи в заплыве', 'Find the turtle\'s shortcut in the swim race'), n:() => [save.sw.sec ? 1 : 0, 1]},
   {ic:'🦈', name:L('Друг акулы', 'Shark friend'), how:L('Подружись с акулой', 'Make friends with the shark'),          n:() => [save.dive.shark.friend ? 1 : 0, 1]},
   {ic:'☁️', name:L('Друг Тучи', 'Cloud friend'),  how:L('Вылечи Большую Тучу', 'Cure the Big Cloud'),               n:() => [save.coop.cs.cure >= 2 ? 1 : 0, 1]},
   {ic:'🌪️', name:L('Хранитель маяка', 'Lighthouse keeper'), how:L('Пройди Великий шторм', 'Get through the Great Storm'), n:() => [save.storm.st >= 4 ? 1 : 0, 1]},
   {ic:'🎉', name:L('Праздник острова', 'Island party'), how:L('Устрой праздник острова', 'Throw the island party'),     n:() => [save.story.fin.n > 0 ? 1 : 0, 1]}
 ];
 const trMedalOk = m => { const [a, b] = m.n(); return a >= b; };
-const TR_CUPS = () => [...Object.keys(RUN_FISH), 'slide'];
-const trCupName = id => id === 'slide' ? L('Ледяная горка', 'Ice slide') : LEVELS[id] ? LEVELS[id].name : id;
+const TR_CUPS = () => [...Object.keys(RUN_FISH), 'slide', 'swim'];
+const trCupName = id => id === 'slide' ? L('Ледяная горка', 'Ice slide') : id === 'swim' ? L('Заплыв', 'Swim race') : LEVELS[id] ? LEVELS[id].name : id;
 
 /* ---------- витрины (стены и пол) ---------- */
 function trFill(root){
@@ -235,7 +236,7 @@ async function trAct(k){
   if(k === 'cups'){
     const got = save.adv.cups;
     return trPanel(`🏆 ${L('Кубки', 'Cups')}`, `<div class="tr-list">${TR_CUPS().map(id => `<p class="${got.includes(id) ? 'ok' : 'no'}"><span>${got.includes(id) ? '🏆' : '⚪'}</span> ${trCupName(id)}</p>`).join('')}</div>
-      <p class="tip">${got.length >= TR_CUPS().length ? L('Все кубки собраны! ♡', 'All the cups are yours! ♡') : L('Кубок — за спасение всех рыбок на уровне. Горка — за золотую ракушку 🐚', 'A cup is for saving every fish on a level. The slide cup is for the golden shell 🐚')}</p>`);
+      <p class="tip">${got.length >= TR_CUPS().length ? L('Все кубки собраны! ♡', 'All the cups are yours! ♡') : L('Кубок — за спасение всех рыбок на уровне. Горка — за первую победу, заплыв — за три звезды 🐚', 'A cup is for saving every fish on a level. The slide cup is for the first win, the swim cup for three stars 🐚')}</p>`);
   }
   if(k === 'medals'){
     return trPanel(`🎖️ ${L('Медали', 'Medals')}`, `<div class="tr-list">${TR_MEDALS.map(m => { const [a, b] = m.n(), ok = a >= b; return `<p class="${ok ? 'ok' : 'no'}"><span>${ok ? m.ic : '⚪'}</span> <b>${m.name}</b> — ${ok ? L('есть! ✓', 'yours! ✓') : `${m.how}${b > 1 ? ` (${a}/${b})` : ''}`}</p>`; }).join('')}</div>`);

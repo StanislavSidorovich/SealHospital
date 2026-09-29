@@ -101,6 +101,7 @@ const ISL_PL = {
   slide: {x:10,  z:-17, make:islSlideTop},
   dive:  {x:-17, z:32.6, at:[-17, 29], make:islPier, flat:true},
   chase: {x:12,  z:36,  make:islFin, water:true},
+  swim:  {x:-3,  z:38,  make:islSwimStart, water:true},
   storm: {x:33,  z:32.4, at:[33, 30], make:islLighthouse}
 };
 
@@ -186,6 +187,16 @@ function islPier(g){   // деревянный причал в море: по н
 function islFin(g){   // акулий плавник кружит в море
   const f = new THREE.Group(); g.add(f); g.userData.fin = f;
   const c = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.2, 4), toon(0x8FA3B8)), 1.06); c.scale.z = 0.35; c.position.set(2.6, 0.35, 0); f.add(c);
+}
+function islSwimStart(g){   // 🏊 старт заплыва: два буйка с флажками качаются на волнах
+  for(const x of [-1.5, 1.5]){
+    const b = new THREE.Group(); b.position.x = x; g.add(b);
+    const ball = addOutline(new THREE.Mesh(SMALL, toon(0xFF7F9E)), 1.06); ball.scale.set(0.5, 0.55, 0.5); b.add(ball);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.51, 0.51, 0.18, 16), toon(0xFFFFFF)); band.position.y = 0.05; b.add(band);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 6), inkMat); pole.position.y = 1.0; b.add(pole);
+    const f = new THREE.Mesh(new THREE.CircleGeometry(0.3, 3), new THREE.MeshToonMaterial({color:0xFFD66B, side:THREE.DoubleSide})); f.position.set(0.22, 1.55, 0); b.add(f);
+  }
+  g.userData.bob = true;
 }
 function islLighthouse(g){   // маяк на островке: полосатая башня, наверху лампа (сверху можно постоять)
   for(let i = 0; i < 5; i++) islCyl(g, i % 2 ? 0xFFFFFF : 0xFF7F9E, 1.6 - i*0.06, 1.6 - (i - 1)*0.06, 1.1, 0, 0.55 + i*1.1, 0, 24, 1.03);
@@ -537,6 +548,7 @@ function islStep(dt){
   if(near !== I.near){ I.near = near; islGoShow(); }
   // плавник кружит, флажок треплется, лампа маяка мерцает
   const fin = U.pl.chase.g.userData.fin; if(fin) fin.rotation.y = now*0.7;
+  const sw = U.pl.swim && U.pl.swim.g; if(sw){ sw.position.y = -0.05 + Math.sin(now*1.6)*0.08; sw.rotation.z = Math.sin(now*1.2)*0.05; }
   const fl = U.pl.pet.g.userData.flag; if(fl) fl.rotation.y = Math.sin(now*3)*0.25;
   const lg = U.pl.storm.g.userData.glow; if(lg) lg.material.opacity = 0.6 + Math.sin(now*2)*0.3;
   if(I.ping) islPingStep(dt);

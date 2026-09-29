@@ -27,6 +27,7 @@ const ST_PLACES = {
   dive:  {ic:'🤿', name:L('Бухта', 'Bay'),             x:28, y:86, pet:true},
   chase: {ic:'🦈', name:L('Салки', 'Tag'),             x:66, y:88, pet:true},
   slide: {ic:'🛷', name:L('Горка', 'Slide'),           x:64, y:27, pet:true, show:() => typeof slideGame === 'function'},   // js/slide.js
+  swim:  {ic:'🏊', name:L('Заплыв', 'Swim'),          x:47, y:84, pet:true, show:() => typeof swimGame === 'function'},   // js/swimrace.js
   storm: {ic:'🌪️', name:L('Шторм', 'Storm'),          x:90, y:86, pet:true, show:() => typeof smPlay === 'function' && smPlay()}   // глава 8 или «Все игры открыты» (js/storm.js)
 };
 
@@ -77,7 +78,8 @@ const STORY = [
       {ic:'⭐', t:L('Три звезды в «Салках»', 'Three stars in «Tag»'), n:() => [save.dive.chase.best, 3], go:'chase'},
       {ic:'🦷', t:L('Акула застряла… Что с ней?', 'The shark is stuck… What is wrong?'), ok:() => save.dive.shark.tooth > 0, go:'chase'},
       {ic:'🩺', t:L('Вылечи акуле зуб в больнице', 'Fix the shark\'s tooth in the hospital'), ok:() => save.dive.shark.tooth > 1, go:'hosp'},
-      {ic:'🌊', t:L('Покатайся на акуле в бухте', 'Ride the shark in the bay'), ok:() => !!save.dive.shark.ride, go:'dive'}
+      {ic:'🌊', t:L('Покатайся на акуле в бухте', 'Ride the shark in the bay'), ok:() => !!save.dive.shark.ride, go:'dive'},
+      {ic:'🏊', t:L('Доплыви в «Заплыве»', 'Finish a «Swim race»'), n:() => [save.sw.n, 1], go:'swim'}
     ]},
   {ic:'🌑', name:L('Мгла', 'Gloom'),
     about:L('Из грота выползает тёмная Мгла, и все прячутся. Но что там за тихий плач?', 'A dark Gloom creeps out of the grotto and everyone hides. But what is that quiet crying?'),
@@ -173,7 +175,7 @@ function stNextSteps(){
   return out;
 }
 // какие игры «Поиграть» и «Вместе» ведут по истории (значок 📖 на плитке)
-const ST_PICK = {walk:'walk', run:'run', dive:'dive', chase:'chase', slide:'slide', road:'coop', rescue:'coop', storm:'coop'};
+const ST_PICK = {walk:'walk', run:'run', dive:'dive', chase:'chase', slide:'slide', swim:'swim', road:'coop', rescue:'coop', storm:'coop'};
 function stMarkPicks(panel){
   for(const {it} of stNextSteps()){
     const b = panel.querySelector(`.picks [data-k="${ST_PICK[it.go]}"]`);
@@ -183,7 +185,7 @@ function stMarkPicks(panel){
 // с какой главы (номер с нуля) игра открывается в «Поиграть», «Вместе» и на карте (разбор 27.09: всё было открыто сразу,
 // «Салки» раньше главы «Акула» — и игра казалась набором случайных уровней). Закрытая плитка в «Поиграть» — с 🔒 и главой.
 // ?test=1 открывает всё (для проверок), ?test=1&lock=1 — как у игрока
-const ST_GATE = {rescue:2, dive:3, chase:3, road:5, fight:5, bg:1, ocean:3, gameroom:2, trophy:3, coop:-1};   // bg — 🎲 Игротека в иглу (js/boardgames.js), ocean — 🐠 океанариум (js/ocean.js), gameroom и trophy — комнаты иглу (js/rooms.js)
+const ST_GATE = {rescue:2, dive:3, chase:3, swim:3, road:5, fight:5, bg:1, ocean:3, gameroom:2, trophy:3, coop:-1};   // bg — 🎲 Игротека в иглу (js/boardgames.js), ocean — 🐠 океанариум (js/ocean.js), gameroom и trophy — комнаты иглу (js/rooms.js)
 function stGate(k){
   const i = ST_GATE[k];
   if(i == null || i < 0 || save.story.open > i || save.free) return -1;   // 🔓 «Все игры открыты» в ⚙️
@@ -246,6 +248,8 @@ const TODAY = [
     show:() => !!save.pet, done:() => save.dive.chase.day.d === stDay() && save.dive.chase.day.n > 0, go:'chase'},
   {id:'slide', ic:'🛷', t:() => { const T = typeof slTheme === 'function' && slTheme(); return L(`Горка дня${T ? ': ' + T.ic + ' ' + T.name : ''}`, `Slide of the day${T ? ': ' + T.ic + ' ' + T.name : ''}`); },
     show:() => !!save.pet && typeof slideGame === 'function', done:() => save.sl.day.d === stDay() && save.sl.day.n > 0, go:'slide'},
+  {id:'swim', ic:'🏊', t:() => { const T = typeof swTheme === 'function' && swTheme(); return L(`Заплыв дня${T ? ': ' + T.ic + ' ' + T.name : ''}`, `Swim of the day${T ? ': ' + T.ic + ' ' + T.name : ''}`); },
+    show:() => !!save.pet && typeof swimGame === 'function', done:() => save.sw.day.d === stDay() && save.sw.day.n > 0, go:'swim'},
   {id:'garden', ic:'🌱', t:() => L('Рыбка-садовник ждёт с подарком', 'The gardener fish has a gift'), show:() => !!save.pet && stGardenGift(),
     done:() => !stGardenGift(), go:'dive'},
   {id:'guest', ic:'🤿', t:() => { const d = dvDef(dvGuest()); return L(`Гость бухты: ${d ? d.ic + ' ' + d.name : ''}`, `Bay guest: ${d ? d.ic + ' ' + d.name : ''}`); },

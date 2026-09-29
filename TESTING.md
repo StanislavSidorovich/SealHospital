@@ -108,6 +108,13 @@
 - Касания: `pointerdown`/`pointerup` на `#mg` без движения — прыжок (в полёте — кувырок); `pointerdown` → `pointermove` на ±80 px → `pointerup` — сдвиг по жёлобу.
 - Состояние: `SL.st` (`ready`/`go`/`end`), `SL.me.s` (м от старта, финиш `SL.L.fin` ≈517), `SL.shells_`/`SL.total`, `SL.flips`, `SL.bots[i].s`.
 
+## 🏊 Заплыв (`js/swimrace.js`)
+
+- Запуск сразу: `$('#intro').hidden = true; swimGame('race' | 'time')` (без аргумента — окно выбора). Тема дня: `advDayKey = () => 'Sun Sep 27 2026'` до запуска. Первый заплыв (`save.sw.n === 0`) — куски без перемешивания.
+- Автопилот своего малыша (3 звезды, ≈43 с): `SW.me.ai = {id:'turtle', pace:1, skill:1, tier:'mid', mult:1, line:0, ph:0, lead:0, did:new Set(), showT:99, hopT:99}` и `mgTick(dt => { if(SW && SW.st === 'go'){ swAI(SW.me, dt); SW.me.ai.mult = 1; const ph = (SW.t - SW.t0)/SW_BEAT, n = Math.round(ph); if(Math.abs(ph - n)*SW_BEAT < 0.05 && n !== SW.lastBeat && !swCanLeap(SW.me)) swTap(); } })`.
+- Состояние: `SW.st`, `SW.me.s/u/y` (y = 0 — гладь), `SW.L0.fin` ≈390, `SW.hoops[i].st` (1 — проплыла, −1 — мимо), `SW.sec`, `SW.best` (серия), `SW.under` (камера под водой).
+- В `page.evaluate` не возвращай промис `petDo('fun')`/`swimGame()` — Playwright будет ждать конца игры: оборачивай в `{ …; }`.
+
 ## 🎲 Игротека (`js/boardgames.js`)
 
 - Первая коробка: малыш есть и глава 2 открыта (в `?test=1` открыто всё) → зайти в иглу (`$('#btnHome').click()`), `bgEnsure()` положит «Мемори», стопка — `homeItems.games`. Полка: дождаться `!busy` (малыш сам бродит; `homeIdleT = 99`), `homePlay('games')` → `.bg-shelf [data-k="memo"]` → `.bg-modes [data-k="ping|duo|net|solo"]`. Сразу в партию: `$('#intro').hidden = true; bgGame('memo', 'ping' | 'duo' | 'solo', {size:12})`.

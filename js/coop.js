@@ -570,7 +570,7 @@ const coGamesOn = () => Object.keys(CO_GAMES).filter(g => g === 'rescue' ? typeo
   : g === 'storm' ? typeof stormGame === 'function' && smPlay() : g === 'bg' ? typeof bgGo === 'function' : true)
   .filter(g => typeof stGate !== 'function' || stGate(g) < 0)   // игры глав, до которых история не дошла, — пока прячем (js/story.js)
   .sort((a, b) => CO_ORDER.indexOf(a) - CO_ORDER.indexOf(b));
-const CO_ORDER = ['slide', 'rescue', 'chase', 'dive', 'road', 'fight', 'storm', 'bg', 'code', 'visit'];   // 🎲 Игротека — js/boardgames.js   // вкладки — по главам книги, «Код» и «В гости» в конце   // 🌪️ шторм — когда открыта глава 8 (js/storm.js)   // 🤿 нырнуть вдвоём (js/dive.js) и 🏝️ в гости — только по сети
+const CO_ORDER = ['slide', 'rescue', 'chase', 'swim', 'dive', 'road', 'fight', 'storm', 'bg', 'code', 'visit'];   // 🎲 Игротека — js/boardgames.js   // вкладки — по главам книги, «Код» и «В гости» в конце   // 🌪️ шторм — когда открыта глава 8 (js/storm.js)   // 🤿 нырнуть вдвоём (js/dive.js) и 🏝️ в гости — только по сети
 async function coopMenu(){
   for(;;){
     mgOpen(L('Играем вместе!', 'Let\'s play together!'));
@@ -643,6 +643,7 @@ function coopPlay(pick){
   if(pick.game === 'bg') return bgGo(pick.mode);   // pick.mode — какая коробка (js/boardgames.js)
   if(pick.mode === 'net') return coopNet(pick.game);
   if(pick.game === 'chase') return chaseGame(pick.mode);
+  if(pick.game === 'swim') return swimGame(pick.mode);   // 🏊 заплыв: свои кнопки race / time (js/swimrace.js)
   if(pick.game === 'slide') return slideGame(pick.mode === 'ping' ? 'race' : 'time');   // 🛷 ледяная горка (js/slide.js)   // 🦈 салки с акулой (js/chase.js)
   if(pick.game === 'storm') return stormGame(pick.mode);   // 🌪️ Великий шторм (js/storm.js)
   return pick.game === 'rescue' ? rescueGame(pick.mode) : pick.game === 'road' ? roadGame(pick.mode) : coopFight(pick.mode);
