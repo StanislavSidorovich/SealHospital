@@ -32,6 +32,8 @@ const MODES = {
   run3: { pet: 1, run: `funPre = 'run'; petDo('fun')`, wait: 3, clicks: ['.adv-map [data-lv="bay3"]'] },
   dive: { pet: 1, run: `funPre = 'dive'; petDo('fun')`, wait: 3 },
   isle: { pet: 1, run: `funPre = 'isle'; petDo('fun')`, wait: 3 },
+  'isle-gear': { pet: 1, run: `save.owned.push('gball', 'gsled', 'gfins'); funPre = 'isle'; petDo('fun'); setTimeout(() => { ISL.R.pos.set(10, 6, -18); }, 2500)`, wait: 3 },
+  'shop-gear': { pet: 1, run: `shopTab = 'gear'; $('#btnShop').click()` },
   hunt: { pet: 1, run: `petFeed(petSeal)`, wait: 3 },
   'isle-fish': { pet: 1, run: `funPre = 'isle'; petDo('fun'); setTimeout(() => { const o = islRoot.userData.fish[1]; ISL.R.pos.copy(o.pos); setTimeout(() => islFish(o), 600); }, 2500)`, wait: 3 },
   chase: { pet: 1, run: `funPre = 'chase'; petDo('fun')`, wait: 3 },

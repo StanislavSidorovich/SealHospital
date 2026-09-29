@@ -6,7 +6,9 @@
    Мир описывает одна функция высоты ground(x, z): земля, горы, крыши, льдинки. Куда нельзя забраться шагом —
    туда можно запрыгнуть (крутой край = стенка). Ниже ROAM_DEEP — вода: малыш плывёт на уровне ROAM_SWIM.
    Этим пользуются остров (js/island.js) и «Ходить самой» в комнатах иглу (js/homewalk.js: камеру ведёт сама комната, nocam).
-   roamStart({s, at, pos, ground, bounce, onGoal}) → R; каждый кадр roamStep(R, dt); выход — roamStop(R).
+   roamStart({s, at, pos, ground, bounce, onGoal, gear, push}) → R; каждый кадр roamStep(R, dt); выход — roamStop(R).
+   gear — вещи-умения из лавки (js/gear.js, gearRoam()): {dj — двойной прыжок, swim — во сколько раз быстрее плыть и выше «дельфинчик»,
+   slide — во сколько раз быстрее на пузике}; push(x, z) — течение в воде (V3 м/с или null); R.fly = true — летим с трамплина, в воздухе не рулим.
    Подключается после walk.js (squash, burst) и до island.js. */
 const ROAM_WALK = 4.4, ROAM_SWIMV = 6.2, ROAM_SLIDEV = 11;   // м/с: пешком, вплавь, на пузике с горы
 const ROAM_JV = 7.6, ROAM_G = 21, ROAM_LEAP = 9.5;            // прыжок, сила тяжести, «дельфинчик» из воды
@@ -14,10 +16,10 @@ const ROAM_DEEP = -0.3, ROAM_SWIM = -0.5;                     // где уже �
 const ROAM_STEEP = 1.7;                                       // круче этого шагом не забраться — только прыжком
 const ROAM_CAM = {w:10, min:10, up:0.62, look:0.8, fov:50};   // камера: сколько метров по ширине в кадре, ближе не подъезжает, насколько сверху
 
-function roamStart({s, at, pos, ground, bounce = null, onGoal = null, vk = 1, nocam = false, noslide = false}){   // vk — во сколько раз медленнее/быстрее (в иглу тесно), nocam — камеру ведёт не roamCam, noslide — не ложиться на пузико со склона
+function roamStart({s, at, pos, ground, bounce = null, onGoal = null, vk = 1, nocam = false, noslide = false, gear = null, push = null}){   // vk — во сколько раз медленнее/быстрее (в иглу тесно), nocam — камеру ведёт не roamCam, noslide — не ложиться на пузико со склона
   const R = {s, at, pos:pos.clone(), vk, nocam, noslide, vy:0, vel:new V3(), yaw:0, air:false, water:false, slide:0, tumble:0,
     tgt:null, hold:false, pid:null, goal:null, key:new V3(), ground, bounce, onGoal, cam:new V3(), camLook:new V3(), camOn:false,
-    puffT:0, stepT:0, jumpQ:false, still:0};
+    puffT:0, stepT:0, jumpQ:false, still:0, gear:gear || {}, push, dj:false, fromWater:false, fly:false};
   R.pos.y = roamFloor(R, R.pos.x, R.pos.z);
   roamPose(R, 0);
   return R;
@@ -76,14 +78,18 @@ function roamStep(R, dt){
   R.water = R.ground(P.x, P.z) < ROAM_DEEP;
   const onGround = !R.air;
   // на пузике: едем вниз по склону — разгоняемся; в гору и по ровному — снова лапками
-  let vmax = (R.water ? ROAM_SWIMV : ROAM_WALK)*(0.8 + 0.2*sc)*R.vk;
+  const G = R.gear;
+  let vmax = (R.water ? ROAM_SWIMV*(G.swim || 1) : ROAM_WALK)*(0.8 + 0.2*sc)*R.vk;
   if(onGround && !R.water && want.lengthSq() > 0.01 && !R.noslide){
-    const ahead = R.ground(P.x + want.x*0.6, P.z + want.z*0.6), drop = (floor0 - ahead)/0.6;
-    R.slide += ((drop > 0.18 ? Math.min(1, (drop - 0.18)*2.2) : 0) - R.slide)*Math.min(1, dt*(drop > 0.18 ? 3 : 5));
+    const ahead = R.ground(P.x + want.x*0.6, P.z + want.z*0.6), drop = (floor0 - ahead)/0.6, d0 = G.slide ? 0.1 : 0.18;   // на ледянке ложится и на пологом склоне
+    R.slide += ((drop > d0 ? Math.min(1, (drop - d0)*(G.slide ? 4 : 2.2)) : 0) - R.slide)*Math.min(1, dt*(drop > d0 ? 3 : G.slide ? 2.5 : 5));
   } else if(!R.air) R.slide += (0 - R.slide)*Math.min(1, dt*5);
-  vmax += (ROAM_SLIDEV*R.vk - vmax)*R.slide;
+  vmax += (ROAM_SLIDEV*(G.slide || 1)*R.vk - vmax)*R.slide;
   const tv = want.multiplyScalar(vmax);
-  R.vel.lerp(tv, Math.min(1, dt*(R.air ? 3 : tv.lengthSq() ? 6 : 4)));
+  if(!R.fly) R.vel.lerp(tv, Math.min(1, dt*(R.air ? 3 : tv.lengthSq() ? 6 : 4)));
+  // течение в воде (и над водой — чтобы «дельфинчиком» не проскочить)
+  const cur = R.push && R.ground(P.x, P.z) < ROAM_DEEP ? R.push(P.x, P.z) : null;
+  if(cur){ P.x += cur.x*dt; P.z += cur.z*dt; }
   // шаг по x и z отдельно: упёрлись в стенку по одной оси — скользим вдоль неё
   for(const ax of ['x', 'z']){
     const nx = ax === 'x' ? P.x + R.vel.x*dt : P.x, nz = ax === 'z' ? P.z + R.vel.z*dt : P.z;
@@ -96,20 +102,24 @@ function roamStep(R, dt){
   if(R.jumpQ){
     R.jumpQ = false;
     if(!R.air){
-      R.air = true; R.vy = R.water ? ROAM_LEAP : ROAM_JV; s.flap = 1;
+      R.air = true; R.vy = R.water ? ROAM_LEAP*(G.swim ? 1.3 : 1) : ROAM_JV; s.flap = 1; R.dj = false; R.fromWater = R.water;
       if(R.water){ R.tumble = 1; sfx.splash(); burst(TEX.puff, R.at.clone().add(P), 8, 1.4, 0.4); } else { sfx.whoosh(); squash(s, 0.16, 0.18); }
+    } else if(G.dj && !R.dj && !R.fromWater && !R.fly){   // 🎈 шарик-попрыгунчик: второй прыжок прямо в воздухе (с суши и с батута)
+      R.dj = true; R.vy = ROAM_JV*0.95; s.flap = 1; R.tumble = 1; sfx.pop();
+      burst(TEX.heart, R.at.clone().add(P).add(new V3(0, 0.4, 0)), 6, 1.4, 0.22);
+      if(G.onDJ) G.onDJ();
     }
   }
   if(R.air){
     R.vy -= ROAM_G*dt; P.y += R.vy*dt;
     if(P.y <= floor && R.vy <= 0){
-      P.y = floor; R.air = false; const hard = R.vy < -9; R.vy = 0; s.flap = 0;
+      P.y = floor; R.air = false; const hard = R.vy < -9; R.vy = 0; s.flap = 0; R.dj = false; R.fromWater = false; R.fly = false;
       const b = R.bounce && R.bounce(P.x, P.z);
       if(b){ R.air = true; R.vy = b; sfx.pop(); squash(s, 0.3, 0.25); burst(TEX.star, R.at.clone().add(P).add(new V3(0, 0.3, 0)), 8, 1.8, 0.24); }
       else if(R.water){ sfx.splash(); burst(TEX.puff, R.at.clone().add(P), 10, 1.6, 0.45); }
       else { sfx.thud(); squash(s, hard ? 0.28 : 0.18, 0.28); burst(TEX.puff, R.at.clone().add(P).add(new V3(0, 0.1, 0)), hard ? 8 : 4, 1, 0.4); }
     }
-  } else if(floor < P.y - 0.25){ R.air = true; R.vy = 0; }   // съехали с края — летим
+  } else if(floor < P.y - 0.25){ R.air = true; R.vy = 0; R.dj = false; R.fromWater = false; }   // съехали с края — летим
   else {
     P.y += (floor - P.y)*Math.min(1, dt*(R.water ? 6 : 18));
     const b = R.bounce && R.bounce(P.x, P.z);

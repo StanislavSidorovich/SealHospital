@@ -6,6 +6,8 @@
    Подошла к знаку — внизу «Идём ▶», и открывается та же игра, что и из «Поиграть» (stGo). Замки глав — как везде.
    Чем заняться просто так: 🌟 24 звёздочки (на горе, на крышах, на льдинках, в море, на маяке), грибы-батуты,
    с горы — на пузике, из воды — кувырком. Пинг, если живёт по соседству, бродит у своего домика и увязывается следом.
+   🎈 Места для вещей-умений (js/gear.js): ледяные столбы (двойной прыжок шариком), трамплин с горы (ледянка), течение
+   у дальней льдинки (ласты-турбо) — у каждого по звёздочкам; без вещи подойдёшь — подсказка, что купить в лавке.
    Вход: ⚽ «Поиграть» → 🗺️ «Гулять по острову». Сохранение: save.isl = {got:[номера звёздочек], n — сколько раз гуляли}.
    Подключается после story.js (ST_PLACES, stGate, stGo) и roam.js, до game.js. */
 const ISL_POS = new V3(-1400, 0, 1400);
@@ -17,7 +19,7 @@ const islRoot = new THREE.Group(); islRoot.position.copy(ISL_POS); islRoot.visib
 /* ---------- рельеф: остров-эллипс с неровным берегом, гора, холмы, островок маяка, льдинки ---------- */
 const islSm = k => k*k*(3 - 2*k);
 const islHill = (x, z, cx, cz, h, sg) => h*Math.exp(-((x - cx)**2 + (z - cz)**2)/(2*sg*sg));
-const ISL_FLOES = [[-34, 25, 2.4], [22, 40, 2.2], [-8, 41, 2.3], [42, 6, 2.4], [-43, -12, 2.5], [8, -41, 2.2]];
+const ISL_FLOES = [[-34, 25, 2.4], [22, 40, 2.2], [-8, 41, 2.3], [42, 6, 2.4], [-43, -12, 2.5], [8, -41, 2.2], [-55, 48, 3.2]];   // последняя — дальняя, за течением
 function islCoast(x, z){   // 0 — середина острова, 1 — дальше берега (за ним дно уходит вниз)
   const nx = x/40, nz = (z + 2)/34, a = Math.atan2(nz, nx);
   return Math.hypot(nx, nz)/(1 + 0.06*Math.sin(3*a) + 0.04*Math.sin(5*a + 1) + 0.03*Math.sin(9*a + 2));
@@ -51,15 +53,38 @@ function islGround(x, z){
 const ISL_PADS = [{x:4, z:5, v:13}, {x:-16, z:-14, v:13}, {x:31.3, z:32.2, v:16.5}, {x:-28, z:-3, v:12}];
 function islBounce(x, z){ for(const p of ISL_PADS) if(Math.hypot(x - p.x, z - p.z) < 0.9){ p.hit = now; return p.v; } return 0; }
 
-/* ---------- звёздочки: [x, z, над землёй] (в воде и в небе — как сказано) ---------- */
+/* ---------- 🎈 места для вещей-умений (js/gear.js) ----------
+   Столбы: каждый на ISL_PILLAR_H выше прежнего — одним прыжком (≈1,4 м) не забраться, с шариком (≈2,6 м) — да.
+   Трамплин: съехала с горы на ледянке быстрее need — летишь по дуге (скорость v, вверх vy) через две звёздочки в море;
+   без ледянки на этом склоне на пузике ≈8,5 м/с, на ледянке ≈11,5 (замерено 29.09) — вот и разница.
+   Течение: от дальней льдинки наружу со скоростью v (плывёшь 6,2 м/с — сносит; в ластах-турбо ≈10 — проплываешь). */
+const ISL_PILLARS = [[15.5, 20], [17.9, 21.3], [20.4, 20]], ISL_PILLAR_H = 1.8, ISL_PILLAR_R = 1.3;
+const ISL_RAMPS = [{x:10, z:-26, dx:0, dz:-1, need:10, v:15, vy:11}];
+const ISL_CUR = {x:-55, z:48, r0:4.2, r1:11.5, v:6.6};
+function islRampAt(rp, t){   // где летим с трамплина через t секунд (как считает roamStep: g = ROAM_G)
+  const y0 = islTerrain(rp.x, rp.z) + 0.45;
+  return new V3(rp.x + rp.dx*rp.v*t, y0 + rp.vy*t - ROAM_G/2*t*t, rp.z + rp.dz*rp.v*t);
+}
+function islPush(x, z){
+  const C = ISL_CUR, dx = x - C.x, dz = z - C.z, d = Math.hypot(dx, dz);
+  if(d < C.r0 - 0.8 || d > C.r1 + 1.5) return null;
+  const k = Math.min(1, (d - C.r0 + 0.8)/1.6, (C.r1 + 1.5 - d)/2.5);
+  return new V3(dx/d*C.v*k, 0, dz/d*C.v*k);
+}
+
+/* ---------- звёздочки: [x, z, над землёй] (в воде и в небе — как сказано; четвёртое 'abs' — высота как есть) ---------- */
 const ISL_STARS = [
   [0, -9, 0.9], [-6, -2, 0.9], [10, -17, 1.0], [5, -12, 0.9], [-10, -8, 0.9],       // у старта, гора, холм
   [-22, -19, 0.9], [20, -6, 0.9], [-33, 5, 0.9], [-24, 12, 0.9], [-14, 21, 0.9],   // крыша больницы, крыша иглу, за лавкой, холм, берег
   [-17, 34.2, 1.4], [-27, 31, 'w'], [4, 39, 'w'], [17, 37, 'w'], [0, -41, 'w'],    // конец причала, море
   [-34, 25, 0.9], [-8, 41, 0.9], [42, 6, 0.9], [-43, -12, 0.9],                    // льдинки
-  [33, 30, 0.9], [4, 5, 3.7], [-16, -14, 3.7], [22, -24, 1.0], [31, 14, 0.9]       // верх маяка, над батутами, у забега, у дороги
+  [33, 30, 0.9], [4, 5, 3.7], [-16, -14, 3.7], [22, -24, 1.0], [31, 14, 0.9],      // верх маяка, над батутами, у забега, у дороги
+  // 🎈 с вещами-умениями (номера выше не менять — они в сохранении)
+  [20.4, 20, 0.9], [-28, -3, 6.0],                                                  // 🎈 на третьем столбе, высоко над батутом у лавки
+  ...[0.52, 0.72].map(t => { const p = islRampAt(ISL_RAMPS[0], t); return [p.x, p.z, p.y + 0.4, 'abs']; }),   // 🛷 на лету с трамплина
+  [-55, 48, 0.9], [-5, -44, 4.1, 'abs']                                             // 🩵 на дальней льдинке, высоко над морем (только «дельфинчиком» в ластах)
 ];
-const islStarY = ([x, z, h]) => h === 'w' ? -0.05 : Math.max(-0.05, islGround(x, z)) + h;
+const islStarY = ([x, z, h, abs]) => abs ? h : h === 'w' ? -0.05 : Math.max(-0.05, islGround(x, z)) + h;
 
 /* ---------- места: ключ из ST_PLACES, где стоит, на чём, где подойти ---------- */
 const ISL_PL = {
@@ -273,6 +298,7 @@ function islBuild(){
   for(const [x, z, s] of [[-12, 0, 0.8], [6, -2, 0.6], [16, 16, 0.9], [-30, 18, 0.7], [26, -14, 0.8], [-18, -26, 0.9]]){
     const r = addOutline(new THREE.Mesh(new THREE.DodecahedronGeometry(s), toon(0xB9C2D0)), 1.05); r.scale.y = 0.6; r.position.set(x, islGround(x, z) + s*0.2, z); r.rotation.y = x; G.add(r);
   }
+  islGearBuild(G);
   // подписи и кольца — на земле у места
   for(const o of Object.values(pl)){
     const x = o.P.x, z = o.P.z, y = o.P.water ? 0 : islGround(x, z);
@@ -289,6 +315,80 @@ function islBuild(){
   });
 }
 
+/* ---------- 🎈 места для вещей-умений: столбы, трамплин, течение ---------- */
+function islGearBuild(G){
+  const ice = toon(0xBFE6F7), U = G.userData;
+  ISL_PILLARS.forEach(([x, z], i) => {   // ледяные столбы лесенкой: снежная шапка, голубые полоски
+    const base = islTerrain(x, z), top = base + ISL_PILLAR_H*(i + 1), h = top - base + 0.4;
+    const c = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(ISL_PILLAR_R, ISL_PILLAR_R*1.12, h, 18), ice), 1.04); c.position.set(x, top - h/2, z); G.add(c);
+    for(let k = 1; k <= i + 1; k++){ const r = new THREE.Mesh(new THREE.TorusGeometry(ISL_PILLAR_R*1.03, 0.05, 6, 20), toon(0x7FC4E8)); r.rotation.x = Math.PI/2; r.position.set(x, base + ISL_PILLAR_H*k - 0.5, z); G.add(r); }
+    islBlob(G, 0xFFFFFF, ISL_PILLAR_R*1.05, 0.2, ISL_PILLAR_R*1.05, x, top, z, 1.04);
+    ISL_SOLID.push({cyl:true, x, z, r:ISL_PILLAR_R, h:top});
+  });
+  for(const rp of ISL_RAMPS){   // трамплин: ледяной «язык» поперёк склона, вверх на краю
+    const g = new THREE.Group(), y0 = islTerrain(rp.x, rp.z); g.position.set(rp.x, y0, rp.z); g.rotation.y = Math.atan2(rp.dx, rp.dz); G.add(g);
+    const w = addOutline(new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.25, 2.6), toon(0xCFEAF7)), 1.03); w.position.set(0, 0.12, -0.9); w.rotation.x = -0.32; g.add(w);
+    for(const sx of [-1.1, 1.1]) islBox(g, 0x7FB8F0, 0.14, 0.4, 2.6, sx, 0.25, -0.9, 1.05).rotation.x = -0.32;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.8), toon(0x8C6A52)); pole.position.set(1.9, 0.9, -0.4); g.add(pole);
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.45), new THREE.MeshBasicMaterial({color:0x7FB8F0, side:THREE.DoubleSide})); fl.position.set(2.27, 1.55, -0.4); g.add(fl);
+  }
+  // течение вокруг дальней льдинки: белые «чёрточки» бегут от неё наружу
+  U.cur = [];
+  const dashG = new THREE.PlaneGeometry(0.2, 1.1), dashM = new THREE.MeshBasicMaterial({color:0xFFFFFF, transparent:true, opacity:0.7, depthWrite:false});
+  for(let i = 0; i < 36; i++){
+    const m = new THREE.Mesh(dashG, dashM.clone()), a = i/36*Math.PI*2 + (i % 3)*0.07;
+    m.rotation.x = -Math.PI/2; m.rotation.z = -a - Math.PI/2; G.add(m); U.cur.push({m, a, k:(i*0.37) % 1});
+  }
+  islSnowman(G, -54, 49.2, 0.7);
+  // значки над местами: что тут поможет
+  U.gmark = [[17.9, 20.6, 'gball', 7.6], [-28, -3, 'gball', 2.4], [ISL_RAMPS[0].x + 2, ISL_RAMPS[0].z + 0.5, 'gsled', 3], [ISL_CUR.x, ISL_CUR.z, 'gfins', 3.2]].map(([x, z, id, h]) => {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:emojiTex(shopItem(id).ic), transparent:true, depthWrite:false})); sp.scale.setScalar(0.9);
+    const y = Math.max(0, islTerrain(x, z)) + h; sp.position.set(x, y, z); G.add(sp); return {sp, y, id};
+  });
+}
+const ISL_GEAR_SAY = {   // подсказки: без вещи — что купить; с вещью впервые — как пользоваться
+  gball:{no:L('Высоко! С 🎈 шариком-попрыгунчиком из лавки прыгнешь дважды', 'Too high! With the 🎈 bouncy balloon from the shop you can jump twice'),
+    tip:L('🎈 Прыгни ⤴ — и в воздухе ⤴ ещё раз!', '🎈 Jump ⤴ — then tap ⤴ again in the air!')},
+  gsled:{no:L('Разгон маловат… На 🛷 ледянке из лавки — полетишь с трамплина!', 'Not fast enough… On the 🛷 sled from the shop you would fly off the ramp!'),
+    tip:L('🛷 Катись с самой вершины прямо на трамплин!', '🛷 Slide from the very top straight onto the ramp!')},
+  gfins:{no:L('Ух, течение уносит! В 🩵 ластах-турбо из лавки проплывёшь', 'Whoa, the current pushes you back! With 🩵 turbo flippers from the shop you can make it'),
+    tip:L('🩵 Ласты-турбо! Плыви к дальней льдинке, а «дельфинчиком» — до звёздочки над морем', '🩵 Turbo flippers! Swim to the far floe, and leap for the star above the sea')}
+};
+function islGearSay(id){
+  const I = ISL, key = 'g:' + id;
+  if(I.said.has(key)) return;
+  const has = owns(id);
+  if(has && tipSeen('gear:' + id)) return;
+  I.said.add(key); if(has) tipDone('gear:' + id);
+  sfx.arf(); mgHint(has ? ISL_GEAR_SAY[id].tip : ISL_GEAR_SAY[id].no); I.sayT = 4.5;
+}
+function islGearStep(dt){
+  const I = ISL, R = I.R, P = R.pos, U = islRoot.userData;
+  for(const g of U.gmark) g.sp.position.y = g.y + Math.sin(now*2 + g.y)*0.2;   // значки качаются
+  for(const c of U.cur){   // течение: чёрточки бегут наружу
+    c.k = (c.k + dt*0.35) % 1;
+    const r = ISL_CUR.r0 + (ISL_CUR.r1 - ISL_CUR.r0)*c.k;
+    c.m.position.set(ISL_CUR.x + Math.cos(c.a)*r, 0.0, ISL_CUR.z + Math.sin(c.a)*r);
+    c.m.material.opacity = 0.7*Math.sin(c.k*Math.PI);
+  }
+  // трамплин: влетела быстро — полёт по дуге (звёздочки как раз на ней)
+  for(const rp of ISL_RAMPS){
+    if(R.fly || Math.hypot(P.x - rp.x, P.z - rp.z) > 1.5) continue;
+    if(R.air && P.y - islGround(P.x, P.z) > 0.6) continue;   // на скорости со склона малыш чуть подлетает — это не прыжок
+    const sp = R.vel.x*rp.dx + R.vel.z*rp.dz;
+    if(sp > rp.need){
+      P.set(rp.x, islTerrain(rp.x, rp.z) + 0.45, rp.z); R.air = true; R.fly = true; R.vy = rp.vy; R.vel.set(rp.dx*rp.v, 0, rp.dz*rp.v); R.slide = 1;
+      sfx.whoosh(); burst(TEX.puff, ISL_POS.clone().add(P), 12, 2, 0.45); floatText(L('Уииии!', 'Wheee!'), headTop(I.s), '#2F7FB8');
+    } else if(sp > 4 && !owns('gsled')) islGearSay('gsled');
+  }
+  // подсказки у мест: без вещи — что купить (раз за прогулку), с вещью — как пользоваться (раз навсегда)
+  if(!R.air && Math.hypot(P.x - 17.9, P.z - 20.6) < 5.5) islGearSay('gball');
+  if(owns('gsled') && Math.hypot(P.x - ISL_RAMPS[0].x, P.z - (ISL_RAMPS[0].z + 5)) < 5) islGearSay('gsled');
+  if(islPush(P.x, P.z) && islGround(P.x, P.z) < ROAM_DEEP) islGearSay('gfins');
+  if(I.sayT > 0){ I.sayT -= dt; if(I.sayT <= 0) mgHint(''); }
+  I.gear.tick(R, dt);
+}
+
 /* ---------- прогулка ---------- */
 let ISL = null, isleSay = '';
 async function isleGo(s){
@@ -301,7 +401,8 @@ async function isleGo(s){
   setMood(s, 'happy');
   const pl = islRoot.userData.pl;
   const start = pl.pet.pos.clone().add(new V3(0, 0, 4.2));
-  ISL = {s, R:roamStart({s, at:ISL_POS, pos:start, ground:islGround, bounce:islBounce}), near:null, t:0, ping:null, said:new Set(), idleT:0};
+  ISL = {s, R:roamStart({s, at:ISL_POS, pos:start, ground:islGround, bounce:islBounce, push:islPush, gear:gearRoam(() => ISL && ISL.gear.dj())}), near:null, t:0, ping:null, said:new Set(), idleT:0, sayT:0};
+  ISL.gear = gearDress(s);   // 🎈 вещи-умения видно на малыше
   ISL.R.yaw = Math.PI;   // смотрит «вперёд», на остров (от камеры)
   for(const o of Object.values(pl)){ const lock = islLock(o.k); o.lock = lock; o.ring.material.color.set(lock ? 0xB9C2D0 : 0xFF9BB8); o.hide = lock === 'hide'; o.g.visible = o.lbl.visible = o.ring.visible = !o.hide || o.k === 'storm'; }
   const story = typeof stNextSteps === 'function' ? stNextSteps().map(x => x.it.go) : [];
@@ -328,7 +429,7 @@ async function isleGo(s){
   // обратно в уголок малыша
   mgClose(); homeB.remove(); flash();
   document.body.classList.remove('run-on', 'isle-on');
-  roamStop(ISL.R);
+  roamStop(ISL.R); ISL.gear.off();
   if(ISL.ping) islRoot.remove(ISL.ping.s.root);
   ISL = null; islRoot.visible = false; runCam.on = false; roamView(false);
   camOff.copy(cam0); camOffWant.copy(cam0);
@@ -372,7 +473,8 @@ function islHud(){
   if(!ISL) return;
   const sea = save.sea.got.length;
   ISL.hud.innerHTML = `<span class="pill">🌟 <b>${save.isl.got.length}/${ISL_STARS.length}</b></span>`
-    + (sea ? `<span class="pill">🐟 <b>${sea}/${SEA_FISH.length}</b></span>` : '');
+    + (sea ? `<span class="pill">🐟 <b>${sea}/${SEA_FISH.length}</b></span>` : '')
+    + (gearN() ? `<span class="pill">${GEAR.filter(owns).map(id => shopItem(id).ic).join('')}</span>` : '');
 }
 function islStarsShow(){ for(const st of islRoot.userData.stars){ const got = save.isl.got.includes(st.i); st.sp.visible = st.gl.visible = !got; } }
 // коснулась подписи места — малыш идёт туда сам
@@ -392,6 +494,7 @@ function islStep(dt){
   const I = ISL, R = I.R, P = R.pos, U = islRoot.userData;
   I.t += dt;
   roamStep(R, dt);
+  islGearStep(dt);
   U.sea.position.y = -0.05 + Math.sin(now*0.8)*0.03;
   // звёздочки кружатся; поймала — ракушки
   for(const st of U.stars){

@@ -260,7 +260,7 @@ function thumb(id){
   if(thumbCache[id]) return thumbCache[id];
   const it = shopItem(id);
   if(it.kind === 'scarf') return thumbCache[id] = scarfTex(it.c, id, 1, 1).image.toDataURL();
-  const obj = it.kind === 'wear' ? WEAR[id]() : DECOR[id](true);
+  const obj = it.kind === 'wear' ? WEAR[id]() : it.kind === 'gear' ? GEAR_MAKE[id]() : DECOR[id](true);   // gear — вещи-умения (js/gear.js)
   obj.position.set(0, 0, 0); obj.rotation.set(it.kind === 'wear' ? 0.25 : 0, it.id === 'snowman' ? 0 : 0.35, 0);
   if(id === 'glasses') obj.rotation.set(0.1, 0, 0);
   return thumbCache[id] = objThumb(obj, new V3(0, id === 'rug' ? 0.9 : 0.35, 1));
@@ -289,6 +289,7 @@ function objThumb(obj, dir, light = {hemi:0.75, sun:0.7}){
 
 /* ---------- лавка ---------- */
 let shopTab = 'wear', shopSel = null, shopOpen = false;
+const shopTabOf = it => it.kind === 'decor' || it.kind === 'gear' ? it.kind : 'wear';
 function openShop(){
   if(!mgRoot.hidden || busy) return toast(L('Сначала закончи лечение, потом загляни в лавку 🐚', 'Finish the treatment first, then visit the shop 🐚'));
   sfx.tap(); shopOpen = true; shopSel = null; renderShop(); $('#shop').hidden = false;
@@ -296,10 +297,12 @@ function openShop(){
 function closeShop(){ shopOpen = false; $('#shop').hidden = true; }
 function renderShop(){
   $('#shopShells').textContent = save.shells;
+  const gt = $('#shopTabs [data-tab="gear"]'); if(gt) gt.hidden = !save.pet;   // 🎈 умения — для малыша
+  if(shopTab === 'gear' && !save.pet) shopTab = 'wear';
   document.querySelectorAll('#shopTabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === shopTab));
   const grid = $('#shopGrid'); grid.innerHTML = '';
   for(const it of SHOP){
-    if((shopTab === 'decor') !== (it.kind === 'decor')) continue;
+    if(shopTabOf(it) !== shopTab) continue;
     if(it.gift && !owns(it.id)) continue;   // подарок из письма — в лавке не продаётся
     const b = document.createElement('button'), have = owns(it.id);
     b.className = 'item' + (have ? ' have' : '') + (shopSel === it.id ? ' sel' : '') + (it.kind === 'scarf' ? ' scarf' : '');
@@ -310,7 +313,8 @@ function renderShop(){
     b.addEventListener('click', () => { sfx.tap(); shopSel = it.id; renderShop(); });
     grid.appendChild(b);
   }
-  $('#shopNote').textContent = save.pet ? L(`Мебель для домика ${gg('малыша', 'малышки')} — внутри иглу 🏠`, `Furniture for your pup's home is inside the igloo 🏠`) : '';
+  const sel = shopSel && shopItem(shopSel);
+  $('#shopNote').textContent = sel && sel.how ? sel.how : shopTab === 'gear' ? L(`Вещи, которые умеют! ${save.pet.name} берёт их на прогулку по острову 🗺️`, `Gear with superpowers! ${save.pet.name} takes it on island walks 🗺️`) : save.pet ? L(`Мебель для домика ${gg('малыша', 'малышки')} — внутри иглу 🏠`, `Furniture for your pup's home is inside the igloo 🏠`) : '';
   const btn = $('#btnBuy'), it = shopSel && shopItem(shopSel);
   btn.classList.remove('off');
   if(!it){ btn.textContent = L('Выбери, что нравится', 'Pick what you like'); btn.classList.add('off'); }
@@ -320,6 +324,7 @@ function renderShop(){
     if(need > 0) btn.classList.add('off');
   }
   else if(it.kind === 'decor') btn.textContent = save.decor.includes(it.id) ? L('Убрать', 'Put away') : L('Поставить', 'Put out');
+  else if(it.kind === 'gear'){ btn.textContent = L('Есть! Бери на прогулку 🗺️', 'Yours! Take it for a walk 🗺️'); btn.classList.add('off'); }
   else { btn.textContent = it.kind === 'scarf' ? L('Есть! Выбирай в шарфиках', 'Yours! Pick it with the scarves') : L('Есть! Надень после лечения', 'Yours! Put it on after treatment'); btn.classList.add('off'); }
 }
 function shopAction(){
@@ -341,6 +346,7 @@ function shopAction(){
     return toast(L(`${it.name} — теперь в больнице! ✨`, `${it.name} — now in the hospital! ✨`));
   }
   renderShop();
+  if(it.kind === 'gear'){ if(petMode && petSeal) burst(TEX.star, headTop(petSeal), 14, 2, 0.3); return toast(`${it.ic} ${it.name}! ${it.how}`, 4200); }
   if(it.kind === 'wear' && S && S.stage === 'hug' && showWardrobe(S.seal)) $('#tools').hidden = true;   // обновка сразу в гардеробе
   toast(it.kind === 'scarf' ? L(`${it.name} — выбирай, когда лечишь от холода`, `${it.name} — pick it when you treat the cold`) : L(`${it.name}! Надевай пациентам после лечения`, `${it.name}! Put it on patients after treatment`));
 }

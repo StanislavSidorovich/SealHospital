@@ -287,6 +287,7 @@ body.mg-on:not(.mg-card) #card{display:none!important}
 .tabs{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
 .tabs button{min-height:48px;padding:6px 16px;border-radius:14px;border:2.5px solid var(--ink);background:#fff;font-weight:800;font-size:16px}
 .tabs button.on{background:var(--pink);box-shadow:0 3px 0 var(--ink)}
+#shopTabs button{flex:1 1 0;min-width:0;padding:6px 6px;font-size:15px}   /* три вкладки (🎈 Умения) влезают в узкий экран */
 .shop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;max-height:48vh;overflow-y:auto;padding:4px}
 .item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px 8px;border-radius:16px;border:2.5px solid var(--ink);
   background:#fff;box-shadow:0 3px 0 var(--ink);min-height:48px}
