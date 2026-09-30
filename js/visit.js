@@ -227,9 +227,124 @@ async function vsSwimAway(s){
   await tween(1.4, k => { s.root.position.lerpVectors(e, sea, k); s.inner.position.y = Math.sin(now*4)*0.06; }, ease.io);
   vsDrop(s);
 }
+/* ---------- 🚪 «Дверь для папы» (Спринт 8, просьба папы 30.09: «мне всегда просто присоединиться, продолжить вместе в любой момент») ----------
+   Включает папа в ⚙️ на устройстве Сабрины. У игрока появляется постоянный код двери (5 картинок) и одна ссылка навсегда:
+   …/?room=КОД&g=visit — папа держит её в закладках. Пока игра открыта, дверь слушает (свой Peer с id NET_PREFIX + код);
+   папа открыл ссылку → «Тук-тук!» → у Сабрины в спокойную минуту сцена «Стучится Папа. Пустить?» (talk в beats.js) →
+   «Пустить!» — ниточка переходит в net, и дальше обычный «Остров в гостях» (visitHost), оттуда вместе в любую игру.
+   «Не сейчас» или 2 минуты без ответа — гостю 'nope'. Занята другой игрой по сети — сразу 'nope' c busy.
+   Пока ждём ответа, гостю раз в 15 с 'wait' (coHello в coop.js ждёт дольше). Настройка — localStorage sh.door = {игрок: {on, code}}:
+   это настройка устройства, как язык (в код сохранения не входит — иначе дверь откроется сразу на двух устройствах). */
+const DOOR_KEY = 'sh.door', DOOR_ASK = 120;   // сколько секунд гость может ждать ответа
+const DR = {peer:null, pend:null, retryAt:0, code:'', t0:0, owned:null};   // owned — дверь отдана визиту (net.peer), после визита вернётся
+function doorCfg(){
+  const all = store.get(DOOR_KEY, {}), c = all && typeof all === 'object' ? all[PLAYERS.cur] : null;
+  return c && typeof c.code === 'string' && /^[0-7]{5}$/.test(c.code) ? {on:!!c.on, code:c.code} : {on:false, code:''};
+}
+function doorSet(c){ const all = store.get(DOOR_KEY, {}); const o = all && typeof all === 'object' ? all : {}; o[PLAYERS.cur] = c; store.set(DOOR_KEY, o); }
+const doorNewCode = () => Array.from({length:5}, () => Math.floor(Math.random()*NET_EMO.length)).join('');
+function doorShut(){
+  if(DR.pend) doorNope(false);
+  if(DR.peer && net.peer !== DR.peer) try{ DR.peer.destroy(); }catch(e){}
+  DR.peer = null;
+}
+function doorOpen(code){
+  DR.code = code; DR.retryAt = now + 20; DR.t0 = now;   // пока знакомимся с сервером — не дёргаем ещё раз
+  netPeer(NET_PREFIX + code).then(p => {
+    const c = doorCfg();
+    if(!c.on || c.code !== code || DR.peer){ p.destroy(); return; }
+    DR.peer = p;
+    p.on('connection', conn => conn.on('open', () => net.peer === p ? doorRejoin(conn) : doorKnock(conn)));
+    p.on('call', call => { if(net.peer === p) netAnswer(call); });
+    p.on('disconnected', () => { DR.t0 = now; if(!p.destroyed) try{ p.reconnect(); }catch(e){} });
+    p.on('error', e => {   // код занят (дверь открыта на другом устройстве или сервер ещё не забыл старую) — попробуем позже
+      if(net.peer === p) return;
+      if(['unavailable-id', 'network', 'server-error', 'socket-error', 'socket-closed'].includes(e.type)){ try{ p.destroy(); }catch(x){} if(DR.peer === p) DR.peer = null; DR.retryAt = now + 30; }
+    });
+  }).catch(() => { DR.retryAt = now + 30; });
+}
+// гость в гостях потерял связь и стучится снова — как в netHost: потерявшегося пускаем обратно
+function doorRejoin(c){ if(net.conn && net.conn.open && !net.lost){ c.close(); return; } netWire(c); }
+function doorKnock(c){
+  const say = m => { try{ c.send(m); }catch(e){} };
+  if(DR.pend || V || netLive()){ say({t:'nope', busy:true}); setTimeout(() => { try{ c.close(); }catch(e){} }, 600); return; }
+  const md = c.metadata && typeof c.metadata === 'object' ? c.metadata : {};
+  DR.pend = {c, t:now, name:typeof md.name === 'string' ? md.name.replace(/[<>&"]/g, '').slice(0, 16) : '', asked:false};
+  say({t:'wait'}); DR.pend.iv = setInterval(() => say({t:'wait'}), 15000);
+  c.on('close', () => { if(DR.pend && DR.pend.c === c){ clearInterval(DR.pend.iv); DR.pend = null; } });
+  sfx.thud(); setTimeout(() => sfx.thud(), 230);   // тук-тук
+}
+function doorNope(busy){
+  const P = DR.pend; if(!P) return;
+  DR.pend = null; clearInterval(P.iv);
+  try{ P.c.send({t:'nope', busy}); }catch(e){}
+  setTimeout(() => { try{ P.c.close(); }catch(e){} }, 600);
+}
+async function doorAsk(){
+  const P = DR.pend; P.asked = true;
+  const who = P.name || L('Кто-то', 'Someone');
+  const k = await talk([{who:'gull', t:L(`Тук-тук! 🚪 К тебе в гости стучится ${who}. Пустить?`, `Knock knock! 🚪 ${who} is at your door. Let them in?`)}],
+    {btns:[{k:'yes', t:`🚪 ${L('Пустить!', 'Let them in!')}`}, {k:'no', t:L('Не сейчас', 'Not now'), ghost:true}]});
+  if(DR.pend !== P) return toast(L('Гость ушёл — можно позвать ещё раз 🌊', 'The guest left — you can invite again 🌊'));
+  if(k !== 'yes') return doorNope(false);
+  DR.pend = null; clearInterval(P.iv);
+  if(!P.c.open) return toast(L('Гость ушёл — можно позвать ещё раз 🌊', 'The guest left — you can invite again 🌊'));
+  // гуляли по острову — сначала домой, на льдину: гость приплывает туда
+  if(typeof ISL !== 'undefined' && ISL && ISL.done){ ISL.done(null); for(let i = 0; i < 40 && (ISL || busy); i++) await wait(0.1); }
+  const p = DR.peer; DR.peer = null;
+  netClose(true); net.host = true; net.peer = p; DR.owned = p; net.code = DR.code; netWire(P.c);
+  mgOpen(L('Здороваемся… 👋', 'Saying hello… 👋'));
+  const pal = await coHello('visit'); mgClose();
+  if(!pal || !pal.want || pal.want === 'visit'){ toast(L('Не получилось поздороваться. Попробуйте ещё раз 🌊', 'Could not say hello. Try again 🌊')); netClose(true); return; }
+  visitHost(pal);
+}
+// визит кончился (netClose): код двери не отпускаем — сервер держит освободившийся код ещё минуту, и дверь бы долго не открылась
+function doorTakeBack(p){
+  if(!p || p !== DR.owned) return false;
+  DR.owned = null;
+  if(p.destroyed || DR.peer){ try{ p.destroy(); }catch(e){} return true; }
+  DR.peer = p; DR.t0 = now; if(p.disconnected) try{ p.reconnect(); }catch(e){}
+  return true;
+}
+function doorTick(){
+  const c = doorCfg(), want = c.on && netAvail() && !!save.pet;
+  if(!want){ if(DR.peer || DR.pend) doorShut(); return; }
+  if(DR.peer && (DR.peer.destroyed || !DR.peer.open && now - DR.t0 > 25)){ try{ DR.peer.destroy(); }catch(e){} DR.peer = null; DR.retryAt = now + 5; }   // застряла — заново
+  if(!DR.peer && now > DR.retryAt && !(net.peer && net.code === c.code)) doorOpen(c.code);
+  const P = DR.pend; if(!P) return;
+  if(now - P.t > DOOR_ASK && !P.asked) return doorNope(false);
+  if(!P.asked && typeof btCalm === 'function' && btCalm() && !V) doorAsk();
+}
+// ⚙️: дверь вкл/выкл, код и «📤 Отправить папе ссылку»
+function doorRender(){
+  const blk = $('#doorBlock'); if(!blk) return;
+  blk.hidden = !netAvail();
+  const c = doorCfg();
+  blk.querySelectorAll('#doorSeg button').forEach(b => b.classList.toggle('on', (b.dataset.d === '1') === c.on));
+  $('#doorNote').textContent = c.on
+    ? L(`Дверь открыта ${netCodeText(c.code)} Пока игра открыта, папа может постучаться по своей ссылке — ты увидишь «Тук-тук!» и ${pg('сам решишь', 'сама решишь')}, пустить ли.`, `The door is open ${netCodeText(c.code)} While the game is open, Dad can knock with his link — you'll see “Knock knock!” and decide whether to let him in.`)
+    : L('Включи — и папа сможет в любой момент постучаться к тебе в гости по одной постоянной ссылке.', 'Turn it on and Dad can knock and visit you any time with one permanent link.');
+  $('#btnDoorShare').hidden = !c.on;
+}
+(function doorWire(){
+  const seg = $('#doorSeg'); if(!seg) return;
+  seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    const on = b.dataset.d === '1', c = doorCfg(); if(on === c.on) return;
+    sfx.tap(); doorSet({on, code:c.code || doorNewCode()}); doorRender();
+    if(on) toast(L('🚪 Дверь открыта! Отправь папе ссылку — она не меняется', '🚪 The door is open! Send Dad the link — it never changes'), 3400);
+  }));
+  $('#btnDoorShare').addEventListener('click', () => {
+    sfx.tap(); const c = doorCfg(); if(!c.on) return;
+    netShare(c.code, 'visit', L(`Моя дверь на Тюленьем острове 🚪 Нажми, когда захочешь в гости (ссылка постоянная):`, `My door on Seal Island 🚪 Tap it whenever you want to visit (the link never changes):`));
+  });
+  for(const id of ['#btnSettings', '#btnIntroSet']) if($(id)) $(id).addEventListener('click', doorRender);
+  doorRender();
+})();
+
 // кадр (зовёт frame() в game.js)
 function visitTick(t, dt){
   vsBtnState();
+  if((DR.tk = (DR.tk || 0) - dt) <= 0){ DR.tk = 1; doorTick(); }   // 🚪 раз в секунду хватает
   if(!V) return;
   if(net.lost) V.lostT = (V.lostT || 0) + dt; else V.lostT = 0;
   if(V.lostT > 30 || (!V.game && !net.conn)) return vsEnd('lost');

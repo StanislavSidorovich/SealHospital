@@ -117,7 +117,7 @@ function netJoin(code, cb){
     if(gen !== net.gen){ p.destroy(); return; }
     net.peer = p;
     p.on('open', () => {
-      const c = p.connect(NET_PREFIX + code, {reliable:true});
+      const c = p.connect(NET_PREFIX + code, {reliable:true, metadata:{name:pname()}});   // имя — чтобы у «двери» (js/visit.js) было видно, кто стучится
       c.on('open', () => { if(done) return; done = true; netWire(c); cb('joined'); });
       setTimeout(() => fail('timeout'), 15000);
     });
@@ -133,7 +133,7 @@ function netClose(force){
   clearInterval(net.hb); net.hb = null;
   netMicOff(true);
   try{ if(net.conn) net.conn.close(); }catch(e){}
-  try{ if(net.peer) net.peer.destroy(); }catch(e){}
+  if(!(typeof doorTakeBack === 'function' && doorTakeBack(net.peer))) try{ if(net.peer) net.peer.destroy(); }catch(e){}   // 🚪 дверь (js/visit.js) забирает свой код обратно
   net.peer = net.conn = null; net.on = {}; net.lost = false; net.onLost = net.onBack = null;
   netSat(false);
 }
@@ -171,13 +171,14 @@ function netMicOff(all){
 }
 
 // 📤 ссылка-приглашение: …/?room=КОД&g=игра — напарник нажимает в WhatsApp и сразу входит в комнату (js/coop.js, coopFromLink)
-function netInviteUrl(code){
+function netInviteUrl(code, g){
   const u = new URL(location.href); u.search = ''; u.hash = '';
-  u.searchParams.set('room', code); if(typeof coGame === 'string') u.searchParams.set('g', coGame);
+  u.searchParams.set('room', code); g = g || (typeof coGame === 'string' ? coGame : ''); if(g) u.searchParams.set('g', g);
   return u.href;
 }
-async function netShare(code){
-  const url = netInviteUrl(code), text = L(`Поиграем вместе? 🦭 Комната ${netCodeText(code)} — нажми на ссылку:`, `Let's play together! 🦭 Room ${netCodeText(code)} — tap the link:`);
+// g и text — своя игра и свои слова (🚪 «дверь для папы» в js/visit.js зовёт в гости)
+async function netShare(code, g, text){
+  const url = netInviteUrl(code, g); text = text || L(`Поиграем вместе? 🦭 Комната ${netCodeText(code)} — нажми на ссылку:`, `Let's play together! 🦭 Room ${netCodeText(code)} — tap the link:`);
   try{ if(navigator.share){ await navigator.share({title:L('Тюлений остров', 'Seal Island'), text, url}); return; } }catch(e){ if(e && e.name === 'AbortError') return; }
   try{ await navigator.clipboard.writeText(`${text} ${url}`); toast(L('Ссылка скопирована — вставь её в WhatsApp 📋', 'Link copied — paste it into WhatsApp 📋'), 3200); }
   catch(e){ prompt(L('Скопируй ссылку:', 'Copy the link:'), url); }

@@ -626,8 +626,13 @@ async function coopNet(game){
 }
 // уже поздоровались: во что играем (напарник мог позвать чайку или в гости — тогда туда)
 function coopNetGo(game, pal){
+  if(pal && pal.nope){   // постучались в «дверь» (js/visit.js), а там «не сейчас»
+    toast(pal.busy ? L('Там сейчас играют с кем-то. Постучи чуть позже 🙂', 'They are playing with someone right now. Knock a bit later 🙂') : L('Сейчас не могут. Постучи чуть позже 🙂', 'They can\'t right now. Knock a bit later 🙂'), 4200);
+    netClose(true); return null;
+  }
   if(pal && pal.want === 'run' && typeof gullFly === 'function') return gullFly(pal);
   if(pal && pal.want === 'visit' && typeof visitGuest === 'function') return visitGuest(pal);   // напарник позвал к себе на остров (js/visit.js)
+  if(game === 'visitor'){ toast(L('Не получилось поздороваться. Попробуйте ещё раз 🌊', 'Could not say hello. Try again 🌊')); netClose(true); return null; }   // шли в гости, а в гости не позвали — не в бой же
   let g = game;
   if(!net.host && pal && CO_GAMES[pal.want] && pal.want !== game && (pal.want !== 'rescue' || typeof rescueGame === 'function')){
     g = pal.want; coGame = g;
@@ -656,6 +661,11 @@ function coHello(want = 'fight'){
     const take = m => { got = {...(m.pet || {}), want:m.want || 'fight'}; };
     netOn('hi', m => { take(m); netSend({t:'hi2', pet:coPetDesc(), want}); fin(); });
     netOn('hi2', m => { take(m); fin(); });
+    // 🚪 «дверь» (js/visit.js): хозяйка ещё не открыла — ждём дольше (она пришлёт 'wait' ещё раз); «не сейчас» — 'nope'
+    netOn('wait', () => { clearTimeout(t); t = setTimeout(() => res(got || {}), 30000);
+      if(!waitSaid){ waitSaid = true; toast(L('🔔 Тук-тук! Ждём, когда откроют дверь…', '🔔 Knock knock! Waiting for the door to open…'), 4000); } });
+    netOn('nope', m => { clearTimeout(t); res({nope:true, busy:!!m.busy}); });
+    let waitSaid = false;
     const fin = () => { clearTimeout(t); res(got); };
     netSend({t:'hi', pet:coPetDesc(), want});
     t = setTimeout(() => res(got || {}), 8000);
@@ -799,20 +809,20 @@ async function coopFromIntro(){
   const q = new URLSearchParams(location.search), code = q.get('room'), g = q.get('g');
   if(!code) return;
   try{ const u = new URL(location.href); u.searchParams.delete('room'); u.searchParams.delete('g'); history.replaceState(null, '', u.href); }catch(e){}
-  if(!/^[0-7]{3}$/.test(code)) return;
+  if(!/^[0-7]{3,6}$/.test(code)) return;   // 3 картинки — комната; 5 — 🚪 «дверь» в гости (js/visit.js)
   if(!netAvail()) return setTimeout(() => toast(L('Здесь играть по сети не получится — открой ссылку в браузере 🌐', 'Online play does not work here — open the link in a browser 🌐'), 4000), 900);
   setTimeout(async () => {
-    const G = CO_GAMES[g];   // игры из следующих файлов (chase.js, dive.js…) к этому времени уже на месте
+    const G = CO_GAMES[g], door = code.length > 3;   // игры из следующих файлов (chase.js, dive.js…) к этому времени уже на месте
     if(!mgRoot.hidden) return;
     const intro = $('#intro'), was = !intro.hidden;
     intro.hidden = true;
     mgOpen('');
     const panel = mgNode('div', 'mg-panel net-lobby', `
-      <p class="ttl display">${L('Тебя зовут играть! 💗', 'You are invited to play! 💗')}</p>
-      ${G ? `<p class="got">${G.ic} <b>${G.name()}</b></p>` : ''}
+      <p class="ttl display">${door ? L('Постучаться в гости? 🚪', 'Knock on the door? 🚪') : L('Тебя зовут играть! 💗', 'You are invited to play! 💗')}</p>
+      ${door ? `<p class="got">${L('Если дома — откроют, и ты приплывёшь к малышу на льдину 🏝️', 'If they are home, they will open, and you will swim over to the pup\'s ice floe 🏝️')}</p>` : G ? `<p class="got">${G.ic} <b>${G.name()}</b></p>` : ''}
       <p class="net-code">${netCodeText(code)}</p>
       <p class="got net-say"></p>
-      <div class="row col"><button class="btn" data-k="go">${L('Играем! ▶', 'Let\'s play! ▶')}</button>
+      <div class="row col"><button class="btn" data-k="go">${door ? L('Тук-тук! ▶', 'Knock knock! ▶') : L('Играем! ▶', 'Let\'s play! ▶')}</button>
       <button class="btn ghost small" data-k="no">${L('Потом', 'Later')}</button></div>`);
     const say = panel.querySelector('.net-say'), goB = panel.querySelector('[data-k="go"]');
     const ok = await new Promise(r => {
@@ -821,13 +831,13 @@ async function coopFromIntro(){
         ac(); sfx.tap(); goB.disabled = true; say.textContent = L('Стучимся в комнату…', 'Knocking on the room…');
         netJoin(code, (st, why) => {
           if(st === 'joined') return r(true);
-          say.innerHTML = (why === 'peer-unavailable' ? L('Комната уже закрылась. Попроси новую ссылку 💌', 'The room is closed. Ask for a new link 💌') : L('Не получилось подключиться. Попробуй ещё.', 'Could not connect. Try again.')) + netWhy(why);
+          say.innerHTML = (why === 'peer-unavailable' ? door ? L('Сейчас никого нет дома — игра закрыта. Постучи попозже 🌙', 'Nobody is home right now — the game is closed. Knock later 🌙') : L('Комната уже закрылась. Попроси новую ссылку 💌', 'The room is closed. Ask for a new link 💌') : L('Не получилось подключиться. Попробуй ещё.', 'Could not connect. Try again.')) + netWhy(why);
           sfx.bad(); goB.disabled = false; goB.textContent = L('Ещё раз ↻', 'Try again ↻');
         });
       };
     });
     mgClose();
-    if(ok){ sfx.good(); if(G) coGame = g; try{ await coopNet(G ? g : 'fight'); }catch(e){ console.error(e); } }
+    if(ok){ sfx.good(); if(G) coGame = g; try{ await coopNet(g === 'visit' ? 'visitor' : G ? g : 'fight'); }catch(e){ console.error(e); } }   // в гости: хозяйка сама позовёт на остров (coopNetGo)
     if(typeof V !== 'undefined' && V && V.role === 'host'){ started = true; if(!petMode) goPet(true); return; }
     if(was) intro.hidden = false;
   }, 800);
