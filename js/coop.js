@@ -586,7 +586,7 @@ async function coopMenu(){
       <div class="picks co-std">
         ${netAvail() ? `<button data-k="net" class="wide"><span class="ic">🌐</span><b>${L('По сети', 'Online')}</b><small>${L('с папой или другом', 'with Dad or a friend')}</small></button>` : ''}
         ${pingOk ? `<button data-k="ping"><span class="ic">🐧</span><b>${L('С Пингом', 'With Ping')}</b><small>${L('он поможет', 'he\'ll help')}</small></button>`
-          : `<button class="st-lock co-pinglock"><span class="ic">🐧</span><b>${L('С Пингом', 'With Ping')} 🔒</b><small>${L('вылечи его в больнице', 'treat him at the hospital')}</small></button>`}
+          : `<button class="st-lock co-pinglock"><span class="ic">🐧</span><b>${L('С Пингом', 'With Ping')} 🔒</b><small>${L('сначала вылечи ▶', 'treat him first ▶')}</small></button>`}
         <button data-k="solo"><span class="ic">🦭</span><b>${L('Без напарника', 'Solo')}</b><small>${L('полегче', 'a bit easier')}</small></button>
       </div>
       ${netAvail() ? `<p class="got small-note co-gull">🐦 ${L('Если напарник позвал чайку из забега — выбирай «По сети», и ты прилетишь к нему чайкой', 'If your partner called the gull from a dash, pick “Online” and you will fly in as the gull')}</p>` : ''}
@@ -609,13 +609,14 @@ async function coopMenu(){
     };
     let pickK = null;
     const pl = panel.querySelector('.co-pinglock');   // Пинга ещё не лечили (pengMet в js/shift.js) — он придёт в больницу во вторую смену
-    if(pl) mgOn(pl, 'click', () => { sfx.tap(); toast(L('Пинг — пингвин-сосед. Он придёт к тебе в больницу. Вылечишь — и будете играть вместе! 🐧', 'Ping is the penguin next door. He will come to your hospital. Make him better — and you can play together! 🐧'), 4200); });
+    if(pl) mgOn(pl, 'click', () => { sfx.tap(); if(pickK) pickK('hosp'); });
     panel.querySelectorAll('[data-g]').forEach(b => b.classList.toggle('story', story.includes(b.dataset.g)));
     panel.querySelectorAll('[data-g]').forEach(b => mgOn(b, 'click', () => { if(coGame !== b.dataset.g){ sfx.tap(); coGame = b.dataset.g; show(); } }));
     show();
     const k = await new Promise(r => { pickK = r; panel.querySelectorAll('.co-std [data-k], [data-k="no"]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })); });
     panel.classList.add('away'); await wait(0.2); mgClose();
     if(k === 'no') return null;
+    if(k === 'hosp') return {game:'hosp'};   // 🔒 «С Пингом»: идём в больницу, Пинг придёт следующим (coPingHosp)
     if(k !== 'net' || coGame === 'code') return {game:coGame, mode:k};
     if(await netLobby() === 'ok') return {game:coGame, mode:'net'};
   }
@@ -793,15 +794,29 @@ async function coopFromPet(s){
   if(typeof GL !== 'undefined' && GL && GL.home) gullRunEnd(true);   // чайка порхала над уголком — отпускаем: новая игра соединяется заново
   const pick = await coopMenu();
   if(!pick){ s.happyUntil = 0; return false; }
+  if(pick.game === 'hosp'){ s.happyUntil = 0; coPingHosp(); return false; }
   const res = await coopPlay(pick);
   coGull = !!(res && res.gull);
   s.root.position.copy(PET_SPOT); s.happyUntil = now + 3; setMood(s, 'happy');
   if(!res) return false;
 }
+// 🔒 «С Пингом» из уголка малыша: Пинга ещё не лечили — бежим в больницу, он придёт следующим пациентом (pengDue в shift.js)
+const coPingSay = async () => {
+  await wait(0.9);
+  for(let i = 0; i < 600 && typeof tkOn !== 'undefined' && tkOn; i++) await wait(0.2);   // новичку сперва рассказывает чайка (пролог главы 1)
+  toast(L('Бежим в больницу! Пинг уже плывёт к тебе. Вылечишь — и будете играть вместе 🐧', 'To the hospital! Ping is already on his way. Make him better — and you can play together 🐧'), 4200);
+};
+async function coPingHosp(){
+  pengCall = true;
+  for(let i = 0; i < 30 && (busy || !mgRoot.hidden); i++) await wait(0.1);   // «Поиграть» ещё закрывается
+  if(petMode) goPet(false);
+  coPingSay();
+}
 async function coopFromIntro(){
   ac(); sfx.good(); $('#intro').hidden = true;
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
   const pick = await coopMenu();
+  if(pick && pick.game === 'hosp'){ pengCall = true; $('#btnStart').click(); coPingSay(); return; }   // 🔒 «С Пингом» — открываем больницу
   if(pick) await coopPlay(pick);
   if(typeof V !== 'undefined' && V && V.role === 'host'){ started = true; if(!petMode) goPet(true); return; }   // позвала в гости — ждём на своей льдине (js/visit.js)
   $('#intro').hidden = false;

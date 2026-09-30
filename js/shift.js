@@ -341,7 +341,9 @@ const PENG = {name:L('Пинг', 'Ping'), f:false, color:0x46557A, ail:['beak', 
 const PENG_SHELLS = 5;   // за разоблачение
 const pengMet = () => save.album.some(a => a.name === 'Пинг' || a.name === 'Ping');
 // второй пациент смены, не в самой первой смене; первый раз — обязательно, потом — иногда
+let pengCall = false;   // нажали 🔒 «С Пингом» в «Вместе» (js/coop.js) — Пинг придёт следующим пациентом
 function pengDue(){
+  if(pengCall && shift && !pengMet()){ pengCall = false; return true; }
   return !!shift && shift.n === 1 && save.shifts >= 1 && (!pengMet() || Math.random() < 0.25);
 }
 async function spawnImpostor(){
