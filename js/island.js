@@ -252,7 +252,9 @@ function islBuild(){
     const x = p.getX(i), z = p.getZ(i) - 2, h = islTerrain(x, z);
     p.setZ(i, z); p.setY(i, h);
     const sl = Math.hypot(islTerrain(x + 0.5, z) - islTerrain(x - 0.5, z), islTerrain(x, z + 0.5) - islTerrain(x, z - 0.5));   // склоны чуть сиреневее: видно горы
-    c.copy(snowC).lerp(slopeC, Math.min(1, sl*1.1)).lerp(iceC, 1 - islSm(Math.max(0, Math.min(1, (h + 0.05)/0.35)))); col.set([c.r, c.g, c.b], i*3);
+    c.copy(snowC).lerp(slopeC, Math.min(1, sl*1.1)).lerp(iceC, 1 - islSm(Math.max(0, Math.min(1, (h + 0.05)/0.35))));
+    if(typeof ideTint === 'function') ideTint(x, z, h, c);   // 🏝️ тропинки, лёд, проталины (js/isledeco.js)
+    col.set([c.r, c.g, c.b], i*3);
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.computeVertexNormals();
   G.add(new THREE.Mesh(geo, new THREE.MeshToonMaterial({color:0xffffff, vertexColors:true})));
@@ -315,6 +317,7 @@ function islBuild(){
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 30, 14, 1, true), new THREE.MeshBasicMaterial({color:0xFFD66B, transparent:true, opacity:0.2, depthWrite:false, side:THREE.DoubleSide}));
   beam.visible = false; G.add(beam); G.userData.beam = beam;
   if(typeof cvIslBuild === 'function') cvIslBuild(G);   // 🗝️ ущелье, вход в пещеру и ключи (js/cave.js)
+  if(typeof ideBuild === 'function') ideBuild(G);       // 🏝️ мелочи, сценки у мест, чайки, тюленята (js/isledeco.js)
   // подписи и кольца — на земле у места
   for(const o of Object.values(pl)){
     const x = o.P.x, z = o.P.z, y = o.P.water ? 0 : islGround(x, z);
@@ -694,6 +697,7 @@ function islStep(dt){
   const fl = U.pl.pet.g.userData.flag; if(fl) fl.rotation.y = Math.sin(now*3)*0.25;
   const lg = U.pl.storm.g.userData.glow; if(lg) lg.material.opacity = 0.6 + Math.sin(now*2)*0.3;
   if(I.ping) islPingStep(dt);
+  if(typeof ideStep === 'function') ideStep(dt);   // 🏝️ тень, следы, чайки, рыбки, тюленята (js/isledeco.js)
   // сидит без дела — малыш сам что-нибудь скажет
   const moving = Math.hypot(R.vel.x, R.vel.z) > 0.3 || R.air;
   I.idleT = moving ? 0 : I.idleT + dt;

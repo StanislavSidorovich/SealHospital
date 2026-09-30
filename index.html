@@ -171,6 +171,12 @@
       <p class="set-lbl display" data-en="Games">Игры</p>
       <div class="seg" id="freeSeg" role="group" aria-label="Игры" data-en-aria="Games"><button data-f="0" data-en="📖 By chapter">📖 По главам</button><button data-f="1" data-en="🔓 All open">🔓 Все открыты</button></div>
       <p class="set-note" data-en="“All open” — play any game and any level, even before its chapter (great for playing with Dad). The story book still goes on as usual.">«Все открыты» — любая игра и любой уровень, даже до своей главы (удобно играть с папой). Книга острова идёт своим чередом.</p>
+      <div id="doorBlock" hidden>
+        <p class="set-lbl display" data-en="🚪 Door for Dad">🚪 Дверь для папы</p>
+        <div class="seg" id="doorSeg" role="group" aria-label="Дверь для папы" data-en-aria="Door for Dad"><button data-d="0" data-en="Off">Выкл</button><button data-d="1" data-en="🔔 On">🔔 Вкл</button></div>
+        <p class="set-note" id="doorNote"></p>
+        <button class="btn ghost small" id="btnDoorShare" hidden data-en="📤 Send Dad the link">📤 Отправить папе ссылку</button>
+      </div>
       <p class="set-lbl display" data-en="Players">Игроки</p>
       <div class="players" id="playersList" role="group" aria-label="Игроки" data-en-aria="Players"></div>
       <button class="btn ghost small" id="btnPlayerAdd" data-en="➕ New player">➕ Новый игрок</button>
@@ -379,6 +385,7 @@
 <script src="js/roam.js"></script>
 <script src="js/gear.js"></script>
 <script src="js/island.js"></script>
+<script src="js/isledeco.js"></script>
 <script src="js/ocean.js"></script>
 <script src="js/rooms.js"></script>
 <script src="js/gameroom.js"></script>
