@@ -3,7 +3,7 @@
      касание — дальше, «Пропустить» — сразу к концу. ch — номер главы с нуля: сверху титул «Глава N». btns — кнопки
      под последней репликой ([{k, t, ghost}]), talk вернёт k нажатой. Реплика — {who: ключ из BT_WHO, t: текст}.
    — Пролог главы (BT_OPEN): глава открылась → в спокойную минуту герои рассказывают, что случилось, и зовут «Идём ▶».
-     Глава 1 начинается с первого экрана, у главы 8 своя сцена (stStormArrive в story.js).
+     Глава 1 — BT_CH1 перед первой сменой нового игрока (btFirstDay), у главы 8 своя сцена (stStormArrive в story.js).
    — Шаг истории: пункт открытой главы сделан → сверху наклейка «📖 Шаг истории!» с точками главы;
      сделаны все — в ней кнопка «🎉 Праздник!».
    — Звезда дня: BT_DAY_NEED любых дел дня → сундучок (ракушки и сердечки малышу), раз в день (save.story.td.gift).
@@ -143,8 +143,22 @@ async function btPrologue(i){
   else stGo(sc.go);
 }
 
+// 👋 Пролог главы 1 (Спринт 8): совсем новый игрок нажал «Открыть больницу» — чайка-вестница знакомится и объясняет,
+// зачем он здесь, до первого пациента. Раз на игрока (adv.tips 'ch1'); зовёт кнопка #btnStart в game.js.
+const BT_CH1 = () => [
+  btT('gull', `Доктор ${pname()}! Ура, ты ${pg('приехал', 'приехала')}! Я чайка-вестница — все новости острова приношу я.`, `Doctor ${pname()}! Hooray, you're here! I'm the herald gull — I bring all the island news.`),
+  btT('gull', `У нас тут беда: тюлени то простынут, то поцарапаются, то проглотят что-нибудь не то. А врача нет…`, `We have a problem: seals catch colds, get scratches, swallow silly things. And there's no doctor…`),
+  btT('gull', `Теперь есть ты! Первый пациент уже плывёт. Осмотри его лупой, вылечи и обними — так тут принято 💗`, `Now there's you! Your first patient is already swimming over. Check them with the magnifier, heal them and give a hug — that's how we do it here 💗`),
+  btT('gull', `А я буду рядом и подскажу, куда дальше. Удачи, доктор!`, `I'll be around to tell you where to go next. Good luck, doctor!`)
+];
+async function btFirstDay(){
+  if(save.progress || tipSeen('ch1')) return;
+  tipDone('ch1');
+  await talk(BT_CH1(), {ch:0, btns:[{k:'go', t:`🏥 ${L('Открыть больницу', 'Open the hospital')} ▶`}]});
+}
+
 // 🎬 на странице главы в книжке: посмотреть начало главы ещё раз (без кнопок — просто сцена)
-function btReplay(i){ if(BT_OPEN[i] && !tkOn){ sfx.paper(); talk(BT_OPEN[i].lines(), {ch:i}); } }
+function btReplay(i){ if(!tkOn && (BT_OPEN[i] || !i)){ sfx.paper(); talk(i ? BT_OPEN[i].lines() : BT_CH1(), {ch:i}); } }
 
 /* ---------- наклейка сверху: шаг истории, дело дня, сундучок ---------- */
 const btEl = document.createElement('button');

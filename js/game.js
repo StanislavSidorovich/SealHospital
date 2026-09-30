@@ -431,6 +431,7 @@ $('#btnStart').addEventListener('click', async () => {
   ac(); sfx.good(); keepSave(); $('#intro').hidden = true;
   if(started) return; started = true;
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
+  if(typeof btFirstDay === 'function') await btFirstDay();   // 👋 совсем новый игрок: чайка знакомится (пролог главы 1, js/beats.js)
   if(adoptPending()) adopt(); else startShift();   // сыгравших смену у льдины ждёт малыш (Фаза 3)
   if(mailWaiting && save.progress && !adoptPending()) setTimeout(() => { if(mailWaiting && !mailOpen) toast(L('💌 Тебе письмо от папы! Нажми на почтовый ящик', '💌 You have a letter from Dad! Tap the mailbox'), 3400); }, 1200);
 });

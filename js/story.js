@@ -422,7 +422,7 @@ function stChapterHtml(i){
   const s = stChapter(i), next = i + 1 < STORY.length && i + 1 >= save.story.open;
   return `<button class="st-back" id="stBack">← ${L('Главы', 'Chapters')}</button>
     <div class="st-head"><span class="ic" aria-hidden="true">${c.ic}</span><div><small>${L(`Глава ${i + 1}`, `Chapter ${i + 1}`)}</small><h3 class="display">${stEsc(c.name)}</h3></div>
-      ${typeof btReplay === 'function' && BT_OPEN[i] ? `<button class="st-scene" data-scene="${i}" aria-label="${stEsc(L('Посмотреть начало главы', 'Watch how the chapter begins'))}">🎬</button>` : ''}</div>
+      ${typeof btReplay === 'function' && (BT_OPEN[i] || !i) ? `<button class="st-scene" data-scene="${i}" aria-label="${stEsc(L('Посмотреть начало главы', 'Watch how the chapter begins'))}">🎬</button>` : ''}</div>
     <p class="st-about">${stEsc(c.about)}</p>
     <ul class="st-todo">${rows}</ul>
     ${fest ? `<button class="btn" id="stFest">🎉 ${i === 7 ? L('Большой праздник!', 'The big party!') : L('Праздник главы!', 'Chapter party!')}</button>`
