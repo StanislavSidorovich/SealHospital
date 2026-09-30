@@ -410,7 +410,28 @@ async function spawnImpostor(){
   toast(L('Пинг: «А ещё мне правда холодно… Можно шарфик?» 🧣', 'Ping: “And I really am cold… May I have a scarf?” 🧣'), 4200);
 }
 // вместо кроватки: пингвин танцует «спасибо» (спать в чужой кроватке ему неловко)
+// вылечили Пинга в первый раз — после танца он зовёт играть вместе (pengThanks из nextPatient в game.js)
+let pengNew = false, pengFrom = null;   // pengFrom — откуда нажали 🔒 «С Пингом»: вкладка «Вместе» ('rescue', 'bg'…)
+async function pengThanks(){
+  if(!pengNew || typeof talk !== 'function') return false;
+  pengNew = false;
+  const can = !!save.pet && typeof coopFromPet === 'function';
+  const k = await talk([
+    {who:'ping', t:L(`Кря! Спасибо, доктор ${pname()}! Я Пинг, живу тут по соседству.`, `Quack! Thank you, Doctor ${pname()}! I'm Ping, I live next door.`)},
+    {who:'ping', t:can ? L('Теперь я могу играть с тобой вместе! Бежим?', 'Now I can play with you! Shall we go?')
+      : L('Когда у тебя появится свой малыш — зови меня играть вместе!', 'When you have a pup of your own — call me to play together!')}
+  ], {btns:can ? [{k:'go', t:L('🐧 Играем вместе ▶', '🐧 Let\'s play ▶')}, {k:'no', t:L('Потом', 'Later'), ghost:true}] : null});
+  if(k !== 'go') return false;
+  shift = null; setBusy(false);   // остальных пациентов позовёт новая смена
+  goPet(true); await wait(0.9);
+  for(let i = 0; i < 40 && busy; i++) await wait(0.1);
+  if(!petMode || busy) return true;
+  if(pengFrom && CO_GAMES[pengFrom]) coGame = pengFrom;
+  funPre = 'coop'; petDo('fun');
+  return true;
+}
 async function pengBye(s){
+  pengNew = save.album.filter(a => a.name === 'Пинг' || a.name === 'Ping').length === 1;
   sfx.quack(); floatText(L('Кря-кря! Танец спасибо!', 'Quack quack! A thank-you dance!'), headTop(s), '#D9527E');
   s.flap = 1;
   await tween(1.4, k => { s.inner.rotation.z = Math.sin(k*Math.PI*6)*0.18; s.inner.rotation.y = Math.sin(k*Math.PI*3)*0.5; }, ease.lin);

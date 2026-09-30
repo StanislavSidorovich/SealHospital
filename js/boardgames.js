@@ -127,6 +127,7 @@ async function bgModes(id){
     <div class="picks">
       ${btn('ping', bot.ic, bot.name, L('играть вдвоём', 'play together'))}
       ${btn('duo', '👫', L('Вдвоём тут', 'Two here'), L('на одном телефоне', 'on one phone'))}
+      ${m.includes('ping') && typeof pengMet === 'function' && !pengMet() && typeof coPingHosp === 'function' ? `<button class="st-lock wide" data-k="hosp"><span class="ic">🐧</span><b>${L('С Пингом', 'With Ping')} 🔒</b><small>${L('сначала вылечи ▶', 'treat him first ▶')}</small></button>` : ''}
       ${netOk ? btn('net', '🌐', L('По сети', 'Online'), L('с папой или другом', 'with Dad or a friend'), true) : ''}
       ${btn('solo', '⏱️', pg(L('Один', 'Alone'), L('Одна', 'Alone')), L('на звёзды', 'for stars'), true)}
     </div>
@@ -154,6 +155,7 @@ async function bgGo(id = null){
     const g = id || await bgShelf(); if(!g) return null;
     const pick = await bgModes(g);
     if(!pick){ if(id) return null; continue; }
+    if(pick.mode === 'hosp'){ coPingHosp('bg'); return null; }   // 🔒 «С Пингом»: сначала лечим его в больнице (js/coop.js)
     if(pick.mode === 'net'){
       if(await netLobby() !== 'ok'){ if(id) return null; continue; }
       bgWant = {id:g, o:pick.o}; coGame = 'bg';

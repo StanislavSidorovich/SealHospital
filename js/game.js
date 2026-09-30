@@ -240,6 +240,7 @@ async function nextPatient(){
   $('#card').hidden = true; unfocusCam();
   await wakeUp(old);
   await leave(old);
+  if(await pengThanks()) return;   // Пинг в первый раз: «Играем вместе?» (shift.js)
   if(adoptPending()){ shift = null; setBusy(false); return adopt(); }   // первый пациент вылечен — приплывает свой малыш, смена начнётся заново
   if(shift.n === SHIFT_SIZE - 1 && !shift.event){ shift.event = true; await runEvent(); }
   if(shift.n >= SHIFT_SIZE){ setBusy(false); return showResults(); }

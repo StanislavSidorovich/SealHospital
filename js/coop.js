@@ -794,29 +794,32 @@ async function coopFromPet(s){
   if(typeof GL !== 'undefined' && GL && GL.home) gullRunEnd(true);   // чайка порхала над уголком — отпускаем: новая игра соединяется заново
   const pick = await coopMenu();
   if(!pick){ s.happyUntil = 0; return false; }
-  if(pick.game === 'hosp'){ s.happyUntil = 0; coPingHosp(); return false; }
+  if(pick.game === 'hosp'){ s.happyUntil = 0; coPingHosp(coGame); return false; }
   const res = await coopPlay(pick);
   coGull = !!(res && res.gull);
   s.root.position.copy(PET_SPOT); s.happyUntil = now + 3; setMood(s, 'happy');
   if(!res) return false;
 }
-// 🔒 «С Пингом» из уголка малыша: Пинга ещё не лечили — бежим в больницу, он придёт следующим пациентом (pengDue в shift.js)
+// 🔒 «С Пингом» («Вместе», Игротека): Пинга ещё не лечили — бежим в больницу, он придёт следующим пациентом (pengDue в shift.js),
+// а вылечили — зовёт играть туда, откуда пришли (pengThanks, from — вкладка «Вместе»)
 const coPingSay = async () => {
   await wait(0.9);
   for(let i = 0; i < 600 && typeof tkOn !== 'undefined' && tkOn; i++) await wait(0.2);   // новичку сперва рассказывает чайка (пролог главы 1)
   toast(L('Бежим в больницу! Пинг уже плывёт к тебе. Вылечишь — и будете играть вместе 🐧', 'To the hospital! Ping is already on his way. Make him better — and you can play together 🐧'), 4200);
 };
-async function coPingHosp(){
-  pengCall = true;
+async function coPingHosp(from){
+  pengCall = true; pengFrom = from;
+  await wait(0.3);
   for(let i = 0; i < 30 && (busy || !mgRoot.hidden); i++) await wait(0.1);   // «Поиграть» ещё закрывается
   if(petMode) goPet(false);
+  else if(!$('#intro').hidden) $('#btnStart').click();   // пришли с первого экрана — открываем больницу
   coPingSay();
 }
 async function coopFromIntro(){
   ac(); sfx.good(); $('#intro').hidden = true;
   try{ await document.fonts.load('40px Pangolin'); }catch(e){}
   const pick = await coopMenu();
-  if(pick && pick.game === 'hosp'){ pengCall = true; $('#btnStart').click(); coPingSay(); return; }   // 🔒 «С Пингом» — открываем больницу
+  if(pick && pick.game === 'hosp'){ pengCall = true; pengFrom = coGame; $('#btnStart').click(); coPingSay(); return; }   // 🔒 «С Пингом» — открываем больницу
   if(pick) await coopPlay(pick);
   if(typeof V !== 'undefined' && V && V.role === 'host'){ started = true; if(!petMode) goPet(true); return; }   // позвала в гости — ждём на своей льдине (js/visit.js)
   $('#intro').hidden = false;
