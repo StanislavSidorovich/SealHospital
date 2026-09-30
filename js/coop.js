@@ -585,8 +585,9 @@ async function coopMenu(){
       <div class="picks co-own" hidden></div>
       <div class="picks co-std">
         ${netAvail() ? `<button data-k="net" class="wide"><span class="ic">🌐</span><b>${L('По сети', 'Online')}</b><small>${L('с папой или другом', 'with Dad or a friend')}</small></button>` : ''}
-        ${pingOk ? `<button data-k="ping"><span class="ic">🐧</span><b>${L('С Пингом', 'With Ping')}</b><small>${L('он поможет', 'he\'ll help')}</small></button>` : ''}
-        <button data-k="solo"${pingOk ? '' : ' class="wide"'}><span class="ic">🦭</span><b>${L('Без напарника', 'Solo')}</b><small>${L('полегче', 'a bit easier')}</small></button>
+        ${pingOk ? `<button data-k="ping"><span class="ic">🐧</span><b>${L('С Пингом', 'With Ping')}</b><small>${L('он поможет', 'he\'ll help')}</small></button>`
+          : `<button class="st-lock co-pinglock"><span class="ic">🐧</span><b>${L('С Пингом', 'With Ping')} 🔒</b><small>${L('вылечи его в больнице', 'treat him at the hospital')}</small></button>`}
+        <button data-k="solo"><span class="ic">🦭</span><b>${L('Без напарника', 'Solo')}</b><small>${L('полегче', 'a bit easier')}</small></button>
       </div>
       ${netAvail() ? `<p class="got small-note co-gull">🐦 ${L('Если напарник позвал чайку из забега — выбирай «По сети», и ты прилетишь к нему чайкой', 'If your partner called the gull from a dash, pick “Online” and you will fly in as the gull')}</p>` : ''}
       <p class="got co-wins"></p>
@@ -607,6 +608,8 @@ async function coopMenu(){
       const sb = panel.querySelector('[data-k="solo"] small'); if(sb) sb.textContent = coGame === 'rescue' ? L('ведёшь обоих', 'lead both') : L('полегче', 'a bit easier');
     };
     let pickK = null;
+    const pl = panel.querySelector('.co-pinglock');   // Пинга ещё не лечили (pengMet в js/shift.js) — он придёт в больницу во вторую смену
+    if(pl) mgOn(pl, 'click', () => { sfx.tap(); toast(L('Пинг — пингвин-сосед. Он придёт к тебе в больницу. Вылечишь — и будете играть вместе! 🐧', 'Ping is the penguin next door. He will come to your hospital. Make him better — and you can play together! 🐧'), 4200); });
     panel.querySelectorAll('[data-g]').forEach(b => b.classList.toggle('story', story.includes(b.dataset.g)));
     panel.querySelectorAll('[data-g]').forEach(b => mgOn(b, 'click', () => { if(coGame !== b.dataset.g){ sfx.tap(); coGame = b.dataset.g; show(); } }));
     show();
