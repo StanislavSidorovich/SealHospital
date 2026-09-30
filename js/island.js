@@ -491,9 +491,10 @@ async function islChat(o){
 /* ---------- прогулка ---------- */
 let ISL = null, isleSay = '', isleAt = null;   // isleAt — вернулись из игры: встаём там, откуда ушли
 const ISL_BACK = new Set(['walk', 'run', 'road', 'rescue', 'slide', 'dive', 'chase', 'swim', 'storm']);   // после этих игр возвращаемся на остров, к тому же знаку
-async function isleGo(s){
-  const sv = save.isl, back = isleAt; isleAt = null;
-  if(!back){ sv.n++; persist(); }
+// o.guest — в гостях у хозяйки острова (js/isleduo.js): свой тюлень, её звёздочки, в игры — только вместе; o.at — где появиться
+async function isleGo(s, o = {}){
+  const G = !!o.guest, sv = save.isl, back = G ? null : isleAt; if(!G) isleAt = null;
+  if(!back && !G){ sv.n++; persist(); }
   const cam0 = camOffWant.clone();
   sfx.whoosh(); flash();
   islBuild(); islRoot.visible = true; runCam.on = true; roamView(true);
@@ -501,8 +502,8 @@ async function isleGo(s){
   if(s.bubble) s.bubble.visible = false;
   setMood(s, 'happy');
   const pl = islRoot.userData.pl;
-  const start = back ? new V3(back.x, 0, back.z) : pl.pet.pos.clone().add(new V3(0, 0, 4.2));
-  ISL = {s, R:roamStart({s, at:ISL_POS, pos:start, ground:islGround, bounce:islBounce, push:islPush, gear:gearRoam(() => ISL && ISL.gear.dj())}), near:null, t:0, ping:null, said:new Set(), idleT:0, sayT:0};
+  const start = o.at ? new V3(o.at.x, 0, o.at.z) : back ? new V3(back.x, 0, back.z) : pl.pet.pos.clone().add(new V3(0, 0, 4.2));
+  ISL = {s, guest:G, R:roamStart({s, at:ISL_POS, pos:start, ground:islGround, bounce:islBounce, push:islPush, gear:gearRoam(() => ISL && ISL.gear.dj())}), near:null, t:0, ping:null, said:new Set(), idleT:0, sayT:0};
   ISL.gear = gearDress(s);   // 🎈 вещи-умения видно на малыше
   ISL.R.yaw = Math.PI;   // смотрит «вперёд», на остров (от камеры)
   for(const o of Object.values(pl)){ const lock = islLock(o.k); o.lock = lock; o.ring.material.color.set(lock ? 0xB9C2D0 : 0xFF9BB8); o.hide = lock === 'hide'; o.g.visible = o.lbl.visible = o.ring.visible = !o.hide || o.k === 'storm'; }
@@ -523,13 +524,14 @@ async function isleGo(s){
   mgOn(jump, 'pointerdown', e => { e.preventDefault(); e.stopPropagation(); roamJump(ISL.R); });
   roamControls(ISL.R, mgRoot, islHit);
   const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
-  homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
+  homeB.innerHTML = `<span aria-hidden="true">${G ? '👋' : '🏠'}</span>`; homeB.setAttribute('aria-label', G ? L('Попрощаться', 'Say goodbye') : L('Домой', 'Home')); $('#corner').prepend(homeB);
   let done; const fin = new Promise(r => done = r); ISL.done = done;
-  homeB.addEventListener('click', () => { if(ISL && ISL.fishing) return; sfx.tap(); done(null); }); ISL.homeB = homeB;
+  homeB.addEventListener('click', () => { if(ISL && ISL.fishing) return; if(G) return vsByeTap(); sfx.tap(); done(null); }); ISL.homeB = homeB;
   mgTick(dt => { if(ISL) islStep(dt); });
-  islIntro(!!back);
+  if(!G) islIntro(!!back);
   const k = await fin;
   const at = {x:ISL.R.pos.x, z:ISL.R.pos.z};
+  if(typeof iduEnd === 'function') iduEnd();
   // обратно в уголок малыша
   mgClose(); homeB.remove(); flash();
   document.body.classList.remove('run-on', 'isle-on');
@@ -539,6 +541,8 @@ async function isleGo(s){
   ISL = null; islRoot.visible = false; runCam.on = false; roamView(false);
   camOff.copy(cam0); camOffWant.copy(cam0);
   s.root.position.copy(PET_SPOT); s.root.rotation.set(0, 0, 0); s.happyUntil = now + 3;
+  if(G) return;
+  if(k === 'duo') return false;   // уходим в игру вдвоём прямо с острова (vsStart в visit.js) — прогулка не кончилась, вернёмся сюда же
   if(k && k !== 'pet'){
     const S = ST_PLACES[k]; isleSay = L(`Идём: ${S.ic} ${S.name}!`, `Off we go: ${S.ic} ${S.name}!`);
     (async () => {   // когда уголок доиграет «наигрался», идём туда, куда выбрали на острове (как «Идём ▶» в книге)
@@ -591,12 +595,14 @@ function islHud(){
   if(!ISL) return;
   if(ISL.cave){ ISL.hud.innerHTML = cvHudPill(); return; }   // в пещере — только ключи, кристаллики и сундуки
   const sea = save.sea.got.length;
-  ISL.hud.innerHTML = `<span class="pill">🌟 <b>${save.isl.got.length}/${ISL_STARS.length}</b></span>`
+  ISL.hud.innerHTML = `<span class="pill">🌟 <b>${islGot().length}/${ISL_STARS.length}</b></span>`
     + (sea ? `<span class="pill">🐟 <b>${sea}/${SEA_FISH.length}</b></span>` : '')
     + (gearN() ? `<span class="pill">${GEAR.filter(owns).map(id => shopItem(id).ic).join('')}</span>` : '')
     + (typeof cvHudPill === 'function' ? cvHudPill() : '');
 }
-function islStarsShow(){ for(const st of islRoot.userData.stars){ const got = save.isl.got.includes(st.i); st.sp.visible = st.gl.visible = !got; } }
+// чьи звёздочки видно: свои, а в гостях (js/isleduo.js) — хозяйки острова
+const islGot = () => ISL && ISL.guest ? (typeof V !== 'undefined' && V && V.igot) || [] : save.isl.got;
+function islStarsShow(){ const got = islGot(); for(const st of islRoot.userData.stars) st.sp.visible = st.gl.visible = !got.includes(st.i); }
 /* ---------- 🧭 «куда дальше» (30.09): наклейка под звёздочками — шаг истории или дело дня, которое ждёт на острове.
    Над местом золотой луч, вокруг малыша стрелка в ту сторону; касание по наклейке — малыш идёт туда сам. ---------- */
 function islQuest(){
@@ -606,8 +612,8 @@ function islQuest(){
   return null;
 }
 function islQuestShow(){
-  const I = ISL, U = islRoot.userData, q = I.cave ? null : islQuest();
-  const story = typeof stNextSteps === 'function' ? stNextSteps().map(x => x.it.go) : [];
+  const I = ISL, U = islRoot.userData, q = I.cave || I.guest ? null : islQuest();   // в гостях своя история не ведёт
+  const story = typeof stNextSteps === 'function' && !I.guest ? stNextSteps().map(x => x.it.go) : [];
   for(const o of Object.values(U.pl)) o.mark.visible = story.includes(o.k) && !o.lock;   // «❗» над местами истории
   I.q = q; I.qEl.hidden = !q; U.beam.visible = !!q;
   if(!q){ I.arrow.hidden = true; return; }
@@ -636,6 +642,7 @@ function islQuestStep(dt){
 // коснулась подписи места — малыш идёт туда сам
 function islHit(cx, cy){
   if(ISL && ISL.cave) return cvHit(cx, cy);
+  const pal = typeof iduHit === 'function' && iduHit(cx, cy); if(pal) return pal;   // 🗺️ коснулась второго (вдвоём) — сердечки и подойти
   let best = null, bd = 60;
   const U = islRoot.userData;
   for(const o of [...Object.values(U.pl), ...U.fish, ...(U.cave ? [U.cave] : [])]){
@@ -651,8 +658,9 @@ function islHit(cx, cy){
 function islStep(dt){
   const I = ISL, R = I.R, P = R.pos, U = islRoot.userData;
   I.t += dt;
+  if(typeof iduStep === 'function'){ iduStep(dt); if(!ISL) return; }   // 🗺️ вдвоём (js/isleduo.js): второй тюлень, салки, спинка
   if(I.cave){ if(!I.qEl.hidden || !I.arrow.hidden) I.qEl.hidden = I.arrow.hidden = true; I.qT = 0; cvStep(dt); return; }   // 🗝️ в пещере — свой мир (js/cave.js)
-  roamStep(R, dt);
+  if(!(typeof iduRideStep === 'function' && iduRideStep(dt))) roamStep(R, dt);   // на спинке у второго — везут
   islQuestStep(dt);
   islGearStep(dt);
   U.sea.position.y = -0.05 + Math.sin(now*0.8)*0.03;
@@ -690,6 +698,7 @@ function islStep(dt){
   }
   const cm = typeof cvIslStep === 'function' ? cvIslStep(dt) : null;
   if(cm && Math.hypot(P.x - cm.pos.x, P.z - cm.pos.z) < nd) near = cm;
+  const dn = typeof iduNear === 'function' && iduNear(nd); if(dn) near = dn;   // 🐢 рядом в воде со вторым — на спинку
   if(near !== I.near){ I.near = near; islGoShow(); }
   // плавник кружит, флажок треплется, лампа маяка мерцает
   const fin = U.pl.chase.g.userData.fin; if(fin) fin.rotation.y = now*0.7;
@@ -706,6 +715,7 @@ function islStep(dt){
 function islGoShow(){
   const I = ISL, o = I.near, el = I.go;
   if(!o){ el.hidden = true; return; }
+  if(typeof iduGoShow === 'function' && iduGoShow(el, o)) return;   // 🗺️ вдвоём: игры вместе, спинка; в гостях — без рыбалки и пещеры
   if(o.cave){
     el.innerHTML = `<button class="btn">🗝️ ${L('В пещеру', 'Into the cave')} ▶</button>`;
     el.hidden = false; sfx.tick();
@@ -732,6 +742,7 @@ function islGoShow(){
   if(b) b.addEventListener('click', e => { e.stopPropagation(); sfx.tap(); if(ISL) ISL.done(o.k); });
 }
 function islStarGot(st){
+  if(ISL.guest){ if(typeof iduStarSeen === 'function') iduStarSeen(st); return; }   // в гостях звёздочки хозяйки: не берём, а показываем ей
   const sv = save.isl; st.sp.visible = st.gl.visible = false;
   if(sv.got.includes(st.i)) return;
   sv.got.push(st.i); persist();

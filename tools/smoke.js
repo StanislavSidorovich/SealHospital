@@ -32,6 +32,7 @@ const MODES = {
   run3: { pet: 1, run: `funPre = 'run'; petDo('fun')`, wait: 3, clicks: ['.adv-map [data-lv="bay3"]'] },
   dive: { pet: 1, run: `funPre = 'dive'; petDo('fun')`, wait: 3 },
   isle: { pet: 1, run: `funPre = 'isle'; petDo('fun')`, wait: 3 },
+  'isle-duo': { pet: 1, run: `net.conn = {open:true, send(){}}; net.peer = {destroyed:false, destroy(){}}; visitHost({name:'Папа', want:'visitor'}); funPre = 'isle'; petDo('fun')`, wait: 3 },   // вдвоём — tools/duo.js; здесь хозяйка с гостем, который молчит
   'isle-chat': { pet: 1, run: `funPre = 'isle'; petDo('fun'); setTimeout(() => islChat(islRoot.userData.npc[0]), 2500)`, wait: 3 },
   'isle-gear': { pet: 1, run: `save.owned.push('gball', 'gsled', 'gfins'); funPre = 'isle'; petDo('fun'); setTimeout(() => { ISL.R.pos.set(10, 6, -18); }, 2500)`, wait: 3 },
   'shop-gear': { pet: 1, run: `shopTab = 'gear'; $('#btnShop').click()` },

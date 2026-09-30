@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* 🚪 Проверка «двери для папы» (js/visit.js) по-настоящему — через интернет и сервер PeerJS, два headless Edge:
    хозяйка (Сабрина) с открытой дверью в уголке малыша + гость (папа) по постоянной ссылке ?room=КОД&g=visit.
-   Запуск:  node tools/door.js [код из 5 цифр 0–7] [yes|no]   (yes — «Пустить!», no — «Не сейчас»)
+   Запуск:  node tools/door.js [код из 5 цифр 0–7] [yes|no|isle]   (yes — «Пустить!», no — «Не сейчас», isle — «Пустить!», и хозяйка идёт гулять по острову: гость за ней, js/isleduo.js)
    Что видно: «Постучаться в гости?» у гостя, «Тук-тук!… Пустить?» у хозяйки, визит у обоих, после визита дверь снова открыта.
    Скриншоты — во временной папке (door-host.png, door-guest.png). Нужен интернет; во встроенном браузере WebRTC не работает. */
 const { findPlaywright, serve, launch } = require('./lib');
@@ -38,13 +38,20 @@ const ANSWER = process.argv[3] || 'yes';   // yes | no
   await host.waitForFunction(() => !document.getElementById('talk').hidden && !document.querySelector('#talk .tk-btns').hidden, null, { timeout: 40000 });
   console.log('host talk:', (await host.textContent('#talk .tk-text')));
   console.log('guest toast:', await guest.evaluate(() => $('#toast').hidden ? '' : $('#toast').textContent));
-  await host.click(`#talk .tk-btns [data-k="${ANSWER}"]`);
-  if(ANSWER === 'yes'){
+  await host.click(`#talk .tk-btns [data-k="${ANSWER === 'no' ? 'no' : 'yes'}"]`);
+  if(ANSWER !== 'no'){
     await host.waitForFunction(() => typeof V !== 'undefined' && V && V.role === 'host', null, { timeout: 30000 });
     await guest.waitForFunction(() => typeof V !== 'undefined' && V && V.role === 'guest', null, { timeout: 30000 });
     await host.waitForTimeout(6000);
     console.log('host V:', await host.evaluate(() => ({ name: V.name, landed: V.landed, seen: now - V.seen < 2 })));
     console.log('guest V:', await guest.evaluate(() => ({ name: V.name, view: !!V.view })));
+    if(ANSWER === 'isle'){   // через настоящий интернет: хозяйка на острове — гость приходит, позиции доходят
+      await host.evaluate(() => { funPre = 'isle'; petDo('fun'); });
+      await guest.waitForFunction(() => typeof ISL !== 'undefined' && ISL && ISL.guest, null, { timeout: 20000 }).catch(() => {});
+      await host.evaluate(() => { ISL.R.key.set(1, 0, 0); }); await host.waitForTimeout(1500); await host.evaluate(() => { ISL.R.key.set(0, 0, 0); }); await host.waitForTimeout(1000);
+      console.log('isle host:', await host.evaluate(() => ({ me: ISL.R.pos.toArray().map(x => +x.toFixed(1)), guestSeen: V.s.root.visible })));
+      console.log('isle guest:', await guest.evaluate(() => ({ onIsle: !!(ISL && ISL.guest), hostAt: V.pup.root.position.clone().sub(ISL_POS).toArray().map(x => +x.toFixed(1)), seen: V.pup.root.visible })));
+    }
     await host.screenshot({ path: require('os').tmpdir() + '/door-host.png' });
     await guest.screenshot({ path: require('os').tmpdir() + '/door-guest.png' });
     // хозяйка прощается — дверь снова открывается

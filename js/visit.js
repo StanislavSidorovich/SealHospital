@@ -14,6 +14,7 @@
    Вход: 🏝️ «В гости» в уголке малыша и вкладка 🏝️ в «Вместе»; кто вошёл по коду через любую игру «По сети»,
    а его позвали в гости, — сразу попадает на остров (coopNetGo в coop.js).
    Фото «В гостях» — в альбом хозяйке (раз в день). Сохранение: save.coop.visit = {n — визитов, d — день фото}.
+   Хозяйка пошла гулять по острову — гость гуляет с ней по всему острову (vsWhere = 'isle', js/isleduo.js).
    Подключается после dive.js и gloom.js (нужны все игры) и до game.js. */
 const VS_SPOT = new V3(-1.45, 0.25, 0.2);    // где гость встаёт на льдине (от PET_POS)
 const VS_CAM = new V3(-0.6, 0.15, 0.9);      // пока гость рядом, камера чуть отъезжает: видно обоих
@@ -26,7 +27,7 @@ if(!save.coop.visit) save.coop.visit = {n:0, d:''};   // Pages мог отдат
 let V = null;   // идёт визит: {role:'host'|'guest', ...}
 const vsW = p => PET_POS.clone().add(p);   // льдина → мир
 const vsSc = d => Math.min(VS_SC, d && d.coat ? STAGES[Math.min(SHINY, Math.max(0, d.stage | 0))].sc : VS_SC);
-const vsGames = () => ['chase', 'dive', 'road', 'fight', 'rescue'].filter(g => CO_GAMES[g] && coGamesOn().includes(g));
+const vsGames = () => ['slide', 'chase', 'dive', 'road', 'fight', 'rescue', 'storm'].filter(g => CO_GAMES[g] && coGamesOn().includes(g));
 const vsAng = (a, b) => ((b - a + Math.PI*3) % (Math.PI*2)) - Math.PI;   // кратчайший поворот от a к b
 function vsSeal(d, name){
   const s = coSealOf(d && d.coat ? d : null); s.root.scale.setScalar(vsSc(d)); if(s.bubble) s.bubble.visible = false;
@@ -112,6 +113,7 @@ function vsWire(){
       if(!V.hugged){ V.hugged = true; toast(L('Тебя обнимают! 💗', 'You got a hug! 💗')); }
     });
   }
+  if(typeof iduWire === 'function') iduWire();   // 🗺️ остров вдвоём (js/isleduo.js)
   net.onLost = () => { if(V) toast(L('Связь потерялась… Ждём 🌊', 'Lost the connection… Waiting 🌊')); };
   net.onBack = () => { if(V) toast(L('Снова вместе! 💗', 'Together again! 💗')); };
 }
@@ -132,7 +134,9 @@ function vsByeTap(){   // 👋 — два раза: случайно не уйт
   if(now - (V.byeT || -9) < 3) return vsEnd('me');
   V.byeT = now; toast(L('Нажми 👋 ещё раз — и попрощаемся', 'Tap 👋 again to say goodbye'), 2800);
 }
-const vsCanUi = () => V && (V.role === 'guest' ? V.view && !V.panel : petMode && !homeMode && !busy && mgRoot.hidden) && !V.game;
+const vsIsle = () => typeof iduOn === 'function' && iduOn();   // гуляем по острову вдвоём (js/isleduo.js): панели — поверх острова
+const vsCanUi = () => V && !V.game && (vsIsle() ? !V.panel && !ISL.fishing && !ISL.cave && !document.body.classList.contains('talk-on')
+  : V.role === 'guest' ? V.view && !V.panel : petMode && !homeMode && !busy && mgRoot.hidden);
 // 🎮 выбрать игру и позвать второго
 async function vsPick(){
   if(!V || V.game || V.panel) return;
@@ -149,7 +153,7 @@ async function vsPick(){
 }
 // панель поверх уголка (хозяйка) или острова (гость); ответ — data-k нажатой кнопки
 async function vsPanel(html){
-  const host = V.role === 'host';
+  const host = V.role === 'host' && !vsIsle();
   V.panel = true;
   if(host){ setBusy(true); mgOpen(''); }
   const panel = mgNode('div', 'mg-panel fun-pick vs-pick', html);
@@ -181,10 +185,18 @@ async function vsStart(g){
   if(v.panelOff) v.panelOff();
   v.game = g; v.inv = null; v.ask = null;
   const host = v.role === 'host';
+  // гуляли по острову (js/isleduo.js) — сначала уходим с острова; хозяйка после игры вернётся на то же место, гость — за ней
+  let back = null;
+  if(typeof ISL !== 'undefined' && ISL){
+    if(host && !ISL.cave) back = {x:ISL.R.pos.x, z:ISL.R.pos.z};
+    ISL.done(host ? 'duo' : null);
+    for(let i = 0; i < 50 && (ISL || (host && busy)); i++) await wait(0.1);
+    if(V !== v) return;
+  }
   if(host){
     if(!mgRoot.hidden) mgClose();
     setBusy(true); v.s.root.visible = false; if(v.s.lbl) v.s.lbl.visible = false; vsSendHost();
-  } else vsGuestView(false);
+  } else if(v.view) vsGuestView(false);
   await wait(0.1);
   coGame = g;
   try{ await coopNet(g); }catch(e){ console.error(e); }
@@ -196,7 +208,10 @@ async function vsStart(g){
   v.game = null;
   if(!net.peer || net.peer.destroyed || !net.conn) return vsEnd('lost');
   vsWire();
-  if(!host) vsGuestView(true);
+  if(!host) return vsGuestView(true);   // хозяйка вернётся на остров — гость пойдёт за ней сам (iduTick)
+  if(!back) return;
+  for(let i = 0; i < 60 && (busy || !mgRoot.hidden); i++) await wait(0.1);
+  if(V === v && !v.game && petMode && !homeMode && !busy && mgRoot.hidden && !(typeof ISL !== 'undefined' && ISL) && save.pet){ isleAt = back; funPre = 'isle'; petDo('fun'); }
 }
 function vsEnd(why){
   const v = V; if(!v) return;
@@ -205,11 +220,14 @@ function vsEnd(why){
   if(why === 'me'){ netSend({t:'vbye'}); netSend({t:'bye'}); netSend({t:'dbye'}); }   // и из игры, если второй ещё там
   net.keep = false;
   setTimeout(() => { if(!V) netClose(true); }, why === 'me' ? 400 : 0);   // даём «пока» долететь
+  const isle = typeof ISL !== 'undefined' && ISL;
   if(v.role === 'host'){
     vsChip(false);
     if(petMode && !homeMode && !runCam.on) camOffWant.copy(PET_POS).add(petView());
-    if(v.s.root.visible && !v.sw) vsSwimAway(v.s); else vsDrop(v.s);
+    if(isle && v.s.root.visible){ burst(TEX.puff, v.s.root.position.clone().add(new V3(0, 0.3, 0)), 12, 1.6, 0.45); sfx.pop(); }   // гуляли по острову — гость просто уплывает домой
+    if(v.s.root.visible && !v.sw && !isle) vsSwimAway(v.s); else vsDrop(v.s);
   } else {
+    if(isle && ISL.guest) ISL.done(null);
     if(v.view) vsGuestView(false, v);
     vsDrop(v.me); vsDrop(v.pup);
     if(!v.game && v.done) v.done();
@@ -289,8 +307,7 @@ async function doorAsk(){
   if(k !== 'yes') return doorNope(false);
   DR.pend = null; clearInterval(P.iv);
   if(!P.c.open) return toast(L('Гость ушёл — можно позвать ещё раз 🌊', 'The guest left — you can invite again 🌊'));
-  // гуляли по острову — сначала домой, на льдину: гость приплывает туда
-  if(typeof ISL !== 'undefined' && ISL && ISL.done){ ISL.done(null); for(let i = 0; i < 40 && (ISL || busy); i++) await wait(0.1); }
+  // гуляет по острову — гость приплывает прямо туда (js/isleduo.js; из пещеры — подождёт у входа)
   const p = DR.peer; DR.peer = null;
   netClose(true); net.host = true; net.peer = p; DR.owned = p; net.code = DR.code; netWire(P.c);
   mgOpen(L('Здороваемся… 👋', 'Saying hello… 👋'));
@@ -351,6 +368,7 @@ function visitTick(t, dt){
   if(V.ask && now - V.askT > 30){ V.ask = null; toast(L('Ответа нет — позови ещё раз 🎮', 'No answer — ask again 🎮')); }
   if(V.inv && !V.invShown && vsCanUi()) vsInvite();
   V.role === 'host' ? vsHostTick(dt) : vsGuestTick(dt);
+  if(typeof iduTick === 'function') iduTick();   // 🗺️ хозяйка гуляет по острову — гость за ней (js/isleduo.js)
 }
 
 /* =================== у хозяйки острова =================== */
@@ -377,6 +395,7 @@ function vsHostPos(m){
   V.sw = !!m.sw; V.s.swimming = V.sw; V.seen = now;
 }
 function vsHostTick(dt){
+  if(vsIsle()){ if((V.sendT -= dt) <= 0){ V.sendT = 0.2; vsSendHost(); } return; }   // на острове гостя ведёт js/isleduo.js
   const s = V.s, here = !V.game && now - V.seen < 2 && !net.lost;
   s.root.visible = here;
   if(here){
@@ -393,7 +412,7 @@ function vsHostTick(dt){
   const chip = $('#visitChip');
   if(chip){ chip.classList.toggle('ask', !!V.ask); chip.classList.toggle('inv', !!V.inv); }
 }
-function vsWhere(){ return !petMode ? 'away' : homeMode ? 'home' : V.game ? 'game' : petSeal && petSeal.sleeping ? 'sleep' : 'pet'; }
+function vsWhere(){ return typeof ISL !== 'undefined' && ISL && !ISL.guest && !V.game ? 'isle' : !petMode ? 'away' : homeMode ? 'home' : V.game ? 'game' : petSeal && petSeal.sleeping ? 'sleep' : 'pet'; }
 function vsSendHost(){
   const s = petSeal, w = vsWhere(), r = x => Math.round(x*100)/100;
   const q = s ? s.root.position.clone().sub(PET_POS) : new V3(0, 0.25, 0.2);
