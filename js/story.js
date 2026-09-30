@@ -7,7 +7,8 @@
      Пункт «скоро» (soon:true) — то, что ещё строим: пока он есть, праздник такой главы впереди.
    Своё в сохранении — save.story (sanitizeStory в data.js):
      open — сколько глав открыто, fest:[номера отпразднованных глав], seen — сколько открытых глав уже показали,
-     pg — сколько было вылечено при прошлой проверке, hd — в какой день лечили, td:{d, ok:[дела дня, уже сделанные сегодня]}. */
+     pg — сколько было вылечено при прошлой проверке, hd — в какой день лечили, td:{d, ok:[дела дня, уже сделанные сегодня], gift — сундучок дня открыт}.
+   Сцены-разговоры, прологи глав, наклейка «шаг истории» и звезда дня — в js/beats.js. */
 const ST_GIFT = [15, 20, 20, 25, 25, 25, 30, 50];   // ракушки за праздник главы 1…8
 
 const stDay = () => new Date().toDateString();
@@ -263,7 +264,7 @@ const TODAY = [
 ];
 function stTodayList(){
   const td = save.story.td, out = [];
-  if(td.d !== stDay()){ td.d = stDay(); td.ok = []; }
+  if(td.d !== stDay()){ td.d = stDay(); td.ok = []; td.gift = false; }
   for(const it of TODAY){
     let show = false, done = false, n = null;
     try{
@@ -290,17 +291,22 @@ function stCheck(){
   const news = stNews();
   const b = $('#storyAlert'); if(b) b.hidden = !news;
   const calm = started && $('#intro').hidden && $('#story').hidden && mgRoot.hidden && !busy;
+  if(typeof btCheck === 'function' && btCheck()) return;   // сцена новой главы, наклейка «шаг истории», звезда дня (js/beats.js)
   // глава 8 открылась — шторм приходит на остров сценой, а не только строчкой в книжке (один раз, в уголке малыша)
   if(st.open >= STORY.length && !st.sa){
     if(save.storm.st > 0){ st.sa = true; persist(); }
     else if(calm && petMode && !homeMode && save.pet){ stToldNews = true; stStormArrive(); return; }
   }
-  if(news && !stToldNews && calm && nudge(L('📖 В Книге острова что-то новое! Нажми на книжку', '📖 Something new in the Island book! Tap the book'))) stToldNews = true;
+  const tell = STORY.some((c, i) => stFestReady(i)) || st.open > st.seen && (st.open >= STORY.length || typeof btCheck !== 'function');   // новую главу 2–7 представит сцена
+  if(tell && !stToldNews && calm && nudge(L('📖 В Книге острова что-то новое! Нажми на книжку', '📖 Something new in the Island book! Tap the book'))) stToldNews = true;
   if(!news) stToldNews = false;
 }
 async function stStormArrive(){
   save.story.sa = true; persist();
   setBusy(true); sfx.grr(); flash();
+  if(typeof talk === 'function') await talk([
+    {who:'gull', t:L('Шторм! Шторм! Большая вода идёт на остров!', 'Storm! Storm! High water is coming to the island!')},
+    {who:'pup', t:L('Не бойся! С нами все наши друзья. Зовём их!', 'Do not be afraid! All our friends are with us. We will call them!')}], {ch:STORY.length - 1});
   mgOpen('');
   const panel = mgNode('div', 'mg-panel fun-pick st-arrive', `
     <p class="ttl display">🌩️ ${L('Идёт Великий шторм!', 'The Great Storm is coming!')}</p>
@@ -318,10 +324,17 @@ async function stStormArrive(){
 /* ---------- книжка ---------- */
 let stTab = 'today', stCh = -1;   // stCh — открытая глава (−1 — список глав)
 function stOpen(tab){
-  sfx.paper(); stCheck();
+  sfx.paper(); $('#story').hidden = false; stCheck();   // книжка уже открыта — сцены и наклейки (beats.js) подождут
+  const due = typeof btPrologue === 'function' && save.story.open > save.story.seen && save.story.open < STORY.length ? save.story.open - 1 : -1;
   if(tab) stTab = tab;
   else if(save.story.open > save.story.seen || STORY.some((c, i) => stFestReady(i))) stTab = 'book';   // есть новости — сразу к главам
-  stCh = -1; stRender(); $('#story').hidden = false; document.body.classList.add('story-on');
+  stCh = -1; stRender(); document.body.classList.add('story-on');
+  if(due > 0) btPrologue(due);   // новую главу ещё не представили — сцена идёт прямо над книжкой
+}
+// книжка сразу на странице главы (наклейка «шаг истории» в js/beats.js)
+function stOpenAt(i){
+  sfx.paper(); $('#story').hidden = false; stCheck();
+  stTab = 'book'; stCh = i; stRender(); document.body.classList.add('story-on'); $('#story').scrollTop = 0;
 }
 function stClose(){ $('#story').hidden = true; document.body.classList.remove('story-on'); stCheck(); }
 const stEsc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[c]);
@@ -338,6 +351,8 @@ function stRender(){
     if(i >= save.story.open) return toast(L(`Эта глава откроется, когда в главе «${STORY[i - 1].name}» будет сделана половина`, `This chapter opens when half of «${STORY[i - 1].name}» is done`), 3200);
     stCh = i; stRender(); $('#story').scrollTop = 0;
   }));
+  body.querySelectorAll('[data-daygift]').forEach(b => b.addEventListener('click', () => { sfx.tap(); btDayGift(b); }));
+  body.querySelectorAll('[data-scene]').forEach(b => b.addEventListener('click', () => btReplay(+b.dataset.scene)));
   body.querySelectorAll('[data-omen]').forEach(b => b.addEventListener('click', () => { sfx.tap(); stOmenToast(); }));
   const back = body.querySelector('#stBack'); if(back) back.addEventListener('click', () => { sfx.tap(); stCh = -1; stRender(); });
   const fest = body.querySelector('#stFest'); if(fest) fest.addEventListener('click', () => stFest(stCh));
@@ -374,6 +389,7 @@ function stTodayHtml(){
   return `<div class="st-map">${ST_MAP_SVG}${cloud}${pins}</div>
     ${story ? `<p class="st-sub display">📖 ${L('Дальше по истории', 'Next in the story')}</p><ul class="st-todo st-next">${story}</ul>` : ''}
     <p class="st-sub display">${left ? L(`Сегодня на острове: ${left} ${plural(left, 'дело', 'дела', 'дел', 'thing', 'things')}`, `Today on the island: ${left} ${plural(left, '', '', '', 'thing', 'things')}`) : L('Всё на сегодня сделано! Завтра будет новое ♡', 'All done for today! Something new tomorrow ♡')}</p>
+    ${typeof btDayRow === 'function' ? btDayRow() : ''}
     <ul class="st-todo">${rows}</ul>`;
 }
 function stBookHtml(){
@@ -405,7 +421,8 @@ function stChapterHtml(i){
   }).join('');
   const s = stChapter(i), next = i + 1 < STORY.length && i + 1 >= save.story.open;
   return `<button class="st-back" id="stBack">← ${L('Главы', 'Chapters')}</button>
-    <div class="st-head"><span class="ic" aria-hidden="true">${c.ic}</span><div><small>${L(`Глава ${i + 1}`, `Chapter ${i + 1}`)}</small><h3 class="display">${stEsc(c.name)}</h3></div></div>
+    <div class="st-head"><span class="ic" aria-hidden="true">${c.ic}</span><div><small>${L(`Глава ${i + 1}`, `Chapter ${i + 1}`)}</small><h3 class="display">${stEsc(c.name)}</h3></div>
+      ${typeof btReplay === 'function' && BT_OPEN[i] ? `<button class="st-scene" data-scene="${i}" aria-label="${stEsc(L('Посмотреть начало главы', 'Watch how the chapter begins'))}">🎬</button>` : ''}</div>
     <p class="st-about">${stEsc(c.about)}</p>
     <ul class="st-todo">${rows}</ul>
     ${fest ? `<button class="btn" id="stFest">🎉 ${i === 7 ? L('Большой праздник!', 'The big party!') : L('Праздник главы!', 'Chapter party!')}</button>`

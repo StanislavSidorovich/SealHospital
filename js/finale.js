@@ -33,7 +33,7 @@ const FN_GUESTS = [
     say:() => L('Я больше не боюсь грома! 💪', 'I am not scared of thunder any more! 💪')},
   {id:'snow', ic:'❄️', name:L('Снежинка', 'Snowflake'), make:() => fnSeal(0xE9DDCB, '#B9A0F2', 0.24),
     say:() => L('Можно мне самый большой кусочек? 🍰', 'Can I have the biggest slice? 🍰')},
-  {id:'bear', ic:'🐻‍❄️', name:L('Медведь', 'Bear'), make:() => { const r = feBearMake(); r.scale.setScalar(0.3); return {root:r}; },
+  {id:'bear', ic:'🐻‍❄️', name:L('Медведь', 'Bear'), make:() => { const r = feBearMake(); r.userData.shard.visible = false; r.userData.brows.forEach(o => o.visible = false); r.scale.setScalar(0.3); return {root:r}; },   // уже друг: без занозы и сердитых бровей
     say:() => L('Лапа совсем не болит! Спасибо! 🐾', 'My paw doesn’t hurt at all! Thank you! 🐾')},
   {id:'shark', ic:'🦈', name:L('Акула', 'Shark'), make:() => fnDv('shark', 0.34),
     say:() => L('Зуб как новенький! 😁 Кого покатать?', 'My tooth is good as new! 😁 Who wants a ride?')},

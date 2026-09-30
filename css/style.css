@@ -1044,3 +1044,71 @@ body.bg-on #corner>:not(#bag){display:none!important}
 .isl-go .btn{width:100%;min-height:52px;font-size:21px;padding:6px 10px}
 body.isle-on .mg-hint.bottom{bottom:calc(env(safe-area-inset-bottom,0px) + 118px)}
 body.isle-on .mg{touch-action:none}
+/* 🎬 Сцены и шаги истории (js/beats.js): разговор героев внизу экрана, титул главы, наклейка «шаг истории», звезда дня */
+.talk{position:absolute;inset:0;z-index:20;touch-action:none;background:linear-gradient(to top,rgba(59,58,74,.34),rgba(59,58,74,0) 52%)}
+.tk-box{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);max-width:440px;margin:0 auto;box-sizing:border-box;
+  min-height:104px;background:var(--paper);border:3px solid var(--ink);border-radius:22px;box-shadow:0 5px 0 var(--ink);padding:24px 16px 14px 16px;text-align:left}
+.tk-box.in{animation:hintpop .25s ease-out}
+.tk-face{position:absolute;left:12px;top:-34px;width:62px;height:62px;border-radius:50%;border:3px solid var(--ink);box-shadow:0 3px 0 var(--ink);
+  display:grid;place-items:center;font-size:34px;line-height:1;background:#fff}
+.tk-box.in .tk-face{animation:tkHop .4s ease-out}
+@keyframes tkHop{40%{transform:translateY(-9px) rotate(-6deg)}}
+.tk-name{position:absolute;left:84px;top:-17px;background:var(--pink);border:2.5px solid var(--ink);border-radius:12px;padding:0 12px;font-size:19px;line-height:1.5;white-space:nowrap}
+.tk-text{margin:0;font-size:18px;line-height:1.35;font-weight:700;min-height:48px;text-wrap:pretty}
+.tk-more{position:absolute;right:14px;bottom:8px;font-size:15px;color:var(--pink-d);animation:tkBlink 1s ease-in-out infinite}
+@keyframes tkBlink{50%{opacity:.25;transform:translateX(3px)}}
+.tk-btns{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:12px}
+.tk-btns .btn{min-height:52px}
+.tk-btns .btn.small{margin-top:0}
+.tk-skip{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 12px);min-height:44px;padding:0 14px;border:2.5px solid var(--ink);border-radius:999px;
+  background:rgba(255,253,248,.92);box-shadow:0 3px 0 var(--ink);font-weight:800;font-size:14px}
+.tk-skip:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.tk-title{position:absolute;left:50%;top:17%;translate:-50% 0;rotate:-2deg;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:210px;max-width:calc(100% - 48px);box-sizing:border-box;
+  background:#FFF7DD;border:3px solid var(--ink);border-radius:24px;box-shadow:0 6px 0 var(--ink);padding:12px 22px 14px;animation:tkTitle .6s cubic-bezier(.2,1.4,.4,1)}
+@keyframes tkTitle{from{opacity:0;transform:translateY(-40px) scale(.7) rotate(-8deg)}}
+.tk-title small{font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.tk-title .ic{font-size:64px;line-height:1.1}
+.tk-title b{font-size:38px;line-height:1.05;text-align:center}
+body.talk-on .isl-jump,body.talk-on .isl-go,body.talk-on .isl-arrow,body.talk-on .isl-quest,body.talk-on .run-hud,body.talk-on .mg-hint,body.talk-on .top,body.talk-on .tools,body.talk-on .beat{visibility:hidden}
+body.talk-on .vs-btn,body.talk-on .vs-chip,body.talk-on .gull-chip{display:none}   /* лежат вне #app и иначе перекрывают реплику */
+.beat{position:absolute;z-index:8;left:50%;top:calc(env(safe-area-inset-top,0px) + 176px);translate:-50% 0;width:max-content;max-width:calc(100% - 28px);box-sizing:border-box;
+  display:flex;flex-direction:column;gap:3px;text-align:left;background:#FFF7DD;border:2.5px solid var(--ink);border-radius:18px;box-shadow:0 4px 0 var(--ink);
+  padding:8px 14px 9px;animation:beatIn .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes beatIn{from{opacity:0;transform:translateY(-26px) scale(.9)}}
+.beat.day{background:#EAF7FB}
+.beat:active{transform:translateY(2px);box-shadow:0 2px 0 var(--ink)}
+.beat small{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--soft)}
+.beat b{font-size:16px;line-height:1.25;font-weight:800;display:flex;align-items:center;gap:7px}
+.beat .ok{flex:none;width:24px;height:24px;border-radius:50%;background:var(--mint);border:2px solid var(--mint-d);color:#236B50;display:grid;place-items:center;font-size:14px;animation:beatOk .5s .25s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes beatOk{from{transform:scale(0) rotate(-90deg)}}
+.beat .ln{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.beat em{font-style:normal;font-size:12.5px;font-weight:800;color:var(--soft)}
+.beat .dots,.st-day .dots{display:inline-flex;gap:4px}
+.beat .dots i,.st-day .dots i{width:10px;height:10px;border-radius:50%;border:2px solid var(--ink);background:#fff;box-sizing:content-box}
+.beat .dots i.y,.st-day .dots i.y{background:var(--mint-d)}
+.beat .dots i.new{animation:beatDot .7s .5s ease-out both}
+@keyframes beatDot{0%{background:#fff;transform:scale(1)}50%{transform:scale(1.9)}}
+.beat .dots.big i,.st-day .dots i{width:14px;height:14px}
+.beat .dots.big i.y,.st-day .dots i.y{background:#FFD66B}
+.beat .cta{align-self:stretch;text-align:center;margin-top:5px;background:var(--pink);border:2.5px solid var(--ink);border-radius:12px;box-shadow:0 3px 0 var(--ink);font-size:18px;padding:4px 10px;animation:pulse 1.1s ease-in-out infinite}
+body.story-on .beat{z-index:21}
+.talk:has(~ #story:not([hidden])),body.story-on .talk{background:rgba(234,247,251,.86)}   /* сцена над открытой книжкой: книжку приглушаем */
+.st-head .st-scene{margin-left:auto;flex:none;width:48px;height:48px;border-radius:50%;border:2.5px solid var(--ink);background:#FFF7DD;box-shadow:0 3px 0 var(--ink);font-size:22px;line-height:1;padding:0}
+.st-head .st-scene:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.st-day{display:flex;align-items:center;gap:8px;border:2.5px solid var(--ink);border-radius:16px;background:#EAF7FB;padding:6px 10px 6px 12px;min-height:48px;box-sizing:border-box;margin:0 0 10px;text-align:left}
+.st-day .t{font-size:16.5px;flex:none}
+.st-day .dots{flex:1}
+.st-day .note{flex:none;font-size:13px;font-weight:800;color:var(--soft);padding-right:4px}
+.st-day.got{background:var(--mint);border-color:var(--mint-d)}
+.st-day .go{flex:none;min-height:40px;border:2.5px solid var(--ink);border-radius:12px;background:var(--pink);box-shadow:0 3px 0 var(--ink);
+  font-family:"Pangolin","Comic Sans MS",cursive;font-size:17px;padding:4px 12px;animation:pulse 1.1s ease-in-out infinite}
+/* 🧭 остров: наклейка «куда дальше» под звёздочками и стрелка вокруг малыша (js/island.js, islQuest) */
+.isl-quest{position:absolute;left:12px;top:calc(env(safe-area-inset-top,0px) + 54px);max-width:min(300px,calc(100% - 90px));display:flex;align-items:center;gap:7px;text-align:left;
+  background:#FFF7DD;border:2.5px solid var(--ink);border-radius:16px;box-shadow:0 3px 0 var(--ink);padding:5px 10px 5px 8px;min-height:44px;box-sizing:border-box;animation:hintpop .3s ease-out}
+.isl-quest:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.isl-quest span{font-size:19px;line-height:1;flex:none}
+.isl-quest b{font-size:13.5px;line-height:1.2;font-weight:800}
+.isl-quest i{font-style:normal;font-size:18px;color:var(--pink-d);flex:none}
+.isl-arrow{position:absolute;left:0;top:0;width:34px;height:34px;pointer-events:none;filter:drop-shadow(0 2px 0 rgba(59,58,74,.3));will-change:transform}
+.isl-arrow svg{width:100%;height:100%;display:block}
+@media (prefers-reduced-motion:reduce){ .tk-title,.beat,.beat .ok,.beat .dots i.new,.tk-more,.beat .cta,.st-day .go{animation:none} }

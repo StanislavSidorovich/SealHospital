@@ -311,6 +311,9 @@ function islBuild(){
     const r = addOutline(new THREE.Mesh(new THREE.DodecahedronGeometry(s), toon(0xB9C2D0)), 1.05); r.scale.y = 0.6; r.position.set(x, islGround(x, z) + s*0.2, z); r.rotation.y = x; G.add(r);
   }
   islGearBuild(G);
+  // 🧭 луч-маячок над местом, куда зовёт подсказка «куда дальше» (islQuest): видно издалека
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 30, 14, 1, true), new THREE.MeshBasicMaterial({color:0xFFD66B, transparent:true, opacity:0.2, depthWrite:false, side:THREE.DoubleSide}));
+  beam.visible = false; G.add(beam); G.userData.beam = beam;
   if(typeof cvIslBuild === 'function') cvIslBuild(G);   // 🗝️ ущелье, вход в пещеру и ключи (js/cave.js)
   // подписи и кольца — на земле у места
   for(const o of Object.values(pl)){
@@ -402,10 +405,92 @@ function islGearStep(dt){
   I.gear.tick(R, dt);
 }
 
+/* ---------- 💬 друзья на острове (30.09): стоят у своих мест; подошла — «💬 Имя ▶», и идёт сцена-разговор (talk в js/beats.js).
+   id — гость из FN_GUESTS (модель, js/finale.js) и он же герой в BT_WHO; at — где стоит; up — парит над землёй; k — ещё крупнее; h — высота значка 💬;
+   ok() — уже друг; say — реплики [ru, en] (две на день, по очереди дней). Чайка — вестница: рассказывает, куда зовёт история,
+   и провожает («Идём ▶» — малыш идёт к лучу сам). Новый друг — строчка здесь (и в FN_GUESTS / BT_WHO, если его там нет). ---------- */
+const ISL_NPC_K = 2.4;   // за праздничным столом гости маленькие — на острове во столько раз крупнее
+const ISL_NPC = [
+  {id:'gull', at:[3.4, 1.0], h:1.5, ok:() => true},
+  {id:'bear', at:[12.6, 13.4], k:1.9, h:3.2, ok:() => save.pt.bear, say:[
+    ['Привет! Лапа совсем не болит. Ношу льдинки — строю!', 'Hi! My paw doesn’t hurt at all. I’m carrying ice blocks — building!'],
+    ['Хочешь новую комнату в иглу? Я мигом! Загляни домой 🏠', 'Want a new room in the igloo? I’ll build it in a flash! Pop home 🏠'],
+    ['Р-р-р… Ой, прости. Это я так здороваюсь.', 'Grrr… Oh, sorry. That’s just how I say hello.']]},
+  {id:'turtle', at:[-9.2, 40.3], k:1.5, h:1.7, ok:() => typeof stGate !== 'function' || stGate('swim') < 0, say:[
+    ['Не спеши… В заплыве есть короткий путь. Ищи водоросли у самого дна 🌿', 'No rush… The swim race has a short cut. Look for seaweed near the bottom 🌿'],
+    ['Я плаваю тут сто лет. Ну… почти сто.', 'I’ve been swimming here a hundred years. Well… nearly.'],
+    ['Кто тихо плывёт — тот всё замечает.', 'Swim slowly and you notice everything.']]},
+  {id:'cloud', at:[30.6, 7.4], up:2.3, k:1.5, h:3.9, ok:() => save.coop.cs.cure >= 2 || save.coop.wins > 0, say:[
+    ['Я больше не ворчу! Хочешь дождик? Кап-кап 🌧️', 'I don’t grumble any more! Want a little rain? Drip-drop 🌧️'],
+    ['Сверху весь остров как на ладошке. Красиво!', 'From up here the whole island fits in your flipper. So pretty!'],
+    ['Апчхи! Ой. Это не простуда, это снежинка в нос попала.', 'Achoo! Oh. Not a cold — a snowflake got up my nose.']]},
+  {id:'blot', at:[-20.2, 23.2], k:1.6, h:1.9, ok:() => save.dive.gloom.st >= 3, say:[
+    ['Буль! Ночью я свечусь. Приходи посмотреть ✨', 'Blub! I glow at night. Come and see ✨'],
+    ['В пещере под островом темно… Я бы там посветила!', 'It’s dark in the cave under the island… I’d light it up!'],
+    ['Раньше меня все боялись. А теперь зовут в гости 💜', 'Everyone used to be scared of me. Now they invite me over 💜']]},
+  {id:'tiny', at:[5.6, 15.2], h:1.35, ok:() => save.coop.resc.lv.bay > 0, say:[
+    ['Я больше не теряюсь! Ну… почти 😊', 'I don’t get lost any more! Well… almost 😊'],
+    ['Давай в догонялки? Чур, я убегаю!', 'Shall we play tag? I’ll run first!'],
+    ['Мама сказала далеко не уплывать. А вон до той льдинки — это далеко?', 'Mum said not to swim far. Is that ice floe over there far?']]},
+  {id:'ray', at:[17.2, 9.4], h:1.35, ok:() => save.coop.resc.lv.glow > 0, say:[
+    ['Смотри, как я свечусь! ✨', 'Look how I glow! ✨'],
+    ['В пещере было темно, а ты — со светом! Спасибо!', 'The cave was dark, and you came with the light! Thank you!'],
+    ['Найди все звёздочки — и остров засияет, как я!', 'Find all the stars and the island will shine like me!']]}
+];
+function islNpcShow(){
+  const U = islRoot.userData; U.npc = U.npc || [];
+  if(typeof fnGuest !== 'function' || typeof talk !== 'function') return;
+  for(const N of ISL_NPC){
+    let o = U.npc.find(x => x.N === N), ok = false;
+    try{ ok = !!N.ok(); }catch(e){}
+    if(ok && !o){
+      const m = fnGuest(N.id).make(), g = islGround(N.at[0], N.at[1]), gy = g < ROAM_DEEP ? -0.22 : g;
+      m.root.scale.multiplyScalar(ISL_NPC_K*(N.k || 1));
+      const pos = new V3(N.at[0], gy + (N.up || 0), N.at[1]); m.root.position.copy(pos); islRoot.add(m.root);
+      const tip = new THREE.Sprite(new THREE.SpriteMaterial({map:emojiTex('💬'), transparent:true, depthWrite:false})); tip.scale.setScalar(0.85); islRoot.add(tip);
+      o = {N, npc:true, m, pos, gy, tip, yaw:0, hopT:0}; U.npc.push(o);
+    }
+    if(o) o.m.root.visible = o.tip.visible = ok;
+  }
+}
+function islNpcStep(dt){
+  const P = ISL.R.pos;
+  for(const o of islRoot.userData.npc){
+    if(!o.m.root.visible) continue;
+    const dx = P.x - o.pos.x, dz = P.z - o.pos.z, d = Math.hypot(dx, dz);
+    if(d < 9){ const y = Math.atan2(dx, dz); o.yaw += Math.atan2(Math.sin(y - o.yaw), Math.cos(y - o.yaw))*Math.min(1, dt*4); }   // поворачивается к малышу
+    o.hopT -= dt;
+    const hop = o.hopT > 0 ? Math.sin((1 - o.hopT/0.5)*Math.PI)*0.45 : 0;
+    o.m.root.rotation.y = o.yaw + (o.m.off || 0);
+    o.m.root.position.y = o.pos.y + Math.sin(now*1.6 + o.pos.x)*(o.N.up ? 0.14 : 0.03) + hop;
+    o.tip.position.set(o.pos.x, o.gy + o.N.h + Math.sin(now*3 + o.pos.x)*0.08, o.pos.z);
+    o.tip.material.opacity = Math.max(0, Math.min(1, (24 - d)/6));
+    if(o.m.seal) updateSeal(o.m.seal, now + o.pos.x, dt);
+  }
+}
+const islSayL = a => L(a[0], a[1]);
+async function islChat(o){
+  const I = ISL; if(!I || I.fishing) return;
+  I.go.hidden = true;
+  const N = o.N, q = N.id === 'gull' ? I.q : null, d = new Date().getDate();
+  const T = t => ({who:N.id, t});
+  const lines = N.id !== 'gull' ? [T(islSayL(N.say[d % N.say.length])), T(islSayL(N.say[(d + 1) % N.say.length]))]
+    : q ? [T(q.ic === '📖' ? L(`Новости острова! Дальше по истории: ${q.t}`, `Island news! Next in the story: ${q.t}`) : L(`Новости острова! Сегодня ждёт дело: ${q.t}`, `Island news! A thing of the day is waiting: ${q.t}`)),
+           T(L('Видишь золотой луч? Он над этим местом. Проводить?', 'See the golden beam? It’s right above that place. Shall I show you the way?'))]
+    : [T(L('Сегодня на острове тихо. Ищи звёздочки — одну я видела на крыше! 🌟', 'The island is quiet today. Look for stars — I saw one on a roof! 🌟'))];
+  const k = await talk(lines, q ? {btns:[{k:'go', t:L('Идём', 'Off we go') + ' ▶'}, {k:'no', t:L('Потом', 'Later'), ghost:true}]} : {});
+  if(!ISL) return;
+  o.hopT = 0.5; burst(TEX.heart, ISL_POS.clone().add(o.pos).add(new V3(0, 1, 0)), 6, 1.4, 0.24);
+  I.near = null; I.idleT = 0;
+  if(k === 'go' && q) islWalkTo(q.k);
+}
+
 /* ---------- прогулка ---------- */
-let ISL = null, isleSay = '';
+let ISL = null, isleSay = '', isleAt = null;   // isleAt — вернулись из игры: встаём там, откуда ушли
+const ISL_BACK = new Set(['walk', 'run', 'road', 'rescue', 'slide', 'dive', 'chase', 'swim', 'storm']);   // после этих игр возвращаемся на остров, к тому же знаку
 async function isleGo(s){
-  const sv = save.isl; sv.n++; persist();
+  const sv = save.isl, back = isleAt; isleAt = null;
+  if(!back){ sv.n++; persist(); }
   const cam0 = camOffWant.clone();
   sfx.whoosh(); flash();
   islBuild(); islRoot.visible = true; runCam.on = true; roamView(true);
@@ -413,15 +498,13 @@ async function isleGo(s){
   if(s.bubble) s.bubble.visible = false;
   setMood(s, 'happy');
   const pl = islRoot.userData.pl;
-  const start = pl.pet.pos.clone().add(new V3(0, 0, 4.2));
+  const start = back ? new V3(back.x, 0, back.z) : pl.pet.pos.clone().add(new V3(0, 0, 4.2));
   ISL = {s, R:roamStart({s, at:ISL_POS, pos:start, ground:islGround, bounce:islBounce, push:islPush, gear:gearRoam(() => ISL && ISL.gear.dj())}), near:null, t:0, ping:null, said:new Set(), idleT:0, sayT:0};
   ISL.gear = gearDress(s);   // 🎈 вещи-умения видно на малыше
   ISL.R.yaw = Math.PI;   // смотрит «вперёд», на остров (от камеры)
   for(const o of Object.values(pl)){ const lock = islLock(o.k); o.lock = lock; o.ring.material.color.set(lock ? 0xB9C2D0 : 0xFF9BB8); o.hide = lock === 'hide'; o.g.visible = o.lbl.visible = o.ring.visible = !o.hide || o.k === 'storm'; }
-  const story = typeof stNextSteps === 'function' ? stNextSteps().map(x => x.it.go) : [];
-  for(const o of Object.values(pl)) o.mark.visible = story.includes(o.k) && !o.lock;
   islRoot.userData.pingHouse.visible = typeof nbIn === 'function' && nbIn();
-  islStarsShow(); if(typeof cvIslShow === 'function') cvIslShow();
+  islStarsShow(); islNpcShow(); if(typeof cvIslShow === 'function') cvIslShow();
   if(islRoot.userData.pingHouse.visible){
     const p = makePenguin(PENG); p.root.scale.setScalar(0.62); islRoot.add(p.root);
     ISL.ping = {s:p, pos:new V3(-3, 0, 20), vel:new V3(), yaw:0, home:new V3(-3, 0, 20), follow:false, hopT:0};
@@ -429,6 +512,10 @@ async function isleGo(s){
   mgOpen('', {hintBottom:true});
   ISL.hud = mgNode('div', 'run-hud isl-hud', ''); islHud();
   ISL.go = mgNode('div', 'isl-go', ''); ISL.go.hidden = true;
+  ISL.qEl = mgNode('button', 'isl-quest', ''); ISL.qEl.hidden = true; ISL.qT = 0;
+  ISL.arrow = mgNode('div', 'isl-arrow', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 L20 20 L12 15.5 L4 20Z" fill="#FFD66B" stroke="#3B3A4A" stroke-width="2.2" stroke-linejoin="round"/></svg>'); ISL.arrow.hidden = true;
+  mgOn(ISL.qEl, 'click', e => { e.stopPropagation(); if(ISL && ISL.q && islWalkTo(ISL.q.k)) sfx.tap(); });
+  islQuestShow();
   const jump = mgNode('button', 'isl-jump', '<span aria-hidden="true">⤴</span>'); jump.setAttribute('aria-label', L('Прыжок', 'Jump'));
   mgOn(jump, 'pointerdown', e => { e.preventDefault(); e.stopPropagation(); roamJump(ISL.R); });
   roamControls(ISL.R, mgRoot, islHit);
@@ -437,8 +524,9 @@ async function isleGo(s){
   let done; const fin = new Promise(r => done = r); ISL.done = done;
   homeB.addEventListener('click', () => { if(ISL && ISL.fishing) return; sfx.tap(); done(null); }); ISL.homeB = homeB;
   mgTick(dt => { if(ISL) islStep(dt); });
-  islIntro();
+  islIntro(!!back);
   const k = await fin;
+  const at = {x:ISL.R.pos.x, z:ISL.R.pos.z};
   // обратно в уголок малыша
   mgClose(); homeB.remove(); flash();
   document.body.classList.remove('run-on', 'isle-on');
@@ -452,8 +540,18 @@ async function isleGo(s){
     const S = ST_PLACES[k]; isleSay = L(`Идём: ${S.ic} ${S.name}!`, `Off we go: ${S.ic} ${S.name}!`);
     (async () => {   // когда уголок доиграет «наигрался», идём туда, куда выбрали на острове (как «Идём ▶» в книге)
       for(let i = 0; i < 80 && (busy || !mgRoot.hidden); i++) await wait(0.1);
-      if(!busy && mgRoot.hidden && petMode) stGo(k);
+      if(busy || !mgRoot.hidden || !petMode) return;
+      await stGo(k);
+      if(!ISL_BACK.has(k)) return;
+      // игра кончилась (или её отложили) — снова на остров, к тому же знаку: остров — место, откуда ходят в игры
+      const open = () => busy || !mgRoot.hidden || !!document.querySelector('.overlay:not([hidden])');
+      await wait(0.3);
+      while(open() && petMode && !homeMode) await wait(0.2);
+      await wait(0.5);
+      if(open() || !petMode || homeMode || ISL) return;
+      isleAt = at; funPre = 'isle'; petDo('fun');
     })();
+    if(ISL_BACK.has(k)){ toast(isleSay, 2200); return false; }   // ушли в игру и вернёмся: прогулка ещё не кончилась — малыш не «нагулялся» (petDo не считает её сыгранной)
   } else isleSay = L(`${gg('Нагулялся', 'Нагулялась')} по острову! Лапки в снегу — пора купаться 🛁`, 'What a walk around the island! Snowy flippers — bath time 🛁');
 }
 // можно ли сейчас туда: false — да; 'hide' — места нет; иначе текст про замок
@@ -465,10 +563,13 @@ function islLock(k){
   const i = typeof stGate === 'function' ? stGate(k) : -1;
   return i >= 0 ? stGateSay(i) : false;
 }
-function islIntro(){
+function islIntro(back){
   const n = save.pet.name;
   (async () => {
-    if(!tipSeen('isle')){
+    if(back){
+      mgHint(L('Снова на острове! Куда дальше? 🐾', 'Back on the island! Where next? 🐾'));
+      await wait(3); if(ISL) mgHint('');
+    } else if(!tipSeen('isle')){
       tipDone('isle');
       mgHint(L(`Держи палец на экране — ${n} идёт туда 🐾 А ⤴ — прыжок!`, `Hold your finger on the screen — ${n} walks there 🐾 And ⤴ jumps!`));
       await wait(5); if(!ISL) return;
@@ -493,6 +594,42 @@ function islHud(){
     + (typeof cvHudPill === 'function' ? cvHudPill() : '');
 }
 function islStarsShow(){ for(const st of islRoot.userData.stars){ const got = save.isl.got.includes(st.i); st.sp.visible = st.gl.visible = !got; } }
+/* ---------- 🧭 «куда дальше» (30.09): наклейка под звёздочками — шаг истории или дело дня, которое ждёт на острове.
+   Над местом золотой луч, вокруг малыша стрелка в ту сторону; касание по наклейке — малыш идёт туда сам. ---------- */
+function islQuest(){
+  const pl = islRoot.userData.pl, ok = k => pl[k] && !pl[k].lock && !pl[k].hide;
+  if(typeof stNextSteps === 'function') for(const {it} of stNextSteps()) if(ok(it.go)) return {k:it.go, ic:'📖', t:`${it.ic} ${it.t}`};
+  if(typeof stTodayList === 'function') for(const x of stTodayList()) if(!x.done && ok(x.it.go)) return {k:x.it.go, ic:'☀️', t:`${x.it.ic} ${x.it.t()}`};
+  return null;
+}
+function islQuestShow(){
+  const I = ISL, U = islRoot.userData, q = I.cave ? null : islQuest();
+  const story = typeof stNextSteps === 'function' ? stNextSteps().map(x => x.it.go) : [];
+  for(const o of Object.values(U.pl)) o.mark.visible = story.includes(o.k) && !o.lock;   // «❗» над местами истории
+  I.q = q; I.qEl.hidden = !q; U.beam.visible = !!q;
+  if(!q){ I.arrow.hidden = true; return; }
+  const o = U.pl[q.k]; U.beam.position.set(o.pos.x, o.pos.y + 15, o.pos.z);
+  const h = `<span aria-hidden="true">${q.ic}</span><b>${stEsc(q.t)}</b><i aria-hidden="true">▸</i>`;
+  if(I.qH !== h){ I.qH = h; I.qEl.innerHTML = h; }
+}
+function islWalkTo(k){
+  const I = ISL, o = I && !I.cave && !I.fishing && islRoot.userData.pl[k];
+  if(!o || o.lock || o.hide) return false;
+  const R = I.R; R.hold = false; R.tgt = null; R.goal = {p:() => o.pos, r:1.6};
+  return true;
+}
+function islQuestStep(dt){
+  const I = ISL, U = islRoot.userData, P = I.R.pos;
+  I.qT -= dt; if(I.qT <= 0){ I.qT = 2; islQuestShow(); }
+  if(!I.q) return;
+  const o = U.pl[I.q.k], dx = o.pos.x - P.x, dz = o.pos.z - P.z, far = Math.hypot(dx, dz) > 9;
+  U.beam.material.opacity = 0.17 + Math.sin(now*2.5)*0.06;
+  I.arrow.hidden = !far;
+  if(!far) return;
+  // камера всегда смотрит на север: «вверх по экрану» = −z, «вправо» = +x
+  const c = toScreen(ISL_POS.clone().add(P).add(new V3(0, 0.6, 0))), a = Math.atan2(dx, -dz), r = 88 + Math.sin(now*5)*5;
+  I.arrow.style.transform = `translate(${(c.x + Math.sin(a)*r).toFixed(1)}px, ${(c.y - Math.cos(a)*r).toFixed(1)}px) translate(-50%, -50%) rotate(${a.toFixed(3)}rad)`;
+}
 // коснулась подписи места — малыш идёт туда сам
 function islHit(cx, cy){
   if(ISL && ISL.cave) return cvHit(cx, cy);
@@ -511,8 +648,9 @@ function islHit(cx, cy){
 function islStep(dt){
   const I = ISL, R = I.R, P = R.pos, U = islRoot.userData;
   I.t += dt;
-  if(I.cave){ cvStep(dt); return; }   // 🗝️ в пещере — свой мир (js/cave.js)
+  if(I.cave){ if(!I.qEl.hidden || !I.arrow.hidden) I.qEl.hidden = I.arrow.hidden = true; I.qT = 0; cvStep(dt); return; }   // 🗝️ в пещере — свой мир (js/cave.js)
   roamStep(R, dt);
+  islQuestStep(dt);
   islGearStep(dt);
   U.sea.position.y = -0.05 + Math.sin(now*0.8)*0.03;
   // звёздочки кружатся; поймала — ракушки
@@ -543,6 +681,10 @@ function islStep(dt){
     const rp = o.hole.userData.rp, k = (now*0.6 + o.pos.x) % 1; rp.scale.setScalar(0.6 + k*1.4); rp.material.opacity = 0.6*(1 - k);
     if(d < Math.min(nd, 2.2) && Math.abs(P.y - o.pos.y) < 1.2){ nd = d; near = o; }
   }
+  islNpcStep(dt);
+  for(const o of U.npc){
+    if(o.m.root.visible && Math.hypot(P.x - o.pos.x, P.z - o.pos.z) < Math.min(nd, 2.4) && Math.abs(P.y - o.gy) < 1.6){ nd = Math.hypot(P.x - o.pos.x, P.z - o.pos.z); near = o; }
+  }
   const cm = typeof cvIslStep === 'function' ? cvIslStep(dt) : null;
   if(cm && Math.hypot(P.x - cm.pos.x, P.z - cm.pos.z) < nd) near = cm;
   if(near !== I.near){ I.near = near; islGoShow(); }
@@ -564,6 +706,12 @@ function islGoShow(){
     el.innerHTML = `<button class="btn">🗝️ ${L('В пещеру', 'Into the cave')} ▶</button>`;
     el.hidden = false; sfx.tick();
     el.querySelector('button').addEventListener('click', e => { e.stopPropagation(); sfx.tap(); cvEnter(); });
+    return;
+  }
+  if(o.npc){
+    el.innerHTML = `<button class="btn">💬 ${stEsc(BT_WHO[o.N.id].name())} ▶</button>`;
+    el.hidden = false; sfx.tick();
+    el.querySelector('button').addEventListener('click', e => { e.stopPropagation(); sfx.tap(); islChat(o); });
     return;
   }
   if(o.fish){
