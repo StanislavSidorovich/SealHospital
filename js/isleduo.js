@@ -6,6 +6,8 @@
    осалить — подбежать вплотную, решает хозяйка); 🐢 в воде — забраться второму на спинку и кататься (⤴ — спрыгнуть);
    у знака игры, в которую можно вдвоём, — «🎮 Вместе ▶» (приглашение, как 🎮), после игры оба снова на острове;
    гость видит звёздочки хозяйки: сам не берёт, а показывает — у неё над звёздочкой встаёт розовый луч. Фото «В гостях» — и на острове.
+   Рыбалка и пещера — только у себя: ключей гость не видит, хозяйка в пещере — над входом 🗝️ и её имя, стрелка туда, гость ждёт;
+   рыбачит — 🎣 над ней (islFish → iduFishBeat шлёт 'ip' и во время охоты, флаг fi).
    Сеть (поверх визита): 'ip' — где я на острове (оба, 10 раз/с), 'ig' — звёздочки хозяйки, 'ist' — гость нашёл звёздочку,
    'ihug' — обнял, 'itag' — салки {it:'h'|'g'|'', n} (гость просит {want:1}), 'iride' — {on} катаюсь у тебя на спинке.
    Каждый у себя сажает наездника на спину своему тюленю — без задержки сети.
@@ -60,12 +62,17 @@ function iduTake(m){
   const np = new V3(+m.x || 0, +m.y || 0, +m.z || 0), gap = now - q.t;
   if(gap > 0.02 && gap < 1) q.v.copy(np).sub(q.p).divideScalar(gap).clampLength(0, 16); else q.v.set(0, 0, 0);
   if(gap >= 1) q.snap = true;
-  q.p.copy(np); q.r = +m.r || 0; q.ix = +m.ix || 0; q.iy = +m.iy || 0; q.iz = +m.iz || 0; q.sw = !!m.sw; q.f = +m.f || 0; q.cv = !!m.cv; q.t = now;
+  q.p.copy(np); q.r = +m.r || 0; q.ix = +m.ix || 0; q.iy = +m.iy || 0; q.iz = +m.iz || 0; q.sw = !!m.sw; q.f = +m.f || 0; q.cv = !!m.cv; q.fi = !!m.fi; q.t = now;
 }
 function iduSend(){
   const R = ISL.R, s = ISL.s;
   netSend({t:'ip', x:iduR2(R.pos.x), y:iduR2(R.pos.y), z:iduR2(R.pos.z), r:iduR2(R.yaw), ix:iduR2(s.inner.rotation.x), iy:iduR2(s.inner.position.y),
-    iz:iduR2(s.inner.rotation.z), sw:s.swimming ? 1 : 0, f:iduR2(s.flap || 0), cv:ISL.cave ? 1 : 0});
+    iz:iduR2(s.inner.rotation.z), sw:s.swimming ? 1 : 0, f:iduR2(s.flap || 0), cv:ISL.cave ? 1 : 0, fi:ISL.fishing ? 1 : 0});
+}
+// рыбачу: islStep стоит (mgStash), а второй должен видеть, где я, — шлём сами, пока не кончится (зовёт islFish)
+function iduFishBeat(){
+  if(!iduOn() || !ISL.duo) return;
+  const t = setInterval(() => { if(!iduOn() || !ISL.duo || !ISL.fishing){ clearInterval(t); return; } iduSend(); }, 300);
 }
 const iduTagSend = () => netSend({t:'itag', it:V.tag ? V.tag.it : '', n:V.tag ? V.tag.n : 0});
 
@@ -77,6 +84,8 @@ function iduStart(){
   if(!lbl){ lbl = textSprite(V.name, '#3E8DB8'); scene.add(lbl); }
   lbl.scale.set(2.3, 0.86, 1); lbl.visible = false;
   const tagSp = new THREE.Sprite(new THREE.SpriteMaterial({map:emojiTex('✋'), transparent:true, depthWrite:false})); tagSp.scale.setScalar(0.95); tagSp.visible = false; scene.add(tagSp);
+  const waitTex = {cave:emojiTex('🗝️'), fish:emojiTex('🎣')};
+  const waitSp = new THREE.Sprite(new THREE.SpriteMaterial({map:waitTex.cave, transparent:true, depthWrite:false})); waitSp.scale.setScalar(1.3); waitSp.visible = false; scene.add(waitSp);
   const bar = mgNode('div', 'idu-bar', `
     <button class="round vs-play" aria-label="${L('Играем вместе', 'Play together')}">🎮</button>
     <button class="round idu-tag" aria-label="${L('Салки', 'Tag')}">🏃</button>
@@ -89,7 +98,7 @@ function iduStart(){
   vsMic(bar.querySelector('.co-mic'));
   const arrow = mgNode('div', 'isl-arrow idu-arrow', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 L20 20 L12 15.5 L4 20Z" fill="#FF9BB8" stroke="#3B3A4A" stroke-width="2.2" stroke-linejoin="round"/></svg>');
   arrow.hidden = true;
-  I.duo = {v:V, lbl, ownLbl:V.role !== 'host', tagSp, bar, arrow, sendT:0, igT:0, awayT:0, caveSaid:false, photoT:0, rideO:{duo:'ride'}, offO:{duo:'off'}, beams:[], stSeen:new Set(), landT:0};
+  I.duo = {v:V, lbl, ownLbl:V.role !== 'host', tagSp, waitSp, waitTex, waitK:'', inCave:false, bar, arrow, sendT:0, igT:0, awayT:0, photoT:0, rideO:{duo:'ride'}, offO:{duo:'off'}, beams:[], stSeen:new Set(), landT:0};
   V.tag = null; V.ride = null;
   if(V.role === 'host') toast(L(`${V.name} гуляет с тобой по острову! 🏃 — салки, в воде — покатай на спинке 🐢`, `${V.name} is walking the island with you! 🏃 — tag, in the water — give a ride on your back 🐢`), 4200);
   else {
@@ -100,7 +109,7 @@ function iduStart(){
 function iduEnd(){
   const I = typeof ISL !== 'undefined' && ISL, D = I && I.duo; if(!D) return;
   I.duo = null;
-  scene.remove(D.tagSp);
+  scene.remove(D.tagSp); scene.remove(D.waitSp);
   if(D.ownLbl) scene.remove(D.lbl); else { D.lbl.scale.set(0.85, 0.32, 1); D.lbl.visible = false; }
   D.bar.remove(); D.arrow.remove();
   for(const b of D.beams) islRoot.remove(b.m);
@@ -146,15 +155,14 @@ function iduStep(dt){
   // везу второго — всплываю спинкой над водой (roamPose в воде высоту не трогает, вернём сами)
   const lift = V.ride === 'pal' && I.R.water && !I.R.air ? IDU_LIFT : 0, me = I.s;
   if(lift || (I.R.water && me.inner.position.y > 0.01)) me.inner.position.y += (lift - me.inner.position.y)*Math.min(1, dt*6);
-  if(q && q.cv && !I.cave && I.guest && !D.caveSaid){ D.caveSaid = true; mgHint(L(`${V.name} в пещере 🗝️ Подожди у входа в ущелье — скоро выйдут!`, `${V.name} is in the cave 🗝️ Wait by the gorge — they'll be out soon!`)); setTimeout(() => { if(iduOn()) mgHint(''); }, 5000); }
-  if(q && !q.cv) D.caveSaid = false;
   D.lbl.visible = pal.root.visible;
   if(pal.root.visible) D.lbl.position.copy(headTop(pal)).add(new V3(0, 0.55, 0));
+  const wait = iduWaitStep(q);
   // наездник спрыгнул сам (второй вышел на сушу или пропал)
   if(V.ride === 'me' && (!same || !q.sw)){ if((D.landT += dt) > 0.7) iduRideOff(true); } else D.landT = 0;
   if(V.ride && (I.cave || I.fishing)) iduRideOff(true);
   iduTagStep(dt, pal, same);
-  iduArrow(pal, same);
+  iduArrow(same && pal.root.visible ? pal.root.position : wait === 'cave' ? iduMouth() : null);
   iduPhotoStep(dt, pal, same);
   for(const b of D.beams){ b.t -= dt; b.m.material.opacity = Math.max(0, Math.min(1, b.t/2))*(0.24 + Math.sin(now*3)*0.08); if(b.t <= 0 || save.isl.got.includes(b.i)){ islRoot.remove(b.m); b.dead = true; } }
   if(D.beams.some(b => b.dead)) D.beams = D.beams.filter(b => !b.dead);
@@ -268,11 +276,42 @@ function iduTagStep(dt, pal, same){
   }
 }
 
+/* ---------- 🗝️ 🎣 пещера и рыбалка — только у себя на острове; второй ждёт ---------- */
+const iduMouth = () => ISL_POS.clone().add(islRoot.userData.cave.pos);
+// у меня: хозяйка в пещере — над входом 🗝️ и её имя; рыбачит — 🎣 над ней. Возвращает, чего ждём: 'cave' | 'fish' | ''
+function iduWaitStep(q){
+  const I = ISL, D = I.duo, fresh = q && now - q.t < 2.5;
+  const k = fresh && !I.cave && islRoot.userData.cave ? (q.cv ? 'cave' : q.fi ? 'fish' : '') : '';
+  // хозяйка ушла в пещеру — скажем ей, что второй ждёт снаружи
+  if(!I.guest && !!I.cave !== D.inCave){
+    D.inCave = !!I.cave;
+    if(D.inCave) setTimeout(() => { if(iduOn() && ISL.cave) toast(L(`${V.name} ждёт тебя у входа в пещеру 🗝️`, `${V.name} is waiting for you at the cave entrance 🗝️`), 3200); }, 4200);
+  }
+  if(k !== D.waitK){
+    D.waitK = k; I.near = null;   // стою у входа — подпись внизу обновится
+    if(k){ D.waitSp.material.map = D.waitTex[k]; D.waitSp.material.needsUpdate = true; }
+    if(k && I.guest){
+      mgHint(k === 'cave' ? L(`${V.name} в пещере 🗝️ Подожди у входа — скоро ${V.name} выйдет!`, `${V.name} is in the cave 🗝️ Wait by the entrance — out soon!`)
+        : L(`${V.name} ловит рыбку 🎣 Подожди рядом!`, `${V.name} is fishing 🎣 Wait nearby!`));
+      setTimeout(() => { if(iduOn() && /🗝️|🎣/.test(mgHintEl.textContent)) mgHint(''); }, 5000);
+    }
+  }
+  D.waitSp.visible = !!k;
+  if(!k) return '';
+  const bob = new V3(0, Math.abs(Math.sin(now*3))*0.25, 0);
+  if(k === 'cave'){
+    const at = iduMouth().add(new V3(0, 3.4, 0));
+    D.waitSp.position.copy(at).add(bob);
+    D.lbl.visible = true; D.lbl.position.copy(at).add(new V3(0, 1.05, 0));
+  } else D.waitSp.position.copy(headTop(iduPal())).add(new V3(0, 1.5, 0)).add(bob);
+  return k;
+}
+
 /* ---------- мелочи: стрелка к второму, касание, фото, звёздочки ---------- */
-function iduArrow(pal, same){
+function iduArrow(tgt){   // tgt — куда показывать (в мире): второй или вход в пещеру, где он
   const D = ISL.duo, P = ISL.R.pos;
-  const w = pal.root.position.clone().sub(ISL_POS), dx = w.x - P.x, dz = w.z - P.z;
-  const show = same && pal.root.visible && Math.hypot(dx, dz) > IDU_FAR && !ISL.cave;
+  const w = tgt ? tgt.clone().sub(ISL_POS) : P, dx = w.x - P.x, dz = w.z - P.z;
+  const show = !!tgt && Math.hypot(dx, dz) > IDU_FAR && !ISL.cave;
   D.arrow.hidden = !show; if(!show) return;
   const c = toScreen(ISL_POS.clone().add(P).add(new V3(0, 0.6, 0))), a = Math.atan2(dx, -dz), r = 118 + Math.sin(now*5)*4;
   D.arrow.style.transform = `translate(${(c.x + Math.sin(a)*r).toFixed(1)}px, ${(c.y - Math.cos(a)*r).toFixed(1)}px) translate(-50%, -50%) rotate(${a.toFixed(3)}rad)`;
@@ -323,7 +362,8 @@ function iduGoShow(el, o){
   const G = ISL.guest;
   if(o.fish || o.cave){
     if(!G) return false;
-    el.innerHTML = `<p>${o.fish ? `🎣 ${o.F.name}` : `🗝️ ${L('Пещера', 'The cave')}`}</p><p class="lock">${L('Это — когда гуляешь у себя 🙂', 'That’s for your own island 🙂')}</p>`;
+    const inCave = o.cave && ISL.duo && ISL.duo.waitK === 'cave';
+    el.innerHTML = `<p>${o.fish ? `🎣 ${o.F.name}` : `🗝️ ${L('Пещера', 'The cave')}`}</p><p class="lock">${inCave ? L(`${V.name} там! Подожди здесь — скоро ${V.name} выйдет 🙂`, `${V.name} is inside! Wait here — out soon 🙂`) : L('Это — когда гуляешь у себя 🙂', 'That’s for your own island 🙂')}</p>`;
     el.hidden = false; return true;
   }
   if(o.npc || !o.k) return false;

@@ -83,7 +83,7 @@ function cvIslBuild(G){
     return {k, K, g, m, beam, y, bubT:0};
   });
 }
-function cvIslShow(){ for(const o of islRoot.userData.keys) o.g.visible = o.beam.visible = !cvHas(o.k); }
+function cvIslShow(){ const G = ISL && ISL.guest; for(const o of islRoot.userData.keys) o.g.visible = o.beam.visible = !G && !cvHas(o.k); }   // в гостях ключей нет: пещера — у себя на острове
 // кадр на острове: ключи крутятся, подобрала — в карман; подошла ко входу — вернуть место для «В пещеру ▶»
 function cvIslStep(dt){
   const I = ISL, R = I.R, P = R.pos, U = islRoot.userData;

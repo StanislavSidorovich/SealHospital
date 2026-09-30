@@ -767,6 +767,7 @@ function islPick(F){
 async function islFish(o){
   const I = ISL; if(!I || I.fishing) return;
   I.fishing = true; I.fishT = I.fishT || {};
+  if(typeof iduFishBeat === 'function') iduFishBeat();   // 🗺️ вдвоём: второй видит, что рыбачу, и ждёт рядом
   const R = I.R, s = I.s, F = o.F, sv = save.sea;
   if(!sv.d) sv.d = {d:'', n:0};
   I.go.hidden = true; I.homeB.hidden = true;

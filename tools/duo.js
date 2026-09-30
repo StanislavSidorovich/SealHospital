@@ -2,7 +2,7 @@
 /* 🗺️ Проверка «острова вдвоём» (js/isleduo.js) без интернета: два headless Edge — хозяйка (Сабрина) и гость (папа),
    сообщения сети пересылает сам скрипт (net.conn у обоих — заглушка). Сценарий: визит на льдине → хозяйка идёт гулять →
    гость сам приплывает на остров → видят друг друга → салки → спинка в воде → гость показывает звёздочку →
-   игра вдвоём прямо с острова и обратно на остров → гость прощается.
+   пещера и рыбалка только у хозяйки (гость ждёт) → игра вдвоём прямо с острова и обратно на остров → гость прощается.
    Запуск:  node tools/duo.js   (скриншоты duo-*.png — во временной папке) */
 const { findPlaywright, serve, launch } = require('./lib');
 const os = require('os'), path = require('path');
@@ -102,6 +102,21 @@ const ok = (c, msg) => { console.log(`${c ? '✓' : '✗'} ${msg}`); if(!c) fail
     ok(await host.evaluate(i => ISL.duo.beams.some(b => b.i === i) && !save.isl.got.includes(i), star.i), `звёздочка №${star.i}: у хозяйки луч, взять — ей самой`);
   }
 
+  // 🗝️ пещера — только у себя: у гостя ключей нет; хозяйка в пещере — у гостя над входом 🗝️, стрелка туда, у входа «подожди»
+  ok(await guest.evaluate(() => islRoot.userData.keys.every(o => !o.g.visible)), 'у гостя ключей от пещеры не видно');
+  await host.evaluate(() => { cvEnter(); });
+  await host.waitForTimeout(1500);
+  ok(await guest.evaluate(() => ISL.duo.waitK === 'cave' && ISL.duo.waitSp.visible && !V.pup.root.visible), 'хозяйка в пещере — у гостя 🗝️ над входом');
+  await guest.evaluate(() => { const c = islRoot.userData.cave.pos; ISL.R.pos.set(c.x + 0.5, c.y, c.z + 0.8); ISL.R.vel.set(0, 0, 0); });
+  await host.waitForTimeout(800);
+  const caveTxt = await guest.evaluate(() => { const e = document.querySelector('.isl-go:not([hidden])'); return e ? e.textContent : ''; });
+  console.log('   у входа у гостя:', caveTxt);
+  ok(/подожди/i.test(caveTxt) && !/В пещеру/.test(caveTxt), 'у входа — «подожди здесь», войти нельзя');
+  await guest.screenshot({ path: shot('guest-cave-wait') });
+  await host.evaluate(() => { cvExit(); });
+  await host.waitForTimeout(1200);
+  ok(await guest.evaluate(() => ISL.duo.waitK === '' && V.pup.root.visible), 'хозяйка вышла — гость снова её видит');
+
   // 🎮 игра вдвоём прямо с острова: гость зовёт, хозяйка «Поехали!» → оба в бою с Тучей → хозяйка 🏠 → снова на острове
   await guest.evaluate(() => { iduAsk('fight'); });
   await host.waitForSelector('.vs-pick [data-k="yes"]', { timeout: 8000 }).catch(() => {});
@@ -120,10 +135,16 @@ const ok = (c, msg) => { console.log(`${c ? '✓' : '✗'} ${msg}`); if(!c) fail
     ok(await guest.evaluate(() => !!ISL), 'и гость за ней');
   }
 
+  // 🎣 хозяйка рыбачит — у гостя она видна у лунки с 🎣 (islStep стоит, шлёт iduFishBeat)
+  await host.evaluate(() => { islFish(islRoot.userData.fish[0]); });
+  await host.waitForTimeout(3500);
+  ok(await guest.evaluate(() => ISL.duo && ISL.duo.waitK === 'fish' && V.pup.root.visible), 'хозяйка рыбачит — гость видит её с 🎣');
+  await guest.screenshot({ path: shot('guest-fish-wait') });
+
   // 👋 гость прощается: у хозяйки прогулка идёт дальше
   await guest.evaluate(() => { vsByeTap(); vsByeTap(); });
   await host.waitForTimeout(1500);
-  ok(await host.evaluate(() => !V && !!ISL && !ISL.duo), 'гость ушёл — хозяйка гуляет дальше');
+  ok(await host.evaluate(() => !V && !!ISL && (!ISL.duo || ISL.fishing)), 'гость ушёл — хозяйка гуляет дальше (рыбачит — уберёт второго после охоты)');
   ok(await guest.evaluate(() => !V && !ISL), 'гость дома');
   await host.screenshot({ path: shot('host-end') });
   console.log(fails ? `\n✗ ошибок: ${fails}` : '\n✓ всё работает', '— скриншоты:', shot('*'));
