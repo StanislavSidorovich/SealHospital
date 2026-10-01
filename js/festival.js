@@ -28,6 +28,7 @@ const FE = {
   pearls:[{x:15.8, y:2.7}, {x:27, y:-2.8}, {x:43, y:3.5}]
 };
 const FE_BALL = {r:0.3, v:3, roll:1.9, arc:2.5, fly:1.1};       // снежки: радиус, скорость, как часто, сколько летит дуга
+const FE_COME = 48;                                            // докуда дойти, чтобы начался праздник
 const FE_PULL = 14, FE_PULL_SOLO = 9;                          // сколько раз потянуть занозу (вдвоём / одной)
 
 /* ---------- постройка ---------- */
@@ -193,7 +194,12 @@ function feWorld(dt){
   } else if(G.k < 1) G.k = Math.min(1, G.k + dt*1.6);
   if(G.hung) for(const l of W.lamps) l.gl.material.opacity = 0.7 + Math.sin(now*4 + l.k*9)*0.3;
   // всё готово — праздник (и медведь)
-  if(W.phase === 'prep' && Q.st === 'go' && W.balloons.every(b => b.got) && S.park && G.hung) feParty();
+  if(W.phase === 'prep' && Q.st === 'go' && W.balloons.every(b => b.got) && S.park && G.hung){
+    // праздник (и медведь) — только когда ты дошла до стола, а не пока бегаешь за последним шариком (отзыв папы 01.10)
+    const come = (Q.mode === 'net' ? rsBoth() : [Q.me]).every(s => s.bub || s.x > FE_COME);
+    if(come) feParty();
+    else if(!Q.said.has('feCome')){ Q.said.add('feCome'); mgHint(L('Всё собрали! Беги на праздник ➡️', 'All gathered! Run to the party ➡️')); Q.hintT = now + 5; }
+  }
   if(W.phase === 'bear' || W.phase === 'pull') feBearStep(dt);
   feBalls(dt);
   feSync();
@@ -574,7 +580,7 @@ function feStuck(dt){
 }
 function feCam(){
   const W = FEW;
-  if(W.phase === 'party' || W.phase === 'bear' || W.phase === 'pull') return [Math.max(Q.me.x + 1.5, W.phase === 'party' ? 56 : W.bx - 3), 1.4, 1.2];
+  if(W.phase === 'party' || W.phase === 'bear' || W.phase === 'pull') return [Math.min(Q.me.x + 3.4, Math.max(Q.me.x + 1.5, W.phase === 'party' ? 56 : W.bx - 3)), 1.4, 1.2];   // ты всегда в кадре
   return null;
 }
 function feWire(){

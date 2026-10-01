@@ -342,7 +342,13 @@ function kfAIS(p){
   if(W.sw === 1){   // толкать Пуговку к айсбергу, от льдинок — вниз или вверх
     const P = Q.pup, c = W.chunks.find(o => o.x > p.x && o.x - p.x < 2.6 && Math.abs(o.y - (p.y + 0.4)) < 0.9);
     const at = Math.abs(p.x - (P.x + 0.5)) < 0.9 && p.y < -0.6 && p.y > -2.4;
-    return {tx:P.x + 0.6, dive:c ? c.y > p.y : p.y > -1.2, act:at && now - (p.aiPush || 0) > 0.3 ? (p.aiPush = now, 'push') : null};
+    // Пинг толкает, только пока ты держишь верёвку — спасаете вместе, а не он один (отзыв папы 01.10)
+    const held = W.tied && rsBoth().some(s => s !== p && s.hold);
+    if(!held){
+      if(at && now > (p.aiCall || 0)){ p.aiCall = now + 5; floatText(W.tied ? L('Держи верёвку 🪢 — и я толкаю!', 'Hold the rope 🪢 — and I’ll push!') : L('Брось круг 🛟 с айсберга!', 'Throw the ring 🛟 from the iceberg!'), rsAt(p.x, p.y + 1.5), '#D9527E'); }
+      return {tx:P.x + 0.6, dive:c ? c.y > p.y : p.y > -1.2};
+    }
+    return {tx:P.x + 0.6, dive:c ? c.y > p.y : p.y > -1.2, act:at && now - (p.aiPush || 0) > 0.45 ? (p.aiPush = now, 'push') : null};
   }
   return {tx:Math.min(me.x - 1.2, 54)};
 }
@@ -409,9 +415,9 @@ function kfHint(sec, role){
     case 6: return J ? L(`Пуговка запутался! Запрыгни на айсберг и позвони в колокольчик 🔔 — мама услышит. А ${nS} распутает водоросли`, `Button is tangled! Jump onto the iceberg and ring the bell 🔔 — mum will hear. ${nS} untangles the kelp`)
       : L(`Пуговку держат водоросли! Нырни к корешку на дне и распутай 🌿🌿🌿. А ${nJ} позовёт маму колокольчиком`, `Kelp is holding Button! Dive to the root on the seabed and untangle it 🌿🌿🌿. ${nJ} calls mum with the bell`);
     case 7: return L('Пуговка нашёл маму! 💗', 'Button found his mum! 💗');
-    case 8: return J ? L('Пуговку уносит к водовороту! Брось ему круг 🛟 с айсберга', 'Button is being pulled to the whirlpool! Throw him the ring 🛟 from the iceberg')
+    case 8: return J ? L('Пуговку уносит к водовороту! Встань на айсберг и нажми 🛟 — бросишь ему круг', 'Button is being pulled to the whirlpool! Stand on the iceberg and press 🛟 to throw him the ring')
       : L(`Пуговку уносит к водовороту! Толкай его к айсбергу 💪, а ${nJ} бросит круг. Берегись льдинок!`, `Button is being pulled to the whirlpool! Push him to the iceberg 💪 — ${nJ} throws the ring. Watch out for ice chunks!`);
-    case 9: return J ? L(`Держи верёвку 🪢 — пока держишь, течение тянет слабее. А ${nS} толкает Пуговку 💪`, `Hold the rope 🪢 — while you hold, the current pulls weaker. ${nS} pushes Button 💪`)
+    case 9: return J ? L(`Нажми 🪢 и стой на айсберге — держишь верёвку. Пока держишь, ${nS} подталкивает Пуговку к тебе 💪`, `Press 🪢 and stay on the iceberg — you hold the rope. While you hold, ${nS} pushes Button to you 💪`)
       : L('Нырни к Пуговке и толкай его к айсбергу 💪💪💪. Льдинки — проплывай сверху или снизу', 'Swim to Button and push him to the iceberg 💪💪💪. Dodge the ice chunks above or below');
   }
   return '';

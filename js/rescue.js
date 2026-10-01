@@ -488,12 +488,17 @@ async function rsWin(i){
 
 /* ---------- Пинг: сам помогает (по участкам уровня) ----------
    Уровень отдаёт цель {tx — куда идти, jump, dive, up — двойной прыжок на макушке, act — действие уровня}. */
+const RS_AHEAD = 3.4, RS_WAIT_T = 4;   // насколько Пинг может уйти вперёд (полэкрана ≈ 4,5), через сколько секунд стояния идёт сам
 function rsAI(p, dt){
   const me = Q.me;
   let o;
   if(me.bub){ o = {tx:me.x}; if(Math.abs(me.x - p.x) < 1.3 && Math.abs(me.y - p.y) < 2.5 && (p.aiT -= dt) < 0){ p.aiT = 0.4; rsRevive(me, true); } }
   else o = Q.L.ai(p, dt);
-  const tx = o.tx; let jump = !!o.jump;
+  let tx = o.tx, jump = !!o.jump;
+  // не убегать за край экрана (просьба папы 01.10): идёшь медленно — Пинг ждёт у правого края;
+  // стоишь на месте дольше RS_WAIT_T (ждёшь, пока он откроет путь) — идёт делать своё дело
+  if(Math.abs(me.x - (p.meX ?? -99)) > 0.5){ p.meX = me.x; p.meT = now; }
+  if(!me.bub && !o.far && tx > me.x + RS_AHEAD && now - p.meT < RS_WAIT_T) tx = Math.max(me.x + RS_AHEAD, Math.min(p.x, tx));
   if(o.act && Q.L.doAct) Q.L.doAct(p, o.act);
   if(o.up && p.air && p.jumps === 1 && p.vy < 1 && RS_ROLE[p.role].jv2) jump = true;   // двойной прыжок на макушке
   // застрял у стенки — подпрыгни
