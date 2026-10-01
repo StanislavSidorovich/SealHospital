@@ -215,8 +215,7 @@ function trEnter(){ if(!TROOM.dyn) return; trBuild(); }
 function trTick(t, dt){ if(TROOM.dyn) TROOM.dyn.children.forEach(c => { if(c.userData.tr === 'cups') c.children.forEach((k, j) => { if(j > 1) k.rotation.y = Math.sin(t*1.1 + j)*0.25; }); }); }   // кубки чуть поворачиваются
 function trUi(){
   const got = save.adv.cups.length, all = TR_CUPS().length, med = TR_MEDALS.filter(trMedalOk).length;
-  $('#homeHint').textContent = homeEdit ? L('Нажми на ✏️ или ➕ — выбери статую или уголок', 'Tap ✏️ or ➕ to choose a statue or a corner')
-    : L('Нажимай на кубки, медали, рамки и витрины — узнаешь про каждое', 'Tap the cups, medals, frames and cases to learn about them');
+  $('#homeHint').textContent = L('Нажимай на кубки, медали, рамки и витрины — узнаешь про каждое', 'Tap the cups, medals, frames and cases to learn about them');
   $('#homeCount').textContent = L(`Кубки: ${got} из ${all} · Медали: ${med} из ${TR_MEDALS.length}`, `Cups: ${got} of ${all} · Medals: ${med} of ${TR_MEDALS.length}`);
 }
 

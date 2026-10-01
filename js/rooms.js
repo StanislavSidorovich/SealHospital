@@ -129,7 +129,7 @@ function rmReady(id){
   const b = save.home.build;
   if(!b || b.id !== id || b.d === ocDay()) return false;
   save.home.rooms[id] = 1; save.home.build = null;
-  for(const [k, f] of Object.entries(RM[id].gift || {})) if(!save.home.s[k]) save.home.s[k] = f;   // подарок: по вещи на каждое место
+  for(const [k, f] of Object.entries(RM[id].gift || {})) if(!homeKindAny(k)) homeGive(f);   // подарок: по вещи каждого вида
   persist(); if(homeMode){ homeBuild(); homeUi(); renderHomeBtn(); } return true;
 }
 const rmAlert = () => RM_IDS.some(id => rmBuilt(id) ? save.home.rooms[id] === 1 : !!(save.home.build && save.home.build.id === id && save.home.build.d !== ocDay()));
@@ -150,7 +150,7 @@ function rmDefine(id, def){
   const R = Object.assign(RM[id], def);
   rmShell(id);
   R.spot = R.spot || [0.2, 1.2];
-  HOME_ROOMS[id] = {root:R.root, pos:R.pos, spot:R.spot,
+  HOME_ROOMS[id] = {root:R.root, pos:R.pos, spot:R.spot, mat:R.mat,
     view(instant){   // камера ближе, чем в прихожей: R.cam = {c:[x, z, y] куда смотрим, p — ширина кадра на телефоне, l — на планшете, lift, up}
       const C = R.cam, portrait = innerWidth < innerHeight, c = hp(C.c[0], C.c[1], C.c[2]), size = portrait ? C.p : C.l, lift = portrait ? C.lift : C.lift*0.15;
       if(!instant) return camGlide(c, size, 0.6, lift, C.up);
@@ -168,6 +168,7 @@ function rmShell(id){
   const fm = toon(0xFFFFFF); fm.map = S.floor; const top = new THREE.Mesh(new THREE.CircleGeometry(HOME_R + 0.02, 64), fm); top.rotation.x = -Math.PI/2; top.position.y = HOME_Y + 0.002; root.add(top);
   const wm = toon(0xFFFFFF); wm.map = S.wall; wm.side = THREE.DoubleSide;
   const dome = new THREE.Mesh(new THREE.SphereGeometry(HOME_R, 56, 24, Math.PI, Math.PI, 0, Math.PI/2), wm); dome.position.y = HOME_Y; root.add(dome);
+  R.mat = {wall:wm, floor:fm, own:{wall:S.wall, floor:S.floor}};   // 🎨 краски стен и пола (js/homeedit.js)
   const arc = inkRing(new THREE.Mesh(new THREE.TorusGeometry(HOME_R, 0.14, 10, 72, Math.PI), toon(S.rim || 0xF4F9FD))); arc.position.y = HOME_Y; root.add(arc);
   const ground = new THREE.Mesh(new THREE.CircleGeometry(160, 48), toon(0xEAF4FA)); ground.rotation.x = -Math.PI/2; ground.position.y = -0.3; root.add(ground);
   for(const [x, z, s] of [[-7, -6, 2.4], [6.5, -7.5, 3], [-12, -14, 4], [12, -13, 3.6], [0, -16, 5]]){ const m = addOutline(new THREE.Mesh(SMALL, toon(0xF6FBFE)), 1.04); m.scale.set(s, s*0.45, s); m.position.set(x, -0.3, z); root.add(m); }

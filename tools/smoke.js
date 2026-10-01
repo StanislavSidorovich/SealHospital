@@ -24,6 +24,7 @@ const MODES = {
   ocean: { pet: 1, run: `save.home.rooms = {ocean: 2}; homeEnter().then(() => ocGo())`, wait: 5 },
   games: { pet: 1, run: `save.home.rooms = {games: 2}; homeEnter().then(() => rmGo('games'))`, wait: 5 },
   trophy: { pet: 1, run: `save.home.rooms = {trophy: 2}; homeEnter().then(() => rmGo('trophy'))`, wait: 5 },
+  homeedit: { pet: 1, run: `save.home.rooms = {games: 2}; homeEnter().then(() => heToggle())`, wait: 5 },   // «Обустроить»: случайные касания двигают мебель
   homewalk: { pet: 1, run: `save.home.rooms = {games: 2, trophy: 2, ocean: 2}; homeEnter().then(() => hwToggle())`, wait: 5 },
   ball: { pet: 1, run: `funPre = 'ball'; petDo('fun')`, wait: 3 },
   walk: { pet: 1, run: `funPre = 'walk'; petDo('fun')`, wait: 3 },

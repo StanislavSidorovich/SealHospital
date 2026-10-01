@@ -1119,3 +1119,44 @@ body.story-on .beat{z-index:21}
 .idu-arrow{width:30px;height:30px}
 body.talk-on .idu-bar,body.talk-on .idu-arrow{visibility:hidden}
 @media (prefers-reduced-motion:reduce){ .tk-title,.beat,.beat .ok,.beat .dots i.new,.tk-more,.beat .cta,.st-day .go{animation:none} }
+
+/* ---------------- 🛋️ «Обустроить»: редактор иглу (js/editor.js, js/homeedit.js) ---------------- */
+body:not(.ed-on) .ed-bar,body:not(.ed-on) .ed-tb,body.mg-on .ed-bar,body.mg-on .ed-tb,body:not(.home-mode) .ed-bar{display:none!important}
+body.ed-on #homeBar,body.ed-on #hwJump{display:none!important}
+body.ed-on #btnMail,body.ed-on #btnStory,body.ed-on #btnPet,body.ed-on #btnHome,body.ed-on #btnBag,body.ed-on #bag{display:none!important}   /* угол не закрывает комнату: остаются только ракушки */
+body.ed-on .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 252px)}
+.ed-bar{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);z-index:4;max-width:560px;margin:0 auto;
+  background:var(--paper);border:2.5px solid var(--ink);border-radius:22px;box-shadow:0 4px 0 var(--ink);padding:8px 8px 10px;box-sizing:border-box}
+.ed-tabs{display:flex;gap:6px;margin-bottom:6px}
+.ed-tabs button{flex:1;min-height:44px;border:2.5px solid var(--ink);border-radius:14px;background:#fff;color:var(--ink);
+  font:800 14px/1.1 "Nunito",sans-serif;padding:4px 4px;position:relative;white-space:nowrap}
+.ed-tabs button.on{background:var(--pink);box-shadow:inset 0 -3px 0 rgba(59,58,74,.25)}
+.ed-tabs button[data-n]:not([data-n=""])::after{content:attr(data-n);position:absolute;top:-8px;right:-4px;min-width:20px;height:20px;border-radius:10px;
+  background:var(--pink-d);color:#fff;font-size:12px;line-height:20px;border:2px solid var(--ink)}
+.ed-strip{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;height:100px;align-items:stretch;scrollbar-width:thin;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.ed-card{flex:0 0 78px;position:relative;border:2.5px solid var(--ink);border-radius:16px;background:#fff;padding:3px 2px 4px;display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--ink)}
+.ed-card img{width:54px;height:54px;object-fit:contain;pointer-events:none}
+.ed-card span{font:700 11px/1.15 "Nunito",sans-serif;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ed-card i{position:absolute;top:-2px;right:-2px;font:800 11px/1 "Nunito",sans-serif;font-style:normal;background:var(--pink);border:2px solid var(--ink);border-radius:10px;padding:2px 5px;white-space:nowrap}
+.ed-card i.at{background:var(--mint);left:-2px;right:auto;max-width:72px;overflow:hidden;text-overflow:ellipsis}
+.ed-empty{margin:auto;font-weight:700;color:var(--soft);text-align:center;font-size:15px;padding:0 8px}
+.ed-strip.paint{flex-direction:column;gap:4px;overflow:visible;height:auto;min-height:100px}
+.ed-prow{display:flex;align-items:center;gap:6px}
+.ed-prow b{flex:0 0 46px;font-size:13px}
+.ed-prow div{display:flex;gap:5px;overflow-x:auto;padding:3px 2px}
+.ed-sw{flex:0 0 42px;width:42px;height:42px;border-radius:50%;border:2.5px solid var(--ink);background-size:180%;background-position:center;position:relative;padding:0}
+.ed-sw.on{box-shadow:0 0 0 3px var(--pink-d)}
+.ed-sw i{position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);font:800 10px/1 "Nunito",sans-serif;font-style:normal;background:var(--paper);border:1.5px solid var(--ink);border-radius:8px;padding:1px 3px;white-space:nowrap}
+.ed-strip.ask{overflow:visible}
+.ed-ask{display:flex;align-items:center;gap:8px;width:100%}
+.ed-ask img,.ed-ask .sw{width:62px;height:62px;flex:0 0 62px;object-fit:contain;border-radius:50%;background-size:180%;background-position:center}
+.ed-ask .sw{border:2.5px solid var(--ink)}
+.ed-ask p{margin:0;flex:1;font-size:14px;line-height:1.25}
+.ed-ask div{display:flex;flex-direction:column;gap:4px}
+.ed-ask .btn.small{margin:0;min-height:44px;font-size:16px;padding:4px 12px}
+.ed-row{display:flex;gap:8px;margin-top:6px}
+.ed-row .btn{flex:1;min-height:50px;font-size:19px;padding:4px 8px;margin:0;white-space:nowrap}
+.ed-row .btn.ghost{flex:0.85}
+.ed-tb{position:absolute;z-index:4;display:flex;gap:8px;pointer-events:auto}
+.ed-tb button{width:52px;height:52px;border-radius:50%;border:2.5px solid var(--ink);background:var(--paper);box-shadow:0 3px 0 var(--ink);font-size:26px;line-height:1;padding:0;color:var(--ink)}
+.ed-tb button[data-a="turn"]{background:var(--pink);font-weight:800}

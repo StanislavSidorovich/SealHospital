@@ -22,8 +22,9 @@ const HOME_LIGHT = {hemi:0.55, sun:0.5}, OUT_LIGHT = {hemi:HEMI.intensity, sun:s
 function homeLights(inside){ const l = inside ? HOME_LIGHT : OUT_LIGHT; HEMI.intensity = l.hemi; sun.intensity = l.sun; }
 if(!save.home) save.home = sanitizeHome(null);   // Pages мог отдать старый data.js из кеша
 
-// floor: [x, z] и поворот; wall: [угол от задней стенки, высота-угол] на куполе; stand — где встаёт малыш, чтобы поиграть;
-// mk — высота значка ➕/✏️ над вещью
+// Виды мебели и их обычные места (Спринт 8: мебель стоит где угодно, save.home.f; место вида — где вещь встаёт сама и где ➕-подсказка, пока такой вещи нет).
+// floor: [x, z] и поворот; wall: [угол от задней стенки, высота-угол] на куполе; stand — где встаёт малыш, чтобы поиграть
+// (переезжает вместе с вещью: homeStand); mk — высота значка ➕ над местом
 const HOME_SLOTS = {
   bed:    {name:L('Кровать', 'Bed'),         floor:[-1.95, -0.95], rot:0.45, stand:[-0.75, -0.05], mk:1.25},
   rug:    {name:L('Коврик', 'Rug'),          floor:[0.15, 0.35],   rot:0,    stand:[0.15, 0.35],  mk:0.5},
@@ -35,10 +36,7 @@ const HOME_SLOTS = {
   games:  {name:L('Игротека', 'Game shelf'), floor:[-2.3, 1.05],   rot:0.5,  stand:[-1.25, 1.2],  mk:1.4}   // 🎲 коробки игр (js/boardgames.js), появляется с первой коробкой
 };
 const SLOT_KEYS = Object.keys(HOME_SLOTS);
-// у места может быть room (по умолчанию прихожая) и y — высота пола (на дне океанариума ниже)
-const slotRoom = k => HOME_ROOMS[HOME_SLOTS[k].room || 'hall'];
-const slotY = k => HOME_SLOTS[k].y !== undefined ? HOME_SLOTS[k].y : HOME_Y;
-const roomSlots = () => SLOT_KEYS.filter(k => slotRoom(k) === HOME_ROOMS[homeRoom]);
+// у вида может быть room — комната его обычного места (по умолчанию прихожая) и y — высота пола там (на дне океанариума ниже)
 // мебель: price 0 — есть с самого начала. Товары домика лежат в save.owned, как покупки из лавки
 const FURN = [
   {id:'bed_basic',   slot:'bed',    name:L('Лежанка', 'Cozy basket'),        price:0},
@@ -94,6 +92,7 @@ const FLOOR_TEX = canvasTex(512, (g, w) => {   // тёплый деревянн�
   // задняя половина купола: видна изнутри (phi от π до 2π — это сторона z < 0)
   const wm = toon(0xFFFFFF); wm.map = IGLOO_TEX; wm.side = THREE.DoubleSide;
   const dome = new THREE.Mesh(new THREE.SphereGeometry(HOME_R, 56, 24, Math.PI, Math.PI, 0, Math.PI/2), wm); dome.position.y = HOME_Y; homeRoot.add(dome);
+  HOME_ROOMS.hall.mat = {wall:wm, floor:fm, own:{wall:IGLOO_TEX, floor:FLOOR_TEX}};   // 🎨 краски стен и пола (js/homeedit.js)
   // край разреза — толстая снежная арка
   const arch = inkRing(new THREE.Mesh(new THREE.TorusGeometry(HOME_R, 0.14, 10, 72, Math.PI), toon(0xF4F9FD))); arch.position.y = HOME_Y; homeRoot.add(arch);
   // снег вокруг иглу и сугробы вдалеке
@@ -381,35 +380,72 @@ const FURN_MAKE = {
   }
 };
 
-/* ---------- места и то, что на них стоит ---------- */
-function slotPlace(k, o){
-  const sl = HOME_SLOTS[k];
-  if(sl.floor){ o.position.set(sl.floor[0], slotY(k), sl.floor[1]); o.rotation.y = sl.rot + (o.rotation.y || 0); return; }
-  const [a, e] = sl.wall, r = HOME_R*0.955;
-  o.position.set(Math.sin(a)*Math.cos(e)*r, HOME_Y + Math.sin(e)*r, -Math.cos(a)*Math.cos(e)*r);
-  o.rotation.set(sl.tilt ? e : 0, -a, 0, 'YXZ');   // лицом к середине комнаты; окно и картина наклонены вместе со стеной купола
+/* ---------- где стоит мебель (Спринт 8): save.home.f = {id: [комната, x, z, поворот]} ---------- */
+const homeKind = id => { const f = furn(id); return f ? f.slot : null; };
+const kindRoom = k => HOME_SLOTS[k].room || 'hall';
+const homeFloorY = (room, x, z) => room === 'ocean' ? ocSeabed(x, z) : HOME_Y;
+// стоит ли вещь (и есть ли для неё модель); в какой комнате что стоит; стоит ли где-нибудь вещь этого вида
+const homePlaced = id => !!save.home.f[id] && homeHas(id) && !!FURN_MAKE[id] && !!HOME_SLOTS[homeKind(id)];
+const homeIn = (room = homeRoom) => Object.keys(save.home.f).filter(id => save.home.f[id][0] === room && homePlaced(id));
+const homeKindAny = k => Object.keys(save.home.f).find(id => homeKind(id) === k && homePlaced(id)) || null;
+// подарок: вещь встаёт на обычное место своего вида (если уже стоит или убрана в коробку — не трогаем)
+function homeGive(id){ const k = homeKind(id); if(!k || save.home.f[id]) return; save.home.f[id] = [HOME_SLOTS[k] ? kindRoom(k) : homeSlotRoom(k)]; }
+// обычное место вида: [x, z, поворот] (у настенной — [угол, высота, 0])
+const kindSpot = k => { const sl = HOME_SLOTS[k]; return sl.floor ? [sl.floor[0], sl.floor[1], sl.rot || 0] : [sl.wall[0], sl.wall[1], 0]; };
+// [комната] без чисел → настоящая точка: обычное место вида, а если оно занято или комната другая — ближайшее свободное (heFree в js/homeedit.js)
+function homeResolve(id){
+  const P = save.home.f[id]; if(P.length >= 4) return P;
+  const k = homeKind(id), [x, z, r] = kindSpot(k);
+  let q = [P[0], x, z, r];
+  if(typeof heFree === 'function'){ const fr = heFree(id, P[0], P[0] === kindRoom(k) ? [x, z] : null, r); if(fr) q = [P[0], ...fr]; }
+  save.home.f[id] = q; return q;
 }
-const homeItems = {};   // слот → 3D-вещь, которая сейчас стоит
-function homeSet(k, id){
-  const old = homeItems[k];
-  if(old && old.userData.id === id) return old;
-  if(old){ old.parent.remove(old); homeItems[k] = null; }
-  if(!id || !FURN_MAKE[id]) return null;
-  const o = FURN_MAKE[id](); o.userData.id = id; o.userData.slot = k;
-  slotPlace(k, o); slotRoom(k).root.add(o); homeItems[k] = o;
+function homePlace(o, id, P = homeResolve(id)){   // P — своя точка (редактор двигает вещь, пока палец не отпущен)
+  const sl = HOME_SLOTS[homeKind(id)];
+  if(sl.wall){
+    const a = P[1], e = P[2], r = HOME_R*0.955;
+    o.position.set(Math.sin(a)*Math.cos(e)*r, HOME_Y + Math.sin(e)*r, -Math.cos(a)*Math.cos(e)*r);
+    o.rotation.set(sl.tilt ? e : 0, -a, 0, 'YXZ'); return;   // лицом к середине комнаты; окно и картина наклонены вместе со стеной купола
+  }
+  o.position.set(P[1], homeFloorY(P[0], P[1], P[2]), P[2]); o.rotation.set(0, P[3] + (o.userData.r0 || 0), 0);
+}
+// куда встаёт малыш, чтобы поиграть с вещью: как у обычного места, только повёрнуто и сдвинуто вместе с вещью
+function homeStand(id){
+  const P = save.home.f[id], k = homeKind(id), sl = HOME_SLOTS[k];
+  let x, z;
+  if(sl.wall){
+    const sa = Math.atan2(sl.stand[0], -sl.stand[1]), sr = Math.hypot(sl.stand[0], sl.stand[1]), a = P[1] + sa - sl.wall[0];
+    x = Math.sin(a)*sr; z = -Math.cos(a)*sr;
+  } else {
+    const r0 = sl.rot || 0, dx = sl.stand[0] - sl.floor[0], dz = sl.stand[1] - sl.floor[1];
+    const lx = dx*Math.cos(r0) - dz*Math.sin(r0), lz = dx*Math.sin(r0) + dz*Math.cos(r0), r = P[3];
+    x = P[1] + lx*Math.cos(r) + lz*Math.sin(r); z = P[2] - lx*Math.sin(r) + lz*Math.cos(r);
+  }
+  const lim = P[0] === 'ocean' ? OC_R - 1.3 : HOME_R - 0.6, d = Math.hypot(x, z);
+  if(d > lim){ x *= lim/d; z *= lim/d; }
+  return [x, z];
+}
+const homeItems = {};   // id вещи → 3D-вещь, которая сейчас стоит
+function homeMake(id){
+  const o = FURN_MAKE[id](); o.userData.id = id; o.userData.slot = homeKind(id); o.userData.r0 = o.rotation.y;
+  homePlace(o, id); HOME_ROOMS[save.home.f[id][0]].root.add(o); homeItems[id] = o;
   if(o.userData.shelf) homeShelf(o);
   if(o.userData.bulb) lampSet(o, homeLight);
   return o;
 }
+function homeDrop(id){ const o = homeItems[id]; if(o){ o.parent.remove(o); delete homeItems[id]; } }
 function homeBuild(){
-  for(const k of SLOT_KEYS){
-    const id = save.home.s[k], o = homeItems[k];
+  for(const id of Object.keys(homeItems)) if(!homePlaced(id)) homeDrop(id);
+  for(const id of Object.keys(save.home.f)){
+    if(!homePlaced(id)) continue;
+    const o = homeItems[id], room = save.home.f[id][0];
     const newFish = o && o.userData.nf !== undefined && (o.userData.nf !== tankFish(id).length || o.userData.np !== tankPals(id).join());   // новые рыбки или гости из бухты — аквариум заново
     const newBox = o && o.userData.nb !== undefined && o.userData.nb !== save.bg.got.length;   // новая коробка игры — стопка заново
-    if(o && (o.userData.id !== id || /^pic_/.test(id) || newFish || newBox)){ o.parent.remove(o); homeItems[k] = null; }   // картину — заново: вдруг в альбоме новое фото
-    homeSet(k, homeHas(id) ? id : null);
-    if(homeItems[k] && homeItems[k].userData.shelf) homeShelf(homeItems[k]);
+    if(o && (o.parent !== HOME_ROOMS[room].root || /^pic_/.test(id) || newFish || newBox)) homeDrop(id);   // картину — заново: вдруг в альбоме новое фото
+    if(homeItems[id]) homePlace(homeItems[id], id); else homeMake(id);
+    if(homeItems[id].userData.shelf) homeShelf(homeItems[id]);
   }
+  if(typeof hePaint === 'function') hePaint();   // 🎨 краски стен и пола (js/homeedit.js)
 }
 // находки с прогулок и кубки приключений на полке: по пять на полочку
 function homeShelf(o){
@@ -420,40 +456,50 @@ function homeShelf(o){
     sp.scale.setScalar(0.4); sp.position.set(-0.68 + (i % 5)*0.34, (i < 5 ? 0.36 : -0.34) + 0.24, 0.22); g.add(sp);
   });
 }
-// где у места «середина» (для камеры и значков)
-function slotWorld(k){
-  const sl = HOME_SLOTS[k], o = homeItems[k];
-  if(o) return o.getWorldPosition(new V3()).add(new V3(0, sl.floor ? Math.min(sl.mk, 1.2)*0.6 : 0, 0));
-  const t = new THREE.Object3D(); slotPlace(k, t); return t.position.clone().add(slotRoom(k).pos);
+// «середина» вещи или обычного места вида (для камеры и звёздочек)
+function itemWorld(id){
+  const o = homeItems[id], sl = HOME_SLOTS[homeKind(id)];
+  return o.getWorldPosition(new V3()).add(new V3(0, sl.floor ? Math.min(sl.mk, 1.2)*0.6 : 0, 0));
 }
-// значки: ➕ на пустом месте, ✏️ над вещью в режиме «Обустроить»
-function markTex(kind){
+function kindWorld(k){
+  const sl = HOME_SLOTS[k], R = HOME_ROOMS[kindRoom(k)], [x, z] = kindSpot(k);
+  if(sl.floor) return R.pos.clone().add(new V3(x, (sl.y !== undefined ? sl.y : HOME_Y) + Math.min(sl.mk, 1.2)*0.6, z));
+  const r = HOME_R*0.955; return R.pos.clone().add(new V3(Math.sin(x)*Math.cos(z)*r, HOME_Y + Math.sin(z)*r, -Math.cos(x)*Math.cos(z)*r));
+}
+// ➕ — подсказка на обычном месте вида, пока такой вещи нигде нет (выбрать её — homePick); вся расстановка — в «Обустроить» (js/homeedit.js)
+function markTex(){
   return canvasTex(128, (g, s) => {
     g.beginPath(); g.arc(s/2, s/2, s/2 - 8, 0, 7);
-    g.fillStyle = kind === 'plus' ? 'rgba(255,253,248,.92)' : '#FF9BB8'; g.fill();
-    g.lineWidth = 7; g.strokeStyle = kind === 'plus' ? '#D9527E' : '#3B3A4A'; if(kind === 'plus') g.setLineDash([14, 9]); g.stroke(); g.setLineDash([]);
-    if(kind === 'plus'){ g.fillStyle = '#D9527E'; g.fillRect(s/2 - 7, s/2 - 30, 14, 60); g.fillRect(s/2 - 30, s/2 - 7, 60, 14); }
-    else { g.font = '60px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('✏️', s/2, s/2 + 4); }
+    g.fillStyle = 'rgba(255,253,248,.92)'; g.fill();
+    g.lineWidth = 7; g.strokeStyle = '#D9527E'; g.setLineDash([14, 9]); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#D9527E'; g.fillRect(s/2 - 7, s/2 - 30, 14, 60); g.fillRect(s/2 - 30, s/2 - 7, 60, 14);
   });
 }
-const MARK_TEX = {plus:markTex('plus'), edit:markTex('edit')};
+const MARK_TEX = {plus:markTex()};
 const homeMarks = {};
 function homeMarkMake(k){
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:MARK_TEX.plus, transparent:true, depthWrite:false, depthTest:false}));
-  sp.renderOrder = 8; sp.scale.setScalar(0.62); sp.visible = false; slotRoom(k).root.add(sp); homeMarks[k] = sp;
+  sp.renderOrder = 8; sp.scale.setScalar(0.62); sp.visible = false; HOME_ROOMS[kindRoom(k)].root.add(sp); homeMarks[k] = sp;
 }
 SLOT_KEYS.forEach(homeMarkMake);
-// место из другого файла (комнаты иглу): вызывать после того, как комната есть в HOME_ROOMS
+// вид мебели из другого файла (комнаты иглу): вызывать после того, как комната есть в HOME_ROOMS
 function homeSlotAdd(k, sl){ HOME_SLOTS[k] = sl; SLOT_KEYS.push(k); homeMarkMake(k); }
+const roomKinds = () => SLOT_KEYS.filter(k => kindRoom(k) === homeRoom);
 function markPos(k){
-  const sl = HOME_SLOTS[k];
-  if(sl.floor) return new V3(sl.floor[0], slotY(k) + (homeItems[k] ? sl.mk : 0.45), sl.floor[1]);
-  const t = new THREE.Object3D(); slotPlace(k, t); return t.position.multiplyScalar(0.86).setY(t.position.y);
+  const sl = HOME_SLOTS[k], [x, z] = kindSpot(k);
+  if(sl.floor) return new V3(x, (sl.y !== undefined ? sl.y : HOME_Y) + 0.45, z);
+  const r = HOME_R*0.955; return new V3(Math.sin(x)*Math.cos(z)*r*0.86, HOME_Y + Math.sin(z)*r, -Math.cos(x)*Math.cos(z)*r*0.86);
+}
+// ➕ видна: вещи этого вида нигде нет, место свободно, и есть что поставить (место игротеки — только когда есть коробки)
+function markShow(k){
+  if(homeKindAny(k) || (k === 'games' && !homeHas('bg_shelf'))) return false;
+  return typeof heSpotFree !== 'function' || heSpotFree(k);
 }
 
 /* ---------- вход, выход, камера ---------- */
 let homeEdit = false, homeLight = true, homeIdleT = 12, homeDrag = null;
 function homeView(instant){
+  if(homeEdit && typeof heView === 'function') return heView(instant);   // «Обустроить»: сверху, видно весь пол (js/homeedit.js)
   const R = HOME_ROOMS[homeRoom]; if(R.view) return R.view(instant);
   const portrait = innerWidth < innerHeight, c = hp(0.2, -0.3, 0.6), size = portrait ? 6.2 : 7.4, lift = portrait ? -1.2 : -0.2;
   if(!instant) return camGlide(c, size, 0.6, lift, 0.5);
@@ -504,6 +550,7 @@ function homeExit(){
   if(!homeMode) return;
   flash();
   if(typeof hwStop === 'function') hwStop();   // ходьба по комнате (js/homewalk.js)
+  if(typeof heStop === 'function') heStop();   // редактор (js/homeedit.js)
   if(homeRoom !== 'hall'){ const R = HOME_ROOMS[homeRoom]; homeRoom = 'hall'; if(R.leave) R.leave(); }
   homeMode = false; homeEdit = false; homeDrag = null; document.body.classList.remove('home-mode'); homeRoot.visible = false;
   scene.fog = FOG; snow.visible = true; homeLights(false); $('#homeDim').classList.remove('on');
@@ -529,12 +576,15 @@ function homeUi(){
   if(!save.pet) return;
   if(typeof rmRoomBtn === 'function') rmRoomBtn($('#homeRoomBtn'));
   if(typeof hwBtn === 'function') hwBtn($('#homeWalkBtn'));
-  const R = HOME_ROOMS[homeRoom]; if(R.ui) return R.ui();
-  const name = save.pet.name, hall = roomSlots(), n = hall.filter(k => homeItems[k]).length;
-  $('#homeName').textContent = L(`Здесь живёт ${name}`, `${name} lives here`);
-  $('#homeHint').textContent = homeEdit ? L('Нажми на ✏️ или ➕ — выбери, что поставить', 'Tap ✏️ or ➕ to choose what goes there')
-    : L(`Нажимай на вещи — ${name} поиграет с ними ♡`, `Tap things — ${name} will play with them ♡`);
-  $('#homeCount').textContent = L(`Мебель: ${n} из ${hall.length}`, `Furniture: ${n} of ${hall.length}`);
+  const R = HOME_ROOMS[homeRoom];
+  if(R.ui) R.ui();
+  else {
+    const name = save.pet.name, n = homeIn().length;
+    $('#homeName').textContent = L(`Здесь живёт ${name}`, `${name} lives here`);
+    $('#homeHint').textContent = L(`Нажимай на вещи — ${name} поиграет с ними ♡`, `Tap things — ${name} will play with them ♡`);
+    $('#homeCount').textContent = L(`Вещей в комнате: ${n}`, `Things in the room: ${n}`);
+  }
+  if(homeEdit && typeof heHint === 'function') heHint();   // «Обустроить»: подсказка редактора (js/homeedit.js)
   homeEditUi();
 }
 function homeEditUi(){
@@ -543,7 +593,7 @@ function homeEditUi(){
 }
 function buildHomeBar(){
   const nav = $('#homeBar'); nav.innerHTML = '';
-  for(const [id, ic, name, fn] of [['homeEditBtn', '🛋️', L('Обустроить', 'Decorate'), () => { if(!homeEdit && typeof hwStop === 'function') hwStop(); homeEdit = !homeEdit; homeIdleT = 12; homeUi(); }],
+  for(const [id, ic, name, fn] of [['homeEditBtn', '🛋️', L('Обустроить', 'Decorate'), () => { if(typeof heToggle === 'function') heToggle(); }],   // редактор (js/homeedit.js)
                                    ['homeWalkBtn', '🐾', L('Ходить', 'Walk'), () => { if(typeof hwToggle === 'function') hwToggle(); }],   // ходить самой (js/homewalk.js)
                                    ['homeRoomBtn', '🐠', '', () => { if(typeof rmRoomGo === 'function') rmRoomGo(); }],   // в другую комнату (js/rooms.js)
                                    ['homeOutBtn', '🚪', L('Выйти', 'Go out'), homeLeave]]){
@@ -556,31 +606,35 @@ function buildHomeBar(){
 }
 
 /* ---------- касания: малыш, значки, мебель; провести пальцем — повернуть комнату ---------- */
-function homeHitSlot(e){
-  const keys = roomSlots();
-  for(const k of keys){   // сначала значки: они поверх всего
+// что под пальцем: {k, mark:true} — ➕ вида k, {id} — вещь
+function homeHit(e){
+  for(const k of roomKinds()){   // сначала значки: они поверх всего
     const m = homeMarks[k]; if(!m.visible) continue;
     const q = toScreen(m.getWorldPosition(new V3()));
     if(Math.hypot(q.x - e.clientX, q.y - e.clientY) < 44) return {k, mark:true};
   }
+  const id = homeItemAt(e.clientX, e.clientY);
+  return id ? {id} : null;
+}
+function homeItemAt(cx, cy){
   const rect = canvas.getBoundingClientRect();
-  ndc.set((e.clientX - rect.left)/rect.width*2 - 1, -((e.clientY - rect.top)/rect.height)*2 + 1);
+  ndc.set((cx - rect.left)/rect.width*2 - 1, -((cy - rect.top)/rect.height)*2 + 1);
   ray.setFromCamera(ndc, camera);
-  const hit = ray.intersectObjects(keys.map(k => homeItems[k]).filter(Boolean), true)[0];
-  if(!hit) return null;
-  let o = hit.object; while(o && !o.userData.slot) o = o.parent;
-  return o ? {k:o.userData.slot, mark:false} : null;
+  const hit = ray.intersectObjects(homeIn().map(id => homeItems[id]).filter(Boolean), true)[0];
+  let o = hit && hit.object; while(o && !o.userData.id) o = o.parent;
+  return o ? o.userData.id : null;
 }
 function homeTap(e){
   if(!petSeal || busy || !mgRoot.hidden) return;
   homeIdleT = 12;
+  if(typeof heTap === 'function' && heTap(e)) return;   // «Обустроить»: двигаем мебель (js/homeedit.js)
   if(typeof hwTap === 'function' && hwTap(e)) return;   // идёт ходьба (js/homewalk.js): палец ведёт малыша
   if(petPart(e)){   // малыш: письмо в зубах или погладить
     if(petLetterTap()) return;
     stroke = {id:e.pointerId, x:e.clientX, y:e.clientY, d:0, fx:0, done:false};
     return;
   }
-  homeDrag = {id:e.pointerId, x:e.clientX, y:e.clientY, yaw:camFocus.yaw, moved:false, hit:homeHitSlot(e)};
+  homeDrag = {id:e.pointerId, x:e.clientX, y:e.clientY, yaw:camFocus.yaw, moved:false, hit:homeHit(e)};
 }
 canvas.addEventListener('pointermove', e => {
   if(!homeDrag || e.pointerId !== homeDrag.id) return;
@@ -593,68 +647,68 @@ for(const ev of ['pointerup', 'pointercancel']) canvas.addEventListener(ev, e =>
   homeDrag = null;
   if(d.moved || ev === 'pointercancel' || busy || !homeMode) return;
   if(!d.hit){ const R = HOME_ROOMS[homeRoom]; if(R.tap) R.tap(d.x, d.y); return; }   // мимо мебели: стекло, люк, дверь в другую комнату
-  const {k, mark} = d.hit;
-  if(mark || homeEdit || !homeItems[k]) homePick(k); else homePlay(k);
+  if(d.hit.mark) homePick(d.hit.k); else homePlay(d.hit.id);
 });
 
-/* ---------- выбор мебели для места ---------- */
+/* ---------- ➕ на пустом обычном месте: выбрать вещь этого вида ---------- */
 async function homePick(k){
   if(busy || !mgRoot.hidden) return;
   setBusy(true); homeIdleT = 12;
-  const sl = HOME_SLOTS[k], was = homeHas(save.home.s[k]) ? save.home.s[k] : null, list = FURN.filter(f => f.slot === k && (!f.gift || owns(f.id)));
-  let sel = was;
-  const c = slotWorld(k);
-  camGlide(c, sl.floor ? 3.4 : 2.9, 0.6, sl.floor ? 0.95 : 0.85, 0.45);
+  const sl = HOME_SLOTS[k], room = kindRoom(k), list = FURN.filter(f => f.slot === k && (!f.gift || owns(f.id)) && !save.home.f[f.id]);
+  const [x, z, r] = kindSpot(k);
+  let sel = null;
+  camGlide(kindWorld(k), sl.floor ? 3.4 : 2.9, 0.6, sl.floor ? 0.95 : 0.85, 0.45);
   mgOpen(sl.name);
   const panel = mgNode('div', 'mg-panel home-pick', `
     <p class="wallet">${L('У тебя', 'You have')} <b>${save.shells}</b> 🐚</p>
-    <div class="shop-grid home-grid">${list.map(f => `<button class="item" data-id="${f.id}"><img src="${homeThumb(f.id)}" alt=""><span class="nm">${f.name}</span><span class="price"></span></button>`).join('')}
-      <button class="item empty" data-id=""><span class="none" aria-hidden="true">✕</span><span class="nm">${L('Пусто', 'Empty')}</span><span class="price own"></span></button></div>
+    <div class="shop-grid home-grid">${list.map(f => `<button class="item" data-id="${f.id}"><img src="${homeThumb(f.id)}" alt=""><span class="nm">${f.name}</span><span class="price"></span></button>`).join('')}</div>
     <div class="row"><button class="btn" id="homeBuy"></button><button class="btn ghost" id="homeCancel">${L('Отмена', 'Cancel')}</button></div>`);
   const buy = panel.querySelector('#homeBuy');
   const render = () => {
     panel.querySelectorAll('.item').forEach(b => {
-      const id = b.dataset.id || null, f = id && furn(id), pr = b.querySelector('.price');
+      const id = b.dataset.id, f = furn(id), pr = b.querySelector('.price');
       b.classList.toggle('sel', id === sel);
-      if(!f){ pr.textContent = was === null ? L('Сейчас', 'Now') : ''; pr.hidden = was !== null; return; }
       pr.className = 'price' + (homeHas(id) ? ' own' : '');
-      pr.textContent = id === was ? L('Стоит ✓', 'Here ✓') : homeHas(id) ? (f.gift ? L('Подарок 🎁', 'Gift 🎁') : f.price ? L('Есть ✓', 'Owned ✓') : L('Даром', 'Free')) : `🐚 ${f.price}`;
+      pr.textContent = homeHas(id) ? (f.gift ? L('Подарок 🎁', 'Gift 🎁') : f.price ? L('Есть ✓', 'Owned ✓') : L('Даром', 'Free')) : `🐚 ${f.price}`;
     });
     const f = sel && furn(sel); buy.classList.remove('off');
-    if(sel === was) buy.textContent = L('Готово ✓', 'Done ✓');
-    else if(!f) buy.textContent = L('Убрать', 'Remove');
+    if(!f){ buy.textContent = L('Выбери вещь', 'Pick a thing'); buy.classList.add('off'); }
     else if(homeHas(sel)) buy.textContent = L('Поставить ✓', 'Put it here ✓');
     else { const need = f.price - save.shells; buy.textContent = need > 0 ? L(`Не хватает ${need} 🐚`, `Need ${need} more 🐚`) : L(`Купить за ${f.price} 🐚`, `Buy for ${f.price} 🐚`); if(need > 0) buy.classList.add('off'); }
   };
   render();
-  panel.querySelectorAll('.item').forEach(b => mgOn(b, 'click', () => {
-    sel = b.dataset.id || null; sfx.pop(); render();
-    const o = homeSet(k, sel);   // примерка: вещь сразу на месте
+  const tryOn = id => {   // примерка: вещь сразу на месте (в сохранение попадёт, только если «Поставить»)
+    if(sel) delete save.home.f[sel];
+    sel = id; if(id) save.home.f[id] = [room, x, z, r];
+    const keep = save.owned; if(id && !homeHas(id)) save.owned = [...keep, id];   // некупленную тоже покажем
+    homeBuild(); save.owned = keep;
+    const o = id && homeItems[id];
     if(o){ const sc = o.scale.clone(); tween(0.35, q => o.scale.copy(sc).multiplyScalar(Math.max(0.01, q)), ease.back); }
-  }));
+  };
+  panel.querySelectorAll('.item').forEach(b => mgOn(b, 'click', () => { tryOn(b.dataset.id); sfx.pop(); render(); }));
   const res = await new Promise(r => {
     mgOn(buy, 'click', () => {
       const f = sel && furn(sel);
-      if(f && !homeHas(sel) && save.shells < f.price){ sfx.bad(); wiggle(buy); return toast(L('Лечи пациентов в больнице — за них дают ракушки 🐚', 'Heal patients at the hospital — you get shells for them 🐚')); }
+      if(!f){ sfx.bad(); wiggle(buy); return; }
+      if(!homeHas(sel) && save.shells < f.price){ sfx.bad(); wiggle(buy); return toast(L('Лечи пациентов в больнице — за них дают ракушки 🐚', 'Heal patients at the hospital — you get shells for them 🐚')); }
       r('ok');
     });
     mgOn(panel.querySelector('#homeCancel'), 'click', () => r('cancel'));
   });
   sfx.tap(); panel.classList.add('away'); await wait(0.25); mgClose();
   let bought = null;
-  if(res === 'cancel' || sel === was) homeSet(k, was);
+  if(res === 'cancel'){ if(sel) delete save.home.f[sel]; sel = null; }
   else {
-    const f = sel && furn(sel);
-    if(f && !homeHas(sel)){ save.shells -= f.price; save.owned.push(sel); shellsShown = save.shells; renderShells(); bought = f; }
-    if(sel) save.home.s[k] = sel; else delete save.home.s[k];
+    const f = furn(sel);
+    if(!homeHas(sel)){ save.shells -= f.price; save.owned.push(sel); shellsShown = save.shells; renderShells(); bought = f; }
     persist();
   }
-  homeUi(); homeView(); setBusy(false);
-  if(res === 'cancel' || sel === was || !sel) return;
+  homeBuild(); homeUi(); homeView(); setBusy(false);
+  if(!sel) return;
   // обновка: звёздочки, малыш бежит смотреть
-  sfx[bought ? 'buy' : 'pop'](); burst(TEX.star, slotWorld(k), 14, 2, 0.3);
+  sfx[bought ? 'buy' : 'pop'](); burst(TEX.star, itemWorld(sel), 14, 2, 0.3);
   await wait(0.4);
-  await homePlay(k, false, bought);
+  await homePlay(sel, false, bought);
 }
 // картинки мебели для выбора (как в лавке: рендер 3D-модели)
 const homeThumbs = {};
@@ -674,11 +728,12 @@ async function homeGo(xz, dur){
   if(homeRoom === 'hall' && d > 2.4 && s.root.position.distanceTo(mid) > 0.8 && to.distanceTo(mid) > 0.8) await waddleTo(s, mid, 0.3 + 0.3*s.root.position.distanceTo(mid));
   await waddleTo(s, to, dur || 0.3 + 0.3*s.root.position.distanceTo(to));
 }
-async function homePlay(k, quiet = false, bought = null){
-  const o = homeItems[k], s = petSeal; if(!o || !s || busy) return;
+async function homePlay(id, quiet = false, bought = null){
+  const o = homeItems[id], s = petSeal, k = homeKind(id); if(!o || !s || busy || !HOME_PLAY[k]) return;
   setBusy(true); homeIdleT = 11 + Math.random()*5;
-  if(!quiet){ const c = o.getWorldPosition(new V3()).lerp(hp(...HOME_SLOTS[k].stand), 0.5).setY(1.1); camGlide(c, 4.2, 0.8, 0, 0.45); }   // поближе: видно, что делает малыш
-  await homeGo(HOME_SLOTS[k].stand);
+  const st = homeStand(id);
+  if(!quiet){ const c = o.getWorldPosition(new V3()).lerp(hp(...st), 0.5).setY(1.1); camGlide(c, 4.2, 0.8, 0, 0.45); }   // поближе: видно, что делает малыш
+  await homeGo(st);
   if(k !== 'rug') await faceTo(s, o.getWorldPosition(new V3()));
   await HOME_PLAY[k](s, o, quiet, bought);
   if(bought){
@@ -693,14 +748,14 @@ const homeSay = (s, ru, en, col) => floatText(L(ru, en), headTop(s), col);
 const HOME_PLAY = {
   async bed(s, o, quiet){   // запрыгнуть, свернуться, поспать чуть-чуть
     const top = o.userData.top || 0.36, c = o.getWorldPosition(new V3()).add(new V3(0, top, 0));
-    await hopTo(s, c, 0.7, 0.55); await turnTo(s, HOME_SLOTS.bed.rot*0.6, 0.3);
+    await hopTo(s, c, 0.7, 0.55); await turnTo(s, save.home.f[o.userData.id][3]*0.6, 0.3);
     setMood(s, 'sleep'); sfx.yawn(); homeSay(s, 'Ааа-у…', 'Yaaawn…', '#6B6A7E');
     for(let i = 0; i < 3; i++){ await wait(0.7); floatText('z', worldOf(s, new V3(0.85, 0.35 + i*0.1, 0.3)), '#8E99C9'); }
     await wait(0.5);
     const p = save.pet;
     if(!quiet && p.needs.sleep < 1){ p.needs.sleep = Math.min(1, p.needs.sleep + 0.3); persist(); }
     setMood(s, 'happy'); sfx.arf(); homeSay(s, quiet ? 'Мягко!' : gg('Выспался!', 'Выспалась!'), quiet ? 'So soft!' : 'What a nap!');
-    await hopTo(s, hp(...HOME_SLOTS.bed.stand), 0.6, 0.5);
+    await hopTo(s, hp(...homeStand(o.userData.id)), 0.6, 0.5);
   },
   async rug(s){   // кувырок на коврике
     s.flap = 1; sfx.whoosh();
@@ -714,7 +769,7 @@ const HOME_PLAY = {
     if(quiet || bought){ homeSay(s, 'Светится! ✨', 'It glows! ✨'); return wait(0.6); }
     s.flippers.forEach(f => f.userData.up = 0);
     await tween(0.25, k => { s.flippers[1].userData.up = k*0.9; }); sfx.ding();
-    homeLight = !homeLight; lampSet(o, homeLight);
+    homeLight = !homeLight; homeIn().forEach(id => lampSet(homeItems[id], homeLight));   // все лампы комнаты разом
     await tween(0.25, k => { s.flippers[1].userData.up = (1 - k)*0.9; });
     homeSay(s, homeLight ? 'Светло!' : 'Уютно… ✨', homeLight ? 'Lights on!' : 'So cozy… ✨', '#D9527E');
     await wait(0.4);
@@ -849,9 +904,9 @@ async function homeFishPanel(tankId){
 // сам по себе: время от времени малыш подходит к вещам (тихо, без окошек)
 async function homeWander(){
   const R = HOME_ROOMS[homeRoom]; if(R.wander) return R.wander();
-  const opts = roomSlots().filter(k => homeItems[k]);
-  const k = opts.length && Math.random() < 0.8 ? opts[Math.floor(Math.random()*opts.length)] : null;
-  if(k) return homePlay(k, true);
+  const opts = homeIn().filter(id => homeItems[id]);
+  const id = opts.length && Math.random() < 0.8 ? opts[Math.floor(Math.random()*opts.length)] : null;
+  if(id) return homePlay(id, true);
   setBusy(true);
   await homeGo(R.spot); await turnTo(petSeal, 0, 0.3);
   sfx.arf(); homeSay(petSeal, 'Ар!', 'Arf!'); await hop(petSeal, 0.25, 0.35);
@@ -871,17 +926,14 @@ function homeTick(t, dt){
     return;
   }
   WIN_SNOW.offset.y += dt*0.07*homeSnowK; homeSnowK += (1 - homeSnowK)*Math.min(1, dt*0.8);
-  for(const k of SLOT_KEYS){
-    const o = homeItems[k], m = homeMarks[k];
-    // значки: ➕ на пустом месте всегда, ✏️ над вещью — в «Обустроить»
-    const show = mgRoot.hidden && !busy && (!o || homeEdit) && (o || k !== 'games' || homeHas('bg_shelf')) && slotRoom(k) === HOME_ROOMS[homeRoom];   // место игротеки — только когда есть коробки
+  const free = mgRoot.hidden && !busy && !homeEdit;
+  for(const k of SLOT_KEYS){   // ➕ на обычном месте вида, пока такой вещи нигде нет
+    const m = homeMarks[k], show = free && kindRoom(k) === homeRoom && markShow(k);
     m.visible = show;
-    if(show){
-      const tex = o ? MARK_TEX.edit : MARK_TEX.plus; if(m.material.map !== tex){ m.material.map = tex; m.material.needsUpdate = true; }
-      m.position.copy(markPos(k)); m.position.y += Math.sin(t*3 + k.length)*0.06;
-      m.scale.setScalar(0.62*(1 + Math.sin(t*4 + k.length)*0.05));
-    }
-    if(!o) continue;
+    if(show){ m.position.copy(markPos(k)); m.position.y += Math.sin(t*3 + k.length)*0.06; m.scale.setScalar(0.62*(1 + Math.sin(t*4 + k.length)*0.05)); }
+  }
+  for(const id of homeIn()){
+    const o = homeItems[id]; if(!o) continue;
     const u = o.userData;
     if(u.excite) u.excite = Math.max(0, u.excite - dt);
     const fast = 1 + (u.excite ? 2.5 : 0);
@@ -907,6 +959,7 @@ function homeTick(t, dt){
   }
   const R = HOME_ROOMS[homeRoom]; if(R.tick) R.tick(t, dt);
   if(typeof hwTick === 'function') hwTick(dt);   // ходьба по комнате (js/homewalk.js)
+  if(typeof heTick === 'function') heTick(t, dt);   // «Обустроить» (js/homeedit.js)
   // малыш сам подходит к вещам, если долго ничего не нажимали
   if(!busy && mgRoot.hidden && !homeEdit && !stroke && !homeDrag && !document.querySelector('.overlay:not([hidden])') && !petSeal.sleeping && !(typeof hwOn === 'function' && hwOn())){
     homeIdleT -= dt;

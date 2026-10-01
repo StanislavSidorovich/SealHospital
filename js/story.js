@@ -108,7 +108,7 @@ const STORY = [
     end:L('Новоселье! Все друзья пришли в гости 🏠', 'A house-warming party! All your friends came over 🏠'),
     items:[
       {ic:'🚪', t:L('Загляни в иглу', 'Peek into the igloo'), ok:() => save.home.v, go:'home'},
-      {ic:'🛋️', t:L('Обставь 5 мест в иглу', 'Furnish 5 spots in the igloo'), n:() => [Object.keys(save.home.s).length, 5], go:'home'},
+      {ic:'🛋️', t:L('Поставь в иглу 5 вещей', 'Put 5 things in the igloo'), n:() => [Object.keys(save.home.f).filter(homePlaced).length, 5], go:'home'},
       {ic:'🐠', t:L('Построй в иглу океанариум', 'Build an oceanarium in the igloo'), ok:() => !!save.home.rooms.ocean, go:'home'},
       {ic:'🐟', t:L('Поймай 5 разных рыбок моря', 'Catch 5 different sea fish'), n:() => [save.sea.got.length, 5], go:'hosp'},
       {ic:'📸', t:L('Сфотографируй 8 жителей бухты', 'Photograph 8 bay creatures'), n:() => [save.dive.seen.length, 8], go:'dive'},
@@ -259,7 +259,7 @@ const TODAY = [
     show:() => !!save.pet && typeof smOn === 'function' && smOn() && save.storm.st < 4, done:() => save.storm.d === stDay(), go:'storm'},
   {id:'party', ic:'🎉', t:() => L('Шторм позади — друзья зовут на праздник!', 'The storm is over — your friends invite you to a party!'),
     show:() => save.storm.st >= 4 && !save.story.fest.includes(8), done:() => save.story.fest.includes(8), go:'party'},
-  {id:'feed', ic:'🍤', t:() => L('Покорми рыбок в аквариуме', 'Feed the fish in the tank'), show:() => !!save.pet && /^tank_/.test(save.home.s.tank || ''),
+  {id:'feed', ic:'🍤', t:() => L('Покорми рыбок в аквариуме', 'Feed the fish in the tank'), show:() => !!save.pet && !!homeKindAny('tank'),
     done:() => save.home.fed === stDay(), go:'home'}
 ];
 function stTodayList(){

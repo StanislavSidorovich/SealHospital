@@ -127,7 +127,7 @@ HOME_PLAY.gm1 = async function(s, o, quiet){   // пуфик: запрыгнут
   homeSay(s, 'Боинг!', 'Boing!', '#D9527E');
   for(let i = 0; i < 3; i++){ sfx.pop(); await tween(0.42, k => { s.inner.position.y = Math.sin(k*Math.PI)*0.55*petK(); o.scale.set(1 + Math.sin(k*Math.PI)*0.06, 1 - Math.sin((k + 0.5)*Math.PI*2)*0.08, 1); }, ease.lin); }
   o.scale.set(1, 1, 1); s.inner.position.y = 0; burst(TEX.heart, headTop(s), quiet ? 4 : 8, 1.6, 0.26);
-  await hopTo(s, hp(...HOME_SLOTS.gm1.stand), 0.6, 0.5);
+  await hopTo(s, hp(...homeStand(o.userData.id)), 0.6, 0.5);
 };
 
 /* ---------- обстановка: стол, табуретки, флажки, доска счёта ---------- */
@@ -185,10 +185,9 @@ function gmTick(t, dt){
 }
 function gmUi(){
   const got = BG_ORDER.filter(bgHas).length;
-  $('#homeHint').textContent = homeEdit ? L('Нажми на ✏️ или ➕ — выбери пуфик, игрушки или плакат', 'Tap ✏️ or ➕ to choose a pouf, toys or a poster')
-    : L('Нажми на коробку — сыграем! Стол — все игры', 'Tap a box to play! The table has all the games');
-  const dec = roomSlots(), m = dec.filter(k => homeItems[k]).length;
-  $('#homeCount').textContent = L(`Коробок: ${got} из ${BG_ORDER.length} · Мебель: ${m} из ${dec.length}`, `Boxes: ${got} of ${BG_ORDER.length} · Furniture: ${m} of ${dec.length}`);
+  $('#homeHint').textContent = L('Нажми на коробку — сыграем! Стол — все игры', 'Tap a box to play! The table has all the games');
+  const m = homeIn().length;
+  $('#homeCount').textContent = L(`Коробок: ${got} из ${BG_ORDER.length} · Вещей: ${m}`, `Boxes: ${got} of ${BG_ORDER.length} · Things: ${m}`);
 }
 
 /* ---------- касания ---------- */

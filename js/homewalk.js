@@ -7,8 +7,9 @@
    Комната сама тесная, поэтому идёт медленнее, чем по острову (HW_VK). Камера — обычная камера иглу, её roam не трогает (nocam).
    Подключается после rooms.js (RM, rmHallAct, rmBack), gameroom.js, trophyroom.js и до game.js. */
 const HW_VK = 0.55, HW_RAD = HOME_R - 0.55;   // во сколько раз медленнее, чем на острове; до какого радиуса можно ходить
-// вещи на полу: [радиус, высота]; 0 — по ней ходят (коврик); невысокая (< 1) — можно запрыгнуть; выше — стена
+// вещи на полу по видам: [радиус, высота]; 0 — по ней ходят (коврик); невысокая (< 1) — можно запрыгнуть; выше — стена. Радиус — и для редактора (js/homeedit.js)
 const HW_SOL = {bed:[0.95, 0.4], rug:[0, 0], lamp:[0.4, 3], tank:[0.75, 3], games:[0.7, 3], gm1:[0.6, 0.6], gm2:[0.6, 3], tr1:[0.55, 3], tr2:[0.45, 3]};
+const HW_SOL_ID = {tank_big:[0.95, 3]};   // вещь шире своего вида
 // стол игровой, табуретки, кормушка, витрины — не мебель на местах, а часть комнаты
 const HW_FIXED = {
   games:[[GM_TABLE[0], GM_TABLE[1], 1.1, 3], [-1.5, -0.35, 0.32, 3], [1.5, -0.35, 0.32, 3]],
@@ -21,9 +22,9 @@ const hwRadius = room => room === 'ocean' ? OC_R - 0.6 : HW_RAD;
 const hwAt = room => HOME_ROOMS[room].pos.clone().add(new V3(0, HOME_Y, 0));
 function hwGround(room){
   const list = (HW_FIXED[room] || []).map(([x, z, r, h]) => ({x, z, r, h}));
-  for(const k of roomSlots()){
-    const o = homeItems[k], sol = HW_SOL[k], sl = HOME_SLOTS[k]; if(!o || !sol || !sl.floor || !sol[0]) continue;
-    list.push({x:sl.floor[0], z:sl.floor[1], r:sol[0], h:sol[1] < 1 ? (o.userData.top || sol[1])*0.9 : sol[1]});
+  for(const id of homeIn(room)){
+    const o = homeItems[id], k = homeKind(id), sol = HW_SOL_ID[id] || HW_SOL[k], P = save.home.f[id]; if(!o || !sol || !HOME_SLOTS[k].floor || !sol[0]) continue;
+    list.push({x:P[1], z:P[2], r:sol[0], h:sol[1] < 1 ? (o.userData.top || sol[1])*0.9 : sol[1]});
   }
   const rad = hwRadius(room);
   return (x, z) => {
@@ -102,10 +103,10 @@ function hwTap(e){
   if(!hwFree()) return true;
   const R = HW.R;
   if(petPart(e)){ roamJump(R); return true; }   // коснулась самого малыша — подпрыгнул
-  const h = homeHitSlot(e);
+  const h = homeHit(e);
   if(h){
-    const sl = HOME_SLOTS[h.k], k = h.k, mark = h.mark;
-    R.goal = {p:() => new V3(sl.stand[0], 0, sl.stand[1]), r:0.4, act:() => { if(mark || !homeItems[k]) homePick(k); else homePlay(k); }};
+    const st = h.mark ? HOME_SLOTS[h.k].stand : homeStand(h.id);
+    R.goal = {p:() => new V3(st[0], 0, st[1]), r:0.4, act:() => { if(h.mark) homePick(h.k); else if(homeItems[h.id]) homePlay(h.id); }};
     R.hold = false; R.tgt = null; sfx.tap(); return true;
   }
   for(const d of HW.doors) if(d.hit(e.clientX, e.clientY)){

@@ -26,10 +26,12 @@ function loadPlayers(){
   return {list, cur};
 }
 const PLAYERS = loadPlayers();
-const SAVE_KEY = saveKeyOf(PLAYERS.cur), SAVE_VERSION = 1;
+const SAVE_KEY = saveKeyOf(PLAYERS.cur), SAVE_VERSION = 2;
 const MIGRATIONS = [
   // 0 → 1: раньше было три отдельных ключа sh.album, sh.progress, sh.muted
-  () => ({album:store.get('sh.album', []), progress:store.get('sh.progress', 0), muted:store.get('sh.muted', false)})
+  () => ({album:store.get('sh.album', []), progress:store.get('sh.progress', 0), muted:store.get('sh.muted', false)}),
+  // 1 → 2 (Спринт 8, редактор иглу): мебель больше не привязана к местам — home.s {место: вещь} → home.f {вещь: [комната]}, встанет туда же, где стояла
+  d => d.home && typeof d.home === 'object' && d.home.s && !d.home.f ? {...d, home:{...d.home, f:homeFromSlots(d.home.s), s:undefined}} : d
 ];
 // who = {name, g:'f'|'m', asked} — кто играет («Кто играет?», Фаза 11 часть 1). Имя ограничено 12 буквами.
 // asked=false только у совсем нового сохранения — тогда игра сама спросит имя перед первым экраном;
@@ -207,17 +209,40 @@ function sanitizeAdv(a){
     fish:[...new Set(strList(a.fish))], sec:[...new Set(strList(a.sec))],
     quest:a.quest && typeof a.quest.d === 'string' ? {d:a.quest.d, ids:strList(a.quest.ids), done:strList(a.quest.done)} : {d:'', ids:[], done:[]}};
 }
-// home = {s:{слот: id вещи}, v, fed, rooms, build, oc} — мебель в иглу малыша (js/home.js), заходили ли туда, в какой день кормили рыбок.
-// Нет поля — стартовая мебель. Купленная мебель, как и всё из лавки, лежит в owned; пустой слот — просто нет ключа.
+// home = {f:{id вещи: [комната, x, z, поворот]}, paint, v, fed, rooms, build, oc} — мебель в иглу малыша (js/home.js, редактор js/homeedit.js),
+// заходили ли туда, в какой день кормили рыбок. Мебель стоит где угодно (Спринт 8): комната 'hall' | 'games' | 'trophy' | 'ocean', x и z — точка пола
+// (у настенной вещи x — угол по стене, z — высота-угол), поворот — в радианах. [комната] без чисел — «на своё обычное место» (HOME_SLOTS её вида),
+// home.js сам найдёт там свободное место и допишет числа. Нет ключа — вещь в коробке. Купленная мебель, как и всё из лавки, лежит в owned.
+// paint = {комната: {w, f}} — краска стен и пола (HE_WALLS / HE_FLOORS в js/homeedit.js; купленные краски — 'pw_…' / 'pf_…' в owned).
 // Комнаты иглу (Спринт 7, js/ocean.js): rooms = {id: 1 — построена, 2 — уже заходили}, build = {id, d} — что строится и в какой день
 // заказали (готово на следующий день) или null; oc — кого уже видели в океанариуме ('sea:clown', 'run:minty', 'pal:crab'): новенькие подплывают к стеклу.
+const HOME_ROOM_IDS = ['hall', 'games', 'trophy', 'ocean'];
+// до версии 2 мебель стояла по местам: s = {место: id вещи}. Вид места подсказывает комнату (oc… — океанариум, gm… — игровая, tr… — трофеи)
+const homeSlotRoom = k => /^oc/.test(k) ? 'ocean' : /^gm/.test(k) ? 'games' : /^tr/.test(k) ? 'trophy' : 'hall';
+function homeFromSlots(s){
+  const f = {};
+  for(const [k, id] of Object.entries(s && typeof s === 'object' ? s : {})) if(typeof id === 'string') f[id] = [homeSlotRoom(k)];
+  return f;
+}
 function sanitizeHome(h){
-  const ok = h && typeof h === 'object' && h.s && typeof h.s === 'object';
-  h = ok ? h : {};
+  h = h && typeof h === 'object' ? h : null;
+  const f0 = !h ? {bed_basic:['hall'], win_basic:['hall'], shelf:['hall']} : h.f && typeof h.f === 'object' ? h.f : homeFromSlots(h.s);
+  const f = {};
+  for(const [id, p] of Object.entries(f0)){
+    if(!Array.isArray(p) || !HOME_ROOM_IDS.includes(p[0])) continue;
+    const n = p.slice(1, 4);
+    f[id] = n.length === 3 && n.every(Number.isFinite) ? [p[0], ...n.map(v => Math.round(Math.max(-12, Math.min(12, v))*1000)/1000)] : [p[0]];
+  }
+  h = h || {};
+  const paint = {};
+  for(const [r, v] of Object.entries(h.paint && typeof h.paint === 'object' ? h.paint : {})){
+    if(!HOME_ROOM_IDS.includes(r) || !v || typeof v !== 'object') continue;
+    const w = typeof v.w === 'string' ? v.w.slice(0, 12) : '', fl = typeof v.f === 'string' ? v.f.slice(0, 12) : '';
+    if(w || fl) paint[r] = {w, f:fl};
+  }
   const rooms = h.rooms && typeof h.rooms === 'object' ? Object.fromEntries(Object.entries(h.rooms).filter(([, v]) => v === 1 || v === 2)) : {};
   const build = h.build && typeof h.build.id === 'string' && typeof h.build.d === 'string' && !rooms[h.build.id] ? {id:h.build.id, d:h.build.d.slice(0, 20)} : null;
-  return {s:ok ? Object.fromEntries(Object.entries(h.s).filter(([, v]) => typeof v === 'string')) : {bed:'bed_basic', window:'win_basic', shelf:'shelf'},
-    v:!!h.v, fed:typeof h.fed === 'string' ? h.fed.slice(0, 20) : '', rooms, build, oc:strList(h.oc).slice(-160)};
+  return {f, paint, v:!!h.v, fed:typeof h.fed === 'string' ? h.fed.slice(0, 20) : '', rooms, build, oc:strList(h.oc).slice(-160)};
 }
 // mail = {got:[{id, t}], d} — полученные письма (id из letterId(), t — когда открыли) и день последнего «письма дня» (ymd)
 function sanitizeMail(m){

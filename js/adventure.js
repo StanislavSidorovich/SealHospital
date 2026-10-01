@@ -949,7 +949,7 @@ const CUP_GIFT = 10;
 // «Пузырик и Мятка переехали в твой аквариум!» — или ждут, пока аквариум появится в домике
 function fishMoved(ids){
   const names = ids.map(id => fishDef(id).name), list = names.length > 1 ? names.slice(0, -1).join(', ') + L(' и ', ' and ') + names[names.length - 1] : names[0];
-  const many = ids.length > 1, tank = !!save.home.s.tank;
+  const many = ids.length > 1, tank = !!homeKindAny('tank');
   if(tank) return many ? L(`${list} переехали в твой аквариум!`, `${list} moved into your fish tank!`) : L(`${list} теперь живёт в твоём аквариуме!`, `${list} now lives in your fish tank!`);
   return many ? L(`${list} спасены! Поселятся в домике, когда там будет аквариум 🏠`, `${list} are saved! They'll move in once your home has a fish tank 🏠`)
     : L(`${list} спасена! Поселится в домике, когда там будет аквариум 🏠`, `${list} is saved! It will move in once your home has a fish tank 🏠`);

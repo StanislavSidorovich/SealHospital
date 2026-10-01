@@ -595,16 +595,14 @@ function ocView(instant){
   focusCam(c, size, lift, up); camFocus.k = 1;
 }
 function ocUi(){
-  const n = OC.res.length + OC.pals.length, dec = roomSlots(), m = dec.filter(k => homeItems[k]).length;
+  const n = OC.res.length + OC.pals.length, m = homeIn().length;
   $('#homeName').textContent = L('🐠 Океанариум', '🐠 Oceanarium');
-  $('#homeHint').textContent = homeEdit ? L('Нажми на ✏️ или ➕ на дне — выбери украшение', 'Tap ✏️ or ➕ on the seabed to choose a decoration')
-    : save.home.fed !== homeDay() ? L('Рыбки проголодались — нажми на кормушку 🍤', 'The fish are hungry — tap the feeder 🍤')
+  $('#homeHint').textContent = save.home.fed !== homeDay() ? L('Рыбки проголодались — нажми на кормушку 🍤', 'The fish are hungry — tap the feeder 🍤')
     : L('Коснись стекла или жителя. Люк 🤿 — прямо в бухту', 'Tap the glass or a sea friend. The hatch 🤿 leads to the bay');
-  $('#homeCount').textContent = L(`Жителей: ${n} · Украшения: ${m} из ${dec.length}`, `Sea friends: ${n} · Decorations: ${m} of ${dec.length}`);
-  homeEditUi();
+  $('#homeCount').textContent = L(`Жителей: ${n} · Украшений: ${m}`, `Sea friends: ${n} · Decorations: ${m}`);
 }
 async function ocWander(){
-  const opts = roomSlots().filter(k => homeItems[k]);
+  const opts = homeIn().filter(id => homeItems[id]);
   if(opts.length && Math.random() < 0.4) return homePlay(opts[Math.floor(Math.random()*opts.length)], true);
   setBusy(true);
   const s = petSeal, a = (Math.random() - 0.5)*1.8;
@@ -708,7 +706,7 @@ function ocReady(){
   const b = save.home.build;
   if(!b || b.id !== 'ocean' || b.d === ocDay()) return false;
   save.home.rooms.ocean = 1; save.home.build = null;
-  if(!save.home.s.oc3) save.home.s.oc3 = 'oc_coral';
+  if(!homeKindAny('oc3')) homeGive('oc_coral');
   persist(); ocCorner(); if(homeMode){ homeBuild(); homeUi(); renderHomeBtn(); } return true;
 }
 function ocAlert(){ return ocBuilt() ? save.home.rooms.ocean === 1 : !!(save.home.build && save.home.build.d !== ocDay()); }

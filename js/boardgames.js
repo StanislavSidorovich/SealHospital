@@ -44,8 +44,7 @@ const bgEsc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;', '<':'&lt;', 
 function bgGive(id, how){
   if(!BG[id] || bgHas(id)) return false;
   save.bg.got.push(id);
-  if(!save.owned.includes('bg_shelf')) save.owned.push('bg_shelf');
-  if(!save.home.s.games) save.home.s.games = 'bg_shelf';
+  if(!save.owned.includes('bg_shelf')){ save.owned.push('bg_shelf'); homeGive('bg_shelf'); }   // первая коробка — столик встаёт в иглу сам
   persist();
   if(typeof homeMode !== 'undefined' && homeMode) homeBuild();
   const G = BG[id];

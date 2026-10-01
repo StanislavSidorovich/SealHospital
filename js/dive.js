@@ -741,7 +741,7 @@ async function dvInvite(id){
   if(!yes || save.dive.tank.includes(id)) return;
   save.dive.tank.push(id); persist();
   sfx.hug(); if(DV) burst(TEX.heart, headTop(DV.s), 10, 1.6, 0.26);
-  toast(/^tank_/.test(save.home.s.tank || '') ? L(`${d.name} уже плывёт в твой аквариум! 🏠`, `${d.name} is on the way to your fish tank! 🏠`)
+  toast(!!homeKindAny('tank') ? L(`${d.name} уже плывёт в твой аквариум! 🏠`, `${d.name} is on the way to your fish tank! 🏠`)
     : L(`${d.name} поселится в иглу, когда там будет аквариум 🏠`, `${d.name} will move in once the igloo has a fish tank 🏠`), 3200);
 }
 async function dvPhoto(id, c){
