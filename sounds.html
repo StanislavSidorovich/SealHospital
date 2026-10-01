@@ -29,6 +29,22 @@
   #tunes button.on{ background:var(--pink); }
   .vote.on{ background:var(--ink); color:var(--paper); }
   .new-tag{ font-size:12px; background:var(--pink2); color:#fff; border-radius:8px; padding:1px 6px; vertical-align:middle; }
+  /* 🎵 дуэль тем: две карточки, «эта!» — победитель остаётся, приходит следующая */
+  #duel{ max-width:720px; margin-bottom:18px; }
+  .dl-pair{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .dl-card{ background:var(--paper); border:2.5px solid var(--ink); border-radius:22px; box-shadow:0 4px 0 var(--ink); padding:12px 10px; text-align:center; display:flex; flex-direction:column; gap:8px; }
+  .dl-card.on{ background:#FFE3EC; }
+  .dl-ic{ font-size:44px; line-height:1.1; }
+  .dl-card.on .dl-ic{ animation:dlBob .6s ease-in-out infinite alternate; }
+  @keyframes dlBob{ to{ transform:translateY(-6px) rotate(-6deg); } }
+  .dl-name{ font-family:Pangolin, cursive; font-size:20px; }
+  .dl-card button{ width:100%; padding:0 6px; }
+  .dl-pick{ background:var(--pink); }
+  .dl-pick:disabled{ opacity:.45; }
+  .dl-step{ font-size:15px; margin:0 0 10px; }
+  .dl-win{ background:var(--mint); border:2.5px solid var(--ink); border-radius:22px; box-shadow:0 4px 0 var(--ink); padding:14px; font-size:18px; }
+  .dl-win b{ font-family:Pangolin, cursive; font-size:22px; }
+  .dl-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
   textarea{ width:100%; max-width:720px; height:120px; margin-top:12px; border:2.5px solid var(--ink); border-radius:16px; padding:10px; font:inherit; }
 </style>
 </head>
@@ -40,6 +56,8 @@
   <button id="btnCopy"></button>
   <button id="btnClear"></button>
 </div>
+<h2 id="t4"></h2>
+<div id="duel"></div>
 <h2 id="t3"></h2>
 <div class="top" id="tunes"></div>
 <div class="list" id="list"></div>
@@ -160,14 +178,16 @@ const keep = () => { try{ localStorage.setItem(KEY, JSON.stringify(votes)); }cat
 const play = (set, k) => { if(set === OLD) OLD[k](); else sfx[k](k === 'beep'); };
 
 $('#t1').textContent = L('Пульт звуков', 'Sound desk');
-$('#t2').textContent = L('Сабрина — звукорежиссёр! Послушай «было» и «стало» и поставь 👍 или 👎 новому звуку.', 'Sabrina is the sound director! Listen to “before” and “after” and give the new sound 👍 or 👎.');
+$('#t2').textContent = L('Сабрина — звукорежиссёр! Сначала выбери любимую мелодию в дуэли, потом послушай звуки и поставь 👍 или 👎.', 'Sabrina is the sound director! First pick your favourite tune in the duel, then listen to the sounds and give them 👍 or 👎.');
 $('#btnAll').textContent = L('▶ Все новые подряд', '▶ All new in a row');
 $('#btnCopy').textContent = L('📋 Итоги для папы', '📋 Results for Dad');
 $('#btnClear').textContent = L('↺ Заново', '↺ Reset');
 
 // фоновая музыка: у каждой мелодии своя кнопка, ⏹ — тишина
 const TLIST = [['hosp', L('🏥 Больница', '🏥 Hospital')], ['pet', L('🦭 Уголок малыша', '🦭 Pup corner')], ['home', L('🏠 Иглу', '🏠 Igloo')],
-  ['run', L('🏃 Забег', '🏃 Run')], ['map', L('🗺️ Карта островов', '🗺️ Island map')], ['night', L('🌙 Колыбельная', '🌙 Lullaby')], ['sea', L('🤿 Под водой', '🤿 Underwater')], ['gloom', L('🌑 Мгла', '🌑 The Gloom')]];
+  ['run', L('🏃 Забег', '🏃 Run')], ['map', L('🗺️ Карта островов', '🗺️ Island map')], ['night', L('🌙 Колыбельная', '🌙 Lullaby')], ['sea', L('🤿 Под водой', '🤿 Underwater')], ['gloom', L('🌑 Мгла', '🌑 The Gloom')],
+  ['tlull', '🎐 ' + L('Шкатулка', 'Music box')], ['tpolka', '🥁 ' + L('Полька', 'Polka')], ['tbub', '🫧 ' + L('Пузырьки', 'Bubbles')],
+  ['tquest', '🗺️ ' + L('Приключение', 'Adventure')], ['tparty', '🎉 ' + L('Праздник', 'Party')]];
 $('#t3').textContent = L('🎵 Музыка', '🎵 Music');
 $('#tunes').innerHTML = TLIST.map(([k, n]) => `<button data-t="${k}">${n}</button>`).join('') + `<button data-t="">⏹</button>`;
 $('#tunes').addEventListener('click', e => {
@@ -175,6 +195,83 @@ $('#tunes').addEventListener('click', e => {
   ac(); musForce = b.dataset.t || null; save.music = !!musForce;
   for(const x of $('#tunes').children) x.classList.toggle('on', x === b && !!musForce);
 });
+// 💗 Дуэль мелодий: «эта или эта?» — победительница остаётся, приходит следующая; 4 дуэли — и есть любимая.
+// Ребёнку проще выбрать из двух, чем ставить оценки пяти. Порядок и сторона случайные, чтобы не выигрывала «первая».
+const DUEL = [
+  ['tlull',  '🎐', L('Шкатулка', 'Music box')],
+  ['tpolka', '🥁', L('Полька', 'Polka')],
+  ['tbub',   '🫧', L('Пузырьки', 'Bubbles')],
+  ['tquest', '🗺️', L('Приключение', 'Adventure')],
+  ['tparty', '🎉', L('Праздник', 'Party')]
+];
+const DKEY = 'sh.tunevotes', DLISTEN = 4;   // каждую послушать хотя бы 4 с, потом «Эта!» оживает
+let dv = {};   // итог: {rank:[ключи по местам], at, n}
+try{ dv = JSON.parse(localStorage.getItem(DKEY) || '{}') || {}; }catch(e){}
+const dKeep = () => { try{ localStorage.setItem(DKEY, JSON.stringify(dv)); }catch(e){} };
+const dName = k => { const d = DUEL.find(x => x[0] === k); return d ? `${d[1]} ${d[2]}` : k; };
+let D = null;   // идущая дуэль: {queue, pair, wins, out, heard, playing, since, step}
+function musPick(k){
+  ac(); musForce = k || null; save.music = !!k;
+  for(const x of $('#tunes').children) x.classList.toggle('on', !!k && x.dataset.t === k);
+}
+const dSide = (a, b) => Math.random() < 0.5 ? [a, b] : [b, a];
+function dStart(){
+  const q = DUEL.map(d => d[0]).sort(() => Math.random() - 0.5);
+  D = {queue:q.slice(2), pair:dSide(q[0], q[1]), wins:{}, out:[], heard:{}, playing:null, since:0, step:1};
+  musPick(null); dDraw();
+}
+function dHear(){   // копим, сколько секунд слушали ту, что играет
+  if(D && D.playing) D.heard[D.playing] = (D.heard[D.playing] || 0) + (performance.now() - D.since)/1000;
+  if(D) D.since = performance.now();
+}
+const dHeard = k => (D.heard[k] || 0) + (D.playing === k ? (performance.now() - D.since)/1000 : 0);
+function dPlay(k){ dHear(); D.playing = D.playing === k ? null : k; musPick(D.playing); dDraw(); }
+function dChoose(k){
+  dHear();
+  D.wins[k] = (D.wins[k] || 0) + 1; D.out.push(D.pair.find(x => x !== k));
+  sfx.star();
+  if(!D.queue.length){ dFinish(k); return; }
+  D.pair = dSide(k, D.queue.shift()); D.step++;
+  D.playing = null; musPick(null); dDraw();
+}
+function dFinish(champ){
+  // места: любимая, дальше — у кого больше побед, при равенстве — кто дольше продержался
+  const rest = D.out.map((k, i) => [k, D.wins[k] || 0, i]).sort((a, b) => b[1] - a[1] || b[2] - a[2]).map(x => x[0]);
+  dv = {rank:[champ, ...rest], at:new Date().toISOString().slice(0, 10), n:(dv.n || 0) + 1};
+  dKeep(); D = null; sfx.hug(); musPick(champ); dDraw();
+}
+function dDraw(){
+  const box = $('#duel');
+  if(!D){
+    const r = dv.rank;
+    box.innerHTML = (r ? `<div class="dl-win">${L('Твоя любимая', 'Your favourite')}: <b>${dName(r[0])}</b><br>🥈 ${dName(r[1])} &nbsp; 🥉 ${dName(r[2])}</div>`
+        : `<p class="dl-step">${L('Послушай две мелодии и выбери, какая лучше. Победительница остаётся, приходит следующая.', 'Listen to two tunes and pick the better one. The winner stays and the next one comes.')}</p>`) +
+      `<div class="dl-row"><button id="dlGo" class="new">${r ? L('🔁 Ещё раз', '🔁 Again') : L('▶ Начать дуэль', '▶ Start the duel')}</button>` +
+      (r ? `<button id="dlFav">${L('🎵 Любимая', '🎵 My favourite')}</button><button id="dlStop">⏹</button>` : '') + `</div>`;
+    return;
+  }
+  box.innerHTML = `<p class="dl-step">${L('Дуэль', 'Duel')} ${D.step} / ${DUEL.length - 1}: ${L('послушай обе — какая лучше?', 'listen to both — which is better?')}</p>
+    <div class="dl-pair">${D.pair.map(k => { const d = DUEL.find(x => x[0] === k); return `
+      <div class="dl-card ${D.playing === k ? 'on' : ''}" data-k="${k}">
+        <div class="dl-ic">${d[1]}</div><div class="dl-name">${d[2]}</div>
+        <button data-a="play">${D.playing === k ? '⏸ ' + L('Пауза', 'Pause') : '▶ ' + L('Слушать', 'Listen')}</button>
+        <button class="dl-pick" data-a="pick" ${dHeard(k) >= DLISTEN ? '' : 'disabled'}>💗 ${L('Эта!', 'This one!')}</button>
+      </div>`; }).join('')}</div>`;
+}
+// «Эта!» оживает, как только послушали 4 с
+setInterval(() => { if(D && D.playing && dHeard(D.playing) >= DLISTEN && $(`.dl-card[data-k="${D.playing}"] .dl-pick:disabled`)) dDraw(); }, 400);
+$('#duel').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  if(b.id === 'dlGo'){ dStart(); return; }
+  if(b.id === 'dlFav'){ musPick(dv.rank[0]); return; }
+  if(b.id === 'dlStop'){ musPick(null); return; }
+  const c = b.closest('.dl-card'); if(!c || !D) return;
+  if(b.dataset.a === 'play') dPlay(c.dataset.k);
+  if(b.dataset.a === 'pick' && !b.disabled) dChoose(c.dataset.k);
+});
+$('#t4').textContent = L('💗 Дуэль мелодий', '💗 Tune duel');
+dDraw();
+
 function render(){
   $('#list').innerHTML = LIST.map(([k, name, where, fresh]) => `
     <div class="card ${votes[k] || ''}" data-k="${k}">
@@ -200,7 +297,8 @@ $('#btnAll').addEventListener('click', () => {
 });
 $('#btnCopy').addEventListener('click', () => {
   const line = v => LIST.filter(([k]) => votes[k] === v).map(([k, n]) => n).join(', ') || '—';
-  const txt = `${L('Звуки', 'Sounds')} 👍: ${line('up')}\n${L('Звуки', 'Sounds')} 👎: ${line('down')}`;
+  const rk = dv.rank ? dv.rank.map((k, i) => `${i + 1}. ${dName(k)}`).join(', ') + ` (${dv.at})` : '—';
+  const txt = `${L('Мелодии по местам', 'Tunes ranked')}: ${rk}\n${L('Звуки', 'Sounds')} 👍: ${line('up')}\n${L('Звуки', 'Sounds')} 👎: ${line('down')}`;
   const out = $('#out'); out.value = txt; out.hidden = false; out.select();
   try{ navigator.clipboard.writeText(txt).catch(() => {}); }catch(e){}
 });

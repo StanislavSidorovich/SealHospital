@@ -147,7 +147,8 @@ function renderMute(){
 let musForce = null;   // пульт sounds.html: включить мелодию вручную
 let MUS = null, musMood = null, musPart = 0, musStep = 0, musT = 0, musWait = 0, NOISE = null;
 // аккорды: [бас, три ноты аккорда]; «си» в G есть только в аккорде, в мелодии его нет
-const CHORD = {C:[130.81, 261.63, 329.63, 392.00], Am:[110.00, 220.00, 261.63, 329.63], F:[87.31, 174.61, 220.00, 261.63], G:[98.00, 196.00, 246.94, 293.66]};
+const CHORD = {C:[130.81, 261.63, 329.63, 392.00], Am:[110.00, 220.00, 261.63, 329.63], F:[87.31, 174.61, 220.00, 261.63], G:[98.00, 196.00, 246.94, 293.66],
+  Dm:[73.42, 146.83, 174.61, 220.00], Em:[82.41, 164.81, 196.00, 246.94]};
 // часть мелодии: аккорды по тактам и ноты по восьмушкам (число — ступень pn, «.» — пауза, «|» — такт); без mel — такты без мелодии
 const mp = (ch, mel) => ({ch:ch.split(' '), mel:mel ? mel.split('|').map(b => b.trim().split(/\s+/).map(x => x === '.' ? null : +x)) : null});
 const TUNE_HOSP = {
@@ -165,6 +166,22 @@ const TUNE_NIGHT = {   // колыбельная — родня звука sfx.l
   A:mp('C F C G C F G C', '2 . 1 . 0 . | -1 . . . 0 . | 2 . 1 . 0 . | -2 . . . . . | 0 . 1 . 2 . | 3 . 2 . 0 . | 1 . . . -2 . | 0 . . . . .'),
   R:mp('C F G C')};
 const TUNE_GLOOM = {A:mp('Am F Am F', '0 . . . -1 . . . | . . . . . . . . | 0 . . . -2 . . . | . . . . -1 . . .')};   // Мгла: два аккорда и редкие низкие ноты
+// 🎵 пять тем-кандидатов (01.10): Сабрина выбирает любимые «дуэлью» на пульте sounds.html, потом разнесём по местам
+const TUNE_LULL = {   // 🎐 шкатулка-колыбельная: вальс, колокольчики
+  A:mp('C Am F G C F G C', '4 . 3 . 2 . | 0 . . . 2 . | 3 . 2 . 0 . | -1 . . . . . | 4 . 5 . 4 . | 3 . 2 . 3 . | 2 . 1 . -1 . | 0 . . . . .'),
+  B:mp('Am Em F C Dm G C C', '2 . . . 3 . | 1 . . . 2 . | 0 . 1 . 2 . | 3 . . . . . | 1 . 2 . 1 . | -1 . 0 . 1 . | 2 . . . 0 . | 0 . . . . .')};
+const TUNE_POLKA = {   // 🥁 полька: «умпа-умпа», щипковая мелодия
+  A:mp('C G C G F C G C', '0 0 2 . 3 . 2 . | 1 1 3 . 4 . 3 . | 0 0 2 . 3 . 5 . | 4 . 3 . 2 . . . | 5 . 4 . 3 . 2 . | 3 . 2 . 0 . . . | 1 . 2 . 3 . 1 . | 0 . 0 . 0 . . .'),
+  B:mp('F F C C G G C C', '4 . 4 . 5 . 4 . | 3 . . . 2 . . . | 2 . 2 . 3 . 2 . | 0 . . . 2 . . . | 1 . 1 . 3 . 1 . | -1 . . . 1 . . . | 2 . 3 . 4 . 3 . | 5 . . . 0 . . .')};
+const TUNE_BUB = {   // 🫧 пузырьки: медленно, ноты «буль», в фоне лопаются пузыри
+  A:mp('Am F C G Am F G G', '2 . . 4 . . 3 . | 0 . . . . . . . | 2 . . 4 . . 5 . | 4 . . . 3 . . . | 2 . . 4 . . 3 . | 0 . . -1 . . 0 . | 1 . . . 3 . . . | 1 . . . . . . .'),
+  B:mp('F C Am G F C G C', '5 . . . 4 . . . | 3 . 4 . 3 . . . | 2 . . . 0 . . . | 1 . . 2 . . . . | 5 . . . 4 . . . | 3 . 2 . 0 . . . | -1 . 0 . 1 . . . | 0 . . . . . . .')};
+const TUNE_QUEST = {   // 🗺️ приключение: минор, бегущее арпеджио, мелодия-«дудочка»
+  A:mp('Am F C G Am F G G', '0 . -1 0 2 . . . | 3 . 2 . 0 . . . | 2 . 3 4 5 . . . | 4 . . . 3 . . . | 0 . -1 0 2 . . . | 3 . 4 . 5 . 4 . | 3 . 2 . 1 . 2 . | 3 . . . . . . .'),
+  B:mp('F G Am Am F G C C', '5 . . 4 3 . . . | 4 . . 3 2 . . . | 2 . 3 . 4 . 2 . | 0 . . . . . . . | 5 . . 4 3 . . . | 4 . 5 . 6 . . . | 5 . 4 . 3 . 2 . | 0 . . . . . . .')};
+const TUNE_PARTY = {   // 🎉 праздник: быстро, хлопки, маримба с колокольчиком
+  A:mp('C F G C C F G C', '0 2 3 . 5 . 3 . | 4 . 4 . 3 . 2 . | 1 2 3 . 4 . 3 . | 2 . 0 . . . . . | 0 2 3 . 5 . 6 . | 7 . 6 . 5 . 4 . | 3 . 4 . 3 . 1 . | 0 . 5 . 0 . . .'),
+  B:mp('Am F C G Am F G G', '2 . 2 3 2 . 0 . | 4 . 4 5 4 . 3 . | 2 . 2 3 2 . 0 . | 1 . . . 3 . . . | 2 . 3 . 4 . 5 . | 6 . 5 . 4 . 3 . | 1 . 2 . 3 . 4 . | 3 . . . . . . .')};
 // bpm — четверти в минуту, bar — восьмушек в такте, style — аккомпанемент, inst — чем играет мелодия, shift — сдвиг ступеней, vol — громкость MUS
 const TUNES = {
   hosp: {parts:TUNE_HOSP,  seq:'ABAR', bpm:84,  bar:8, style:'box',   inst:'box', shift:0,  vol:0.28},
@@ -177,7 +194,13 @@ const TUNES = {
   gloom:{parts:TUNE_GLOOM, seq:'A',    bpm:50,  bar:8, style:'box',   inst:'box', shift:-10, vol:0.2},   // пришла Мгла: медленно, низко, тревожно
   glboss:{parts:TUNE_GLOOM, seq:'A',   bpm:76,  bar:8, style:'run',   inst:'mar', shift:-7, vol:0.24},   // бой со Мглой (js/gloom.js): бодрее, но в той же тревожной мелодии
   fest: {parts:TUNE_PET,   seq:'ABAR', bpm:120, bar:6, style:'waltz', inst:'mar', shift:2,  vol:0.28},   // 🎉 праздник острова (js/finale.js)
-  storm:{parts:TUNE_RUN,   seq:'ABAB', bpm:112, bar:8, style:'run',   inst:'mar', shift:-5, vol:0.26}    // 🌪️ Великий шторм (js/storm.js): бодро, чуть ниже, не страшно
+  storm:{parts:TUNE_RUN,   seq:'ABAB', bpm:112, bar:8, style:'run',   inst:'mar', shift:-5, vol:0.26},   // 🌪️ Великий шторм (js/storm.js): бодро, чуть ниже, не страшно
+  // кандидаты с пульта (пока нигде не играют)
+  tlull: {parts:TUNE_LULL,  seq:'ABAB', bpm:66,  bar:6, style:'waltz', inst:'glock', shift:0,  vol:0.26},
+  tpolka:{parts:TUNE_POLKA, seq:'AABA', bpm:138, bar:8, style:'polka', inst:'pluck', shift:0,  vol:0.28},
+  tbub:  {parts:TUNE_BUB,   seq:'ABAB', bpm:76,  bar:8, style:'float', inst:'bub',   shift:-2, vol:0.28},
+  tquest:{parts:TUNE_QUEST, seq:'AABA', bpm:108, bar:8, style:'arp',   inst:'lead',  shift:-5, vol:0.28},
+  tparty:{parts:TUNE_PARTY, seq:'ABAB', bpm:144, bar:8, style:'party', inst:'party', shift:0,  vol:0.28}
 };
 function musicMood(){
   if(musForce) return musForce;
@@ -203,6 +226,15 @@ const MINST = {
   mar(f, t, v){ mNote(f, t, 0.4, v, 'sine', 0.004); mNote(f*4, t, 0.06, v*0.2, 'sine', 0.002); },   // маримба: деревянный удар
   pad(f, t, v, d){ mNote(f, t, d, v, 'triangle', 0.04); },                                  // аккорд: мягко, без удара
   bass(f, t, v, d){ mNote(f, t, d, v, 'triangle', 0.02); mNote(f*2, t, d*0.7, v*0.4, 'sine', 0.02); },   // обертон — чтобы бас был слышен в динамике телефона
+  glock(f, t, v){ mNote(f, t, 0.9, v*0.85); mNote(f*2.76, t, 0.25, v*0.14, 'sine', 0.002); mNote(f*5.4, t, 0.08, v*0.05, 'sine', 0.002); },   // колокольчики
+  pluck(f, t, v){ mNote(f, t, 0.28, v, 'triangle', 0.003); mNote(f*2, t, 0.1, v*0.25, 'sine', 0.002); },   // щипок, как укулеле
+  bub(f, t, v){   // «буль»: нота подъезжает снизу
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(f*0.7, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.07);
+    env(g, t, v, 0.01, 0.5); o.connect(g).connect(MUS); o.start(t); o.stop(t + 0.55);
+  },
+  lead(f, t, v){ mNote(f, t, 0.55, v*0.85, 'triangle', 0.03); mNote(f*2, t, 0.35, v*0.12, 'sine', 0.03); },   // дудочка
+  party(f, t, v){ MINST.mar(f, t, v*0.9); mNote(f*2, t, 0.5, v*0.18, 'sine', 0.003); },   // маримба + колокольчик октавой выше
   // шорох-«тик» (в забеге) и бубенчики (на Новый год) из одного кусочка шума
   shh(t, v, d, freq){
     const s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
@@ -217,6 +249,20 @@ function musPlay(T, t){
   if(T.style === 'run'){
     if(i % 2 === 0) MINST.bass(i % 4 ? ch[0]*1.5 : ch[0], hum(), 0.075, e*1.6);
     else MINST.shh(hum(), i === 3 || i === 7 ? 0.018 : 0.012, 0.05, 7000);
+  } else if(T.style === 'polka'){   // умпа: бас (основа / квинта) и щипок аккорда между ними
+    if(i % 4 === 0) MINST.bass(i % 8 ? ch[0]*1.5 : ch[0], hum(), 0.075, e*1.4);
+    if(i % 4 === 2) [ch[1], ch[2], ch[3]].forEach(f => mNote(f, hum(), 0.16, 0.016, 'triangle', 0.003));
+  } else if(T.style === 'float'){   // пузырьки: длинный аккорд и редкие «буль» сверху
+    if(i === 0){ MINST.bass(ch[0], hum(), 0.05, e*T.bar*0.95); [ch[1], ch[2], ch[3]].forEach(f => MINST.pad(f, hum(), 0.012, e*T.bar*0.9)); }
+    if(Math.random() < 0.09) MINST.bub(pn(6 + Math.floor(Math.random()*4)), hum(), 0.02);
+  } else if(T.style === 'arp'){   // приключение: бас по половинкам, бегущее арпеджио восьмушками
+    if(i % 4 === 0) MINST.bass(ch[0], hum(), 0.07, e*3.5);
+    mNote([ch[1], ch[2], ch[3], ch[2]][i % 4], hum(), 0.2, 0.014, 'triangle', 0.004);
+  } else if(T.style === 'party'){   // праздник: бас каждую четверть, хлопки на 2 и 4, шейкер
+    if(i % 2 === 0) MINST.bass(i % 4 ? ch[0]*2 : ch[0], hum(), 0.07, e*0.9);
+    else MINST.shh(hum(), 0.01, 0.04, 8000);
+    if(i === 2 || i === 6){ MINST.shh(hum(), 0.03, 0.07, 1800); MINST.shh(t + 0.012, 0.02, 0.06, 2400); }
+    if(i === 0 || i === 4) [ch[2], ch[3]].forEach(f => MINST.pad(f, hum(), 0.014, e*1.2));
   } else if(T.style === 'waltz'){
     if(i === 0) MINST.bass(ch[0], hum(), 0.07, e*T.bar*0.9);
     if(i === 2 || i === 4) [ch[2], ch[3]].forEach(f => MINST.pad(f, hum(), 0.018, e*1.8));
