@@ -53,7 +53,7 @@ function roamControls(R, el, hit){
   mgOn(window, 'keydown', e => {
     if(e.key === ' '){ R.jumpQ = true; e.preventDefault(); return; }
     const k = K[e.key] ? e.key : K[e.key.toLowerCase()] ? e.key.toLowerCase() : null;
-    if(k){ held.add(k); R.goal = null; upd(); e.preventDefault(); }
+    if(k){ held.add(k); R.goal = null; R.tgt = null; R.hold = false; upd(); e.preventDefault(); }   // стрелки — забываем старую точку касания, иначе отпустила клавишу — малыш идёт туда
   });
   mgOn(window, 'keyup', e => { const k = K[e.key] ? e.key : e.key.toLowerCase(); if(held.delete(k)) upd(); });
 }
