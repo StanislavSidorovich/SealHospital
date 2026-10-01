@@ -800,6 +800,7 @@ body.visit-on #petCard,body.visit-on #petBar,body.visit-on #card,body.visit-on #
 .gl-meter .bar i{display:block;height:100%;width:100%;background:#4B3F74;transition:width .4s ease-out}
 .dv-book-panel .gl-row{background:#F1ECFF;border:2px solid var(--ink);border-radius:14px;padding:6px 10px;font-size:14px;text-align:left}
 .net-lobby .net-share{display:block;margin:6px auto 10px}
+.ch-near{position:absolute;left:0;top:0;bottom:0;width:30%;background:linear-gradient(90deg,rgba(217,82,126,.55),rgba(255,155,184,.25) 45%,transparent);pointer-events:none;opacity:0}
 .ch-end .res-stars{text-align:center;font-size:30px;margin:0 0 6px}
 
 /* «Книга острова»: карта «Сегодня» и главы (js/story.js) */
