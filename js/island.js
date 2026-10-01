@@ -241,18 +241,25 @@ function islBuild(){
   if(islBuilt) return; islBuilt = true;
   const G = islRoot;
   // вода и дальние айсберги
-  const sea = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), toon(0x6FC0DF)); sea.rotation.x = -Math.PI/2; sea.position.y = -0.05; G.add(sea); G.userData.sea = sea;
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), waterMat(26)); sea.rotation.x = -Math.PI/2; sea.position.y = -0.05; G.add(sea); G.userData.sea = sea;
   for(const [x, z, s] of [[-70, -60, 6], [60, -70, 8], [85, 10, 5], [-90, 20, 7], [20, 80, 6], [-50, 75, 5]]){
-    const b = new THREE.Mesh(new THREE.ConeGeometry(s, s*1.3, 6), toon(0xF3FAFD)); b.position.set(x, s*0.4, z); G.add(b);
+    const b = makeBerg(s*0.8, x + z); b.position.set(x, -0.05, z); b.rotation.y = x; G.add(b);
   }
   // рельеф: снег сверху, у воды — голубой лёд
   const geo = new THREE.PlaneGeometry(112, 100, 112, 100); geo.rotateX(-Math.PI/2);
-  const p = geo.attributes.position, col = new Float32Array(p.count*3), snowC = new THREE.Color(0xFBFDFF), iceC = new THREE.Color(0xBFE0F0), slopeC = new THREE.Color(0xCFD8EE), c = new THREE.Color();
+  const p = geo.attributes.position, col = new Float32Array(p.count*3), snowC = new THREE.Color(0xA9B6BF), iceC = new THREE.Color(0xBFE0F0), slopeC = new THREE.Color(0x8E9CC0), c = new THREE.Color();
+  const driftC = new THREE.Color(0x8A9FB6), cliffC = new THREE.Color(0x76A2C4), capC = new THREE.Color(0xB4BEC4);   // снег темнее, чем видно (свет ×1,45): так видны наметы и склоны
   for(let i = 0; i < p.count; i++){
     const x = p.getX(i), z = p.getZ(i) - 2, h = islTerrain(x, z);
     p.setZ(i, z); p.setY(i, h);
     const sl = Math.hypot(islTerrain(x + 0.5, z) - islTerrain(x - 0.5, z), islTerrain(x, z + 0.5) - islTerrain(x, z - 0.5));   // склоны чуть сиреневее: видно горы
-    c.copy(snowC).lerp(slopeC, Math.min(1, sl*1.1)).lerp(iceC, 1 - islSm(Math.max(0, Math.min(1, (h + 0.05)/0.35))));
+    c.copy(snowC);
+    const dn = Math.sin(x*0.9 + z*0.35)*Math.sin(z*0.7 - x*0.2);   // волнистые снежные наметы
+    if(dn > 0.2) c.lerp(driftC, Math.min(1, (dn - 0.2)*1.8)*0.85);
+    c.lerp(slopeC, Math.min(1, sl*1.1));
+    if(sl > 1.2 && Math.sin(x*1.9 + z*1.3) > -0.2) c.lerp(cliffC, Math.min(1, (sl - 1.2)*1.5)*0.75);   // на крутых склонах — голубые полосы льда
+    if(h > 3.5) c.lerp(capC, Math.min(1, (h - 3.5)*0.5)*(1 - Math.min(1, sl*0.5)));   // снежные шапки на вершинах
+    c.lerp(iceC, 1 - islSm(Math.max(0, Math.min(1, (h + 0.05)/0.35))));
     if(typeof ideTint === 'function') ideTint(x, z, h, c);   // 🏝️ тропинки, лёд, проталины (js/isledeco.js)
     col.set([c.r, c.g, c.b], i*3);
   }

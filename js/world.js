@@ -83,8 +83,27 @@ function textSprite(text, color = '#3B3A4A'){
 /* ---------------- world ---------------- */
 const waterGeo = new THREE.PlaneGeometry(90, 90, 60, 60); waterGeo.rotateX(-Math.PI/2);
 const wPos = waterGeo.attributes.position, wBase = Float32Array.from(wPos.array);
-const water = new THREE.Mesh(waterGeo, toon(0x6FC0DF)); water.position.y = -0.05; scene.add(water);
+// вода: светлые «барашки» и блики на голубом, рисунок медленно плывёт (одна маленькая картинка на всё море)
+function waterTex(rep){
+  const t = canvasTex(256, (g, w) => {
+    g.fillStyle = '#6FC0DF'; g.fillRect(0, 0, w, w);
+    let r = 7; const rnd = () => (r = (r*16807) % 2147483647)/2147483647;
+    g.fillStyle = '#5DAAD0';   // чуть глубже пятнами
+    for(let i = 0; i < 7; i++){ const x = rnd()*w, y = rnd()*w, a = 30 + rnd()*40;
+      for(const dx of [-w, 0, w]) for(const dy of [-w, 0, w]){ g.beginPath(); g.ellipse(x + dx, y + dy, a, a*0.45, 0, 0, 7); g.fill(); } }
+    g.lineCap = 'round'; g.strokeStyle = '#A9E2F2'; g.lineWidth = 4;
+    for(let i = 0; i < 16; i++){ const x = rnd()*w, y = rnd()*w, l = 12 + rnd()*16;   // волнистые штрихи
+      for(const dx of [-w, 0, w]) for(const dy of [-w, 0, w]){ g.beginPath(); g.moveTo(x + dx - l, y + dy); g.quadraticCurveTo(x + dx - l/2, y + dy - 5, x + dx, y + dy); g.quadraticCurveTo(x + dx + l/2, y + dy + 5, x + dx + l, y + dy); g.stroke(); } }
+    g.fillStyle = '#E8FAFF';
+    for(let i = 0; i < 10; i++){ const x = rnd()*w, y = rnd()*w; g.beginPath(); g.arc(x, y, 2 + rnd()*2, 0, 7); g.fill(); }   // искорки
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); return t;
+}
+const WATER_TEX = [];
+function waterMat(rep){ const t = waterTex(rep); WATER_TEX.push(t); const m = toon(0xFFFFFF); m.map = t; return m; }
+const water = new THREE.Mesh(waterGeo, waterMat(14)); water.position.y = -0.05; scene.add(water);
 function updateWater(t){
+  for(const x of WATER_TEX){ x.offset.x = t*0.006; x.offset.y = Math.sin(t*0.3)*0.02; }
   for(let i = 0; i < wPos.count; i++){
     const x = wBase[i*3], z = wBase[i*3+2];
     wPos.array[i*3+1] = Math.sin(x*0.45 + t*1.1)*0.07 + Math.cos(z*0.5 + t*0.9)*0.07;
@@ -100,7 +119,25 @@ const floeGeo = new THREE.CylinderGeometry(3.2, 3.4, 0.6, 44, 1);
     p.setX(i, x*k); p.setZ(i, z*k);
   }
   floeGeo.computeVertexNormals(); }
-const floe = addOutline(new THREE.Mesh(floeGeo, toon(0xD6EAF5)), 1.02); floe.position.y = -0.05; scene.add(floe);
+// льдина: сверху снег с сугробиками, голубыми ледяными окошками и трещинками; бока — голубой лёд
+// (цвета темнее, чем видно: свет высветляет ≈×1,45, светлее B0 по каналу — уже белое)
+const FLOE_TOP = canvasTex(256, (g, w) => {
+  const c = w/2; let r = 3; const rnd = () => (r = (r*16807) % 2147483647)/2147483647;
+  g.fillStyle = '#A4BCCB'; g.fillRect(0, 0, w, w);
+  g.fillStyle = '#88A6BE';   // тени от сугробиков (снизу-справа)
+  const drifts = []; for(let i = 0; i < 9; i++){ const a = rnd()*7, d = 25 + rnd()*85; drifts.push([c + Math.cos(a)*d, c + Math.sin(a)*d, 14 + rnd()*18]); }
+  for(const [x, y, s] of drifts){ g.beginPath(); g.ellipse(x + 4, y + 5, s, s*0.55, 0.3, 0, 7); g.fill(); }
+  g.fillStyle = '#AEC4D2'; for(const [x, y, s] of drifts){ g.beginPath(); g.ellipse(x, y, s, s*0.55, 0.3, 0, 7); g.fill(); }
+  for(let i = 0; i < 3; i++){ const a = rnd()*7, d = 30 + rnd()*70, x = c + Math.cos(a)*d, y = c + Math.sin(a)*d, s = 12 + rnd()*12;   // ледяные окошки
+    g.fillStyle = '#6BA2C6'; g.beginPath(); g.ellipse(x, y, s, s*0.7, a, 0, 7); g.fill();
+    g.strokeStyle = '#B4D4E6'; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(x - s*0.5, y - s*0.1); g.lineTo(x - s*0.05, y - s*0.4); g.stroke(); }
+  g.strokeStyle = '#7898B2'; g.lineWidth = 2;   // трещинки от края
+  for(let i = 0; i < 6; i++){ let a = rnd()*7, d = 122, x = c + Math.cos(a)*d, y = c + Math.sin(a)*d; g.beginPath(); g.moveTo(x, y);
+    for(let k = 0; k < 4; k++){ a += (rnd() - 0.5)*0.5; d -= 8 + rnd()*10; x = c + Math.cos(a)*d + (rnd() - 0.5)*6; y = c + Math.sin(a)*d + (rnd() - 0.5)*6; g.lineTo(x, y); } g.stroke(); }
+  g.fillStyle = '#FFFFFF'; for(let i = 0; i < 26; i++){ const a = rnd()*7, d = rnd()*118; g.beginPath(); g.arc(c + Math.cos(a)*d, c + Math.sin(a)*d, 1.2 + rnd()*1.6, 0, 7); g.fill(); }   // искорки снега
+});
+const floeTopMat = toon(0xFFFFFF); floeTopMat.map = FLOE_TOP;
+const floe = addOutline(new THREE.Mesh(floeGeo, [toon(0x8FB8D2), floeTopMat, toon(0x8FB8D2)]), 1.02); floe.position.y = -0.05; scene.add(floe);
 const foam = new THREE.Mesh(new THREE.RingGeometry(3.35, 3.9, 56), new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.5}));
 foam.rotation.x = -Math.PI/2; foam.position.y = 0.1; scene.add(foam);
 
@@ -136,9 +173,39 @@ const HOLE = new V3(-1.55, 0.255, 1.35);
   scene.add(g); }
 // distant icebergs + drifting chunks
 const chunks = [];
-for(const [x,z,s] of [[-15,-24,2.6],[11,-28,3.2],[22,-18,2.2],[-26,-14,2]]){
-  const b = new THREE.Mesh(new THREE.ConeGeometry(s, s*1.3, 6), toon(0xF3FAFD)); b.position.set(x, s*0.4, z); scene.add(b);
+// дальняя ледяная гора: главный пик и два зубца, неровные грани, снежная шапка, голубой лёд с полосками, пена у воды
+const BERG_MAT = new THREE.MeshToonMaterial({color:0xFFFFFF, vertexColors:true, flatShading:true});
+const BERG_FOAM = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.5, depthWrite:false});
+function makeBerg(s, seed = 1){
+  let r = Math.floor(Math.abs(seed)*7919) % 2147483646 + 1; const rnd = () => (r = (r*16807) % 2147483647)/2147483647;
+  const hash = (x, y, z) => { const v = Math.sin(x*12.99 + y*78.23 + z*37.71 + seed*4.1)*43758.55; return v - Math.floor(v); };
+  const G = new THREE.Group(), snowC = new THREE.Color(0xB2C6D2), hiC = new THREE.Color(0x8CBAD6), loC = new THREE.Color(0x5E9EC4), c = new THREE.Color();
+  const peaks = [[0, 0, 1, 1], [0.55 + rnd()*0.2, 0.15, 0.62, 0.7], [-0.6 - rnd()*0.15, -0.2, 0.5, 0.62]];
+  for(const [px, pz, k, hk] of peaks){
+    const rad = s*k, h = s*1.5*hk;
+    let geo = new THREE.ConeGeometry(rad, h, 7, 4);
+    const p = geo.attributes.position;
+    for(let i = 0; i < p.count; i++){
+      const x = p.getX(i), y = p.getY(i), z = p.getZ(i), j = hash(x, y, z), t = (y + h/2)/h;
+      if(t > 0.99){ p.setX(i, x + rad*0.12); continue; }   // макушка чуть вбок
+      const m = 0.8 + j*0.45; p.setX(i, x*m); p.setZ(i, z*m); p.setY(i, y + (t > 0.02 ? (hash(z, x, y) - 0.5)*h*0.12 : 0));
+    }
+    geo = geo.toNonIndexed(); const q = geo.attributes.position, col = new Float32Array(q.count*3);
+    for(let i = 0; i < q.count; i += 3){
+      const t = ((q.getY(i) + q.getY(i + 1) + q.getY(i + 2))/3 + h/2)/h;
+      if(t > 0.6 + hash(i, 1, 2)*0.12) c.copy(snowC);
+      else { c.copy(loC).lerp(hiC, Math.min(1, t*1.6)); if(Math.sin(t*28) > 0.75) c.lerp(snowC, 0.45); }   // полоски слежавшегося льда
+      for(let v = 0; v < 3; v++) col.set([c.r, c.g, c.b], (i + v)*3);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, BERG_MAT); m.position.set(px*s, h/2 - s*0.15, pz*s); m.rotation.y = rnd()*6; G.add(m);
+  }
+  const f = new THREE.Mesh(new THREE.RingGeometry(s*1.05, s*1.45, 20), BERG_FOAM); f.rotation.x = -Math.PI/2; f.position.y = 0.06; f.scale.x = 1.4; G.add(f);
+  return G;
 }
+[[-15,-24,2.6],[11,-28,3.2],[22,-18,2.2],[-26,-14,2]].forEach(([x,z,s], i) => {
+  const b = makeBerg(s*0.8, i + 1); b.position.set(x, -0.05, z); b.rotation.y = i*1.3; scene.add(b);
+});
 for(const [x,z] of [[-5.5,-2],[5.8,-3.5],[4.6,2.6],[-6.5,3.4]]){
   const c = addOutline(new THREE.Mesh(new THREE.DodecahedronGeometry(0.45), toon(0xF3FAFD)), 1.06);
   c.scale.set(1, 0.45, 1); c.position.set(x, 0.05, z); scene.add(c); chunks.push(c);

@@ -264,7 +264,7 @@ const FURN_MAKE = {
     const c = new V3(0, 1.38, 0);
     const water = new THREE.Mesh(new THREE.SphereGeometry(0.58, 28, 16, 0, Math.PI*2, 0.95, Math.PI - 0.95), new THREE.MeshBasicMaterial({color:0x8FD3F0, transparent:true, opacity:0.55, depthWrite:false}));
     water.position.copy(c); water.renderOrder = 1; g.add(water);
-    const surf = new THREE.Mesh(new THREE.CircleGeometry(Math.sin(0.95)*0.58, 28), water.material); surf.rotation.x = -Math.PI/2; surf.position.set(0, c.y + Math.cos(0.95)*0.58, 0); surf.renderOrder = 1; g.add(surf);
+    const surf = new THREE.Mesh(new THREE.CircleGeometry(Math.sin(0.95)*0.58, 28), toon(0x6FC0DF)); surf.rotation.x = -Math.PI/2; surf.position.set(0, c.y + Math.cos(0.95)*0.58, 0); surf.renderOrder = 1; g.add(surf);
     const glass = new THREE.Mesh(new THREE.SphereGeometry(0.64, 28, 16, 0, Math.PI*2, 0.55, Math.PI - 0.55), new THREE.MeshBasicMaterial({color:0xE6F7FF, transparent:true, opacity:0.3, depthWrite:false, side:THREE.DoubleSide}));
     glass.position.copy(c); glass.renderOrder = 2; g.add(glass);
     const rim = addOutline(new THREE.Mesh(new THREE.TorusGeometry(Math.sin(0.55)*0.64, 0.035, 8, 28), toon(0xFFFFFF)), 1.15); rim.rotation.x = Math.PI/2; rim.position.set(0, c.y + Math.cos(0.55)*0.64, 0); g.add(rim);

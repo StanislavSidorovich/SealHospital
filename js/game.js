@@ -447,7 +447,7 @@ $('#btnIntroPet').addEventListener('click', async () => {
 const camBase = new V3(), camTarget = new V3();
 // Приближение для мини-игр: камера плавно наезжает на center так, чтобы влез предмет размером size.
 // lift > 0 поднимает предмет выше середины экрана (когда внизу панель мини-игры).
-const camFocus = {k:0, want:0, center:new V3(), size:3, lift:0, up:0.35, yaw:0};   // yaw — поворот вокруг центра (в домике можно повращать)
+const camFocus = {k:0, want:0, center:new V3(), size:3, lift:0, up:0.35, yaw:0, sd:0};   // yaw — поворот вокруг центра (в домике можно повращать)
 // Сдвиг всей камеры: 0 — больница, PET_POS — уголок малыша (js/pet.js)
 const camOff = new V3(), camOffWant = new V3();
 // up — насколько камера смотрит сверху (0.35 — чуть сверху; на прогулке выше, чтобы малыш не заслонял льдинки)
@@ -479,11 +479,17 @@ function frame(ts){
   _camLook.copy(camTarget).add(camOff);
   camFocus.k += (camFocus.want - camFocus.k)*Math.min(1, dt*3.5);
   if(camFocus.k > 0.001){
-    const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), fd = Math.max(camFocus.size/2/(tv*camera.aspect), camFocus.size/2/tv);
-    _focusLook.copy(camFocus.center); _focusLook.y -= camFocus.lift;
+    // широкий экран (планшет лёжа, компьютер): панель мини-игры справа (style.css) — пациент левее центра и не приподнят; сдвиг плавный
+    camFocus.sd += ((camera.aspect > 1.15 && document.body.classList.contains('mg-on') ? 1 : 0) - camFocus.sd)*Math.min(1, dt*3.5);
+    const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), fd = Math.max(camFocus.size/2/(tv*camera.aspect), camFocus.size*1.5/2/tv);   // по высоте с запасом, чтобы пациент влез целиком
+    _focusLook.copy(camFocus.center); _focusLook.y -= camFocus.lift*(1 - camFocus.sd*1.4);
     const k = ease.io(camFocus.k);
     _camLook.lerp(_focusLook, k);
     _camPos.lerp(_focusLook.clone().add(new V3(Math.sin(camFocus.yaw)*fd, fd*camFocus.up, Math.cos(camFocus.yaw)*fd)), k);
+    if(camFocus.sd > 0.001){
+      const sh = fd*tv*camera.aspect*0.3*k*camFocus.sd, rx = Math.cos(camFocus.yaw)*sh, rz = -Math.sin(camFocus.yaw)*sh;
+      _camLook.x += rx; _camLook.z += rz; _camPos.x += rx; _camPos.z += rz;
+    }
   }
   if(runCam.on){ _camPos.copy(runCam.pos); _camLook.copy(runCam.look); }   // забег: камера летит за малышом (js/adventure.js)
   camera.position.copy(_camPos);
