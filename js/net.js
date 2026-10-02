@@ -24,6 +24,8 @@ const netPeer = id => Promise.resolve().then(() => { const o = {config:{iceServe
 // keep — «Остров в гостях» (js/visit.js): игры в конце зовут netClose(), но соединение остаётся — после игры все снова на острове
 const net = {gen:0, peer:null, conn:null, host:false, code:'', on:{}, lastIn:0, hb:null, mic:null, call:null, audio:null, lost:false, onLost:null, onBack:null, keep:false};
 
+// постоянный номер этого устройства для «двери» (js/visit.js): вернулся тот же гость после обрыва — пускаем без вопроса
+function netGid(){ let g = store.get('sh.gid', ''); if(typeof g !== 'string' || !/^[a-z0-9]{8,16}$/.test(g)){ g = Math.random().toString(36).slice(2, 12).padEnd(8, '0'); store.set('sh.gid', g); } return g; }
 function netCodeText(code){ return [...code].map(d => NET_EMO[+d]).join(''); }
 function netRandomCode(){ return [0, 1, 2].map(() => Math.floor(Math.random()*NET_EMO.length)).join(''); }
 function netSend(m){ try{ if(net.conn && net.conn.open) net.conn.send(m); }catch(e){} }
@@ -54,7 +56,7 @@ function netRetry(){
   const p = net.peer; if(!p || p.destroyed) return;
   if(p.disconnected){ try{ p.reconnect(); }catch(e){} return; }
   if(net.host) return;
-  const c = p.connect(NET_PREFIX + net.code, {reliable:true});
+  const c = p.connect(NET_PREFIX + net.code, {reliable:true, metadata:{name:pname(), gid:netGid()}});
   c.on('open', () => { if(net.lost && net.conn !== c) netWire(c); else if(net.conn !== c) c.close(); });
 }
 // голос после переподключения: звонит гость со своим микрофоном; хозяин — если гость не позвонил сам
@@ -96,7 +98,7 @@ function netHost(cb){
     net.peer = p; net.code = code;
     p.on('open', () => cb('code', code));
     p.on('connection', c => {
-      if(net.conn && net.conn.open && !net.lost){ c.close(); return; }   // в комнате только двое (но потерявшегося пускаем обратно)
+      if(net.conn && net.conn.open && !net.lost && !netSame(c)){ c.close(); return; }   // в комнате только двое (но потерявшегося пускаем обратно)
       c.on('open', () => { const first = !net.conn; netWire(c); if(first) cb('joined'); });
     });
     p.on('call', call => netAnswer(call));
@@ -117,7 +119,7 @@ function netJoin(code, cb){
     if(gen !== net.gen){ p.destroy(); return; }
     net.peer = p;
     p.on('open', () => {
-      const c = p.connect(NET_PREFIX + code, {reliable:true, metadata:{name:pname()}});   // имя — чтобы у «двери» (js/visit.js) было видно, кто стучится
+      const c = p.connect(NET_PREFIX + code, {reliable:true, metadata:{name:pname(), gid:netGid()}});   // имя — чтобы у «двери» (js/visit.js) было видно, кто стучится
       c.on('open', () => { if(done) return; done = true; netWire(c); cb('joined'); });
       setTimeout(() => fail('timeout'), 15000);
     });
@@ -138,6 +140,14 @@ function netClose(force){
   netSat(false);
 }
 const netLive = () => !!(net.conn && net.conn.open && !net.lost);
+// стучится то же устройство, что уже в комнате (перезагрузили страницу, а мы ещё не заметили обрыва) — пускаем вместо старой ниточки
+const netSame = c => { const a = c && c.metadata, b = net.conn && net.conn.metadata; return !!(a && b && a.gid && a.gid === b.gid); };
+// телефон уснул или переключились в другое приложение: вернулись — сразу стучимся снова, не ждём таймера
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden || !net.conn) return;
+  const p = net.peer; if(p && !p.destroyed && p.disconnected) try{ p.reconnect(); }catch(e){}
+  if(net.lost) netRetry();
+});
 
 /* ---------- голос: 🎤 включает свой микрофон и звонит второму; второй слышит и может включить свой ---------- */
 function netPlay(stream){

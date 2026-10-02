@@ -627,6 +627,7 @@ function homeItemAt(cx, cy){
 function homeTap(e){
   if(!petSeal || busy || !mgRoot.hidden) return;
   homeIdleT = 12;
+  if(typeof visitTap === 'function' && visitTap(e)) return;   // обнять гостя, он тоже в прихожей (js/homeduo.js)
   if(typeof heTap === 'function' && heTap(e)) return;   // «Обустроить»: двигаем мебель (js/homeedit.js)
   if(typeof hwTap === 'function' && hwTap(e)) return;   // идёт ходьба (js/homewalk.js): палец ведёт малыша
   if(petPart(e)){   // малыш: письмо в зубах или погладить
@@ -914,25 +915,9 @@ async function homeWander(){
 }
 
 /* ---------- покадрово ---------- */
-let homeSnowK = 1, cornerT = 0, cornerHint = false;
-function homeTick(t, dt){
-  if(!homeMode){   // в уголке: подсказать, что в домик можно зайти (один раз, пока не заходили)
-    if(petMode && save.pet && !save.home.v && !busy && mgRoot.hidden && !cornerHint){
-      cornerT += dt;
-      if(cornerT > 9 && nudge(L('Загляни в домик: нажми на иглу или 🏠', 'Peek inside the home: tap the igloo or 🏠'), 3600)) cornerHint = true;
-    } else cornerT = 0;
-    const hr = petCorner.userData.heart;
-    if(hr) hr.scale.setScalar(save.pet && !save.home.v && petMode ? 1 + Math.sin(t*4)*0.14 : 1);   // сердечко над иглу «зовёт»
-    return;
-  }
-  WIN_SNOW.offset.y += dt*0.07*homeSnowK; homeSnowK += (1 - homeSnowK)*Math.min(1, dt*0.8);
-  const free = mgRoot.hidden && !busy && !homeEdit;
-  for(const k of SLOT_KEYS){   // ➕ на обычном месте вида, пока такой вещи нигде нет
-    const m = homeMarks[k], show = free && kindRoom(k) === homeRoom && markShow(k);
-    m.visible = show;
-    if(show){ m.position.copy(markPos(k)); m.position.y += Math.sin(t*3 + k.length)*0.06; m.scale.setScalar(0.62*(1 + Math.sin(t*4 + k.length)*0.05)); }
-  }
-  for(const id of homeIn()){
+// вещи живут: рыбки плавают, гости из бухты шевелятся, лампы светят (и в чужом иглу у гостя — js/homeduo.js)
+function homeAnim(ids, t, dt){
+  for(const id of ids){
     const o = homeItems[id]; if(!o) continue;
     const u = o.userData;
     if(u.excite) u.excite = Math.max(0, u.excite - dt);
@@ -957,6 +942,27 @@ function homeTick(t, dt){
     if(u.glow && u.glow.visible) u.glow.material.opacity = 0.8 + Math.sin(t*2.2)*0.15;
     if(u.glow && !homeLight){ const q = toScreen(u.glow.getWorldPosition(new V3())), dim = $('#homeDim').style; dim.setProperty('--x', q.x + 'px'); dim.setProperty('--y', q.y + 'px'); }
   }
+}
+
+let homeSnowK = 1, cornerT = 0, cornerHint = false;
+function homeTick(t, dt){
+  if(!homeMode){   // в уголке: подсказать, что в домик можно зайти (один раз, пока не заходили)
+    if(petMode && save.pet && !save.home.v && !busy && mgRoot.hidden && !cornerHint){
+      cornerT += dt;
+      if(cornerT > 9 && nudge(L('Загляни в домик: нажми на иглу или 🏠', 'Peek inside the home: tap the igloo or 🏠'), 3600)) cornerHint = true;
+    } else cornerT = 0;
+    const hr = petCorner.userData.heart;
+    if(hr) hr.scale.setScalar(save.pet && !save.home.v && petMode ? 1 + Math.sin(t*4)*0.14 : 1);   // сердечко над иглу «зовёт»
+    return;
+  }
+  WIN_SNOW.offset.y += dt*0.07*homeSnowK; homeSnowK += (1 - homeSnowK)*Math.min(1, dt*0.8);
+  const free = mgRoot.hidden && !busy && !homeEdit;
+  for(const k of SLOT_KEYS){   // ➕ на обычном месте вида, пока такой вещи нигде нет
+    const m = homeMarks[k], show = free && kindRoom(k) === homeRoom && markShow(k);
+    m.visible = show;
+    if(show){ m.position.copy(markPos(k)); m.position.y += Math.sin(t*3 + k.length)*0.06; m.scale.setScalar(0.62*(1 + Math.sin(t*4 + k.length)*0.05)); }
+  }
+  homeAnim(homeIn(), t, dt);
   const R = HOME_ROOMS[homeRoom]; if(R.tick) R.tick(t, dt);
   if(typeof hwTick === 'function') hwTick(dt);   // ходьба по комнате (js/homewalk.js)
   if(typeof heTick === 'function') heTick(t, dt);   // «Обустроить» (js/homeedit.js)

@@ -24,7 +24,8 @@ const CV_KEYS = {
   b:{col:0x4FA3F0, ic:'🔵', name:L('Синий ключ', 'Blue key'), where:L('под водой у причала 🌊', 'under the water by the pier 🌊'), at:[-23, 38], water:true},
   y:{col:0xFFC93D, ic:'🟡', name:L('Золотой ключ', 'Golden key'), where:L('за маяком 🗼', 'behind the lighthouse 🗼'), at:[33, 26.7]}
 };
-const cvSv = () => save.isl.cave;
+// в гостях (js/isleduo.js) — пещера хозяйки: её двери, сундуки и кристаллики (приходят сообщением 'icv'); своё сохранение не трогаем
+const cvSv = () => (ISL && ISL.guest && typeof V !== 'undefined' && V && V.hcv) || save.isl.cave;
 const cvHas = k => cvSv().keys.includes(k);
 const cvOpen = k => cvSv().open.includes(k);
 
@@ -428,7 +429,7 @@ function cvStep(dt){
     if(!g.sp.visible) continue;
     g.sp.rotation.y += dt*1.8; g.sp.position.y = g.y + Math.sin(now*2.2 + g.i)*0.15; g.gl.position.y = g.sp.position.y;
     const c = P.clone().add(new V3(0, 0.55*petScale(), 0));
-    if(c.distanceTo(g.sp.position) < 1.25 + 0.3*petScale()) cvGemGot(g);
+    if(!I.guest && c.distanceTo(g.sp.position) < 1.25 + 0.3*petScale()) cvGemGot(g);   // в гостях кристаллики — хозяйки
   }
   // гриб-батут пружинит
   { const k = Math.max(0, 1 - (now - (CV_PAD.hit || -9))/0.4); U.pad.userData.cap.scale.set(0.85*(1 + k*0.25), 0.36*(1 - k*0.45), 0.85*(1 + k*0.25)); }
@@ -436,7 +437,7 @@ function cvStep(dt){
   for(const c of U.chests){
     if(sv.chest.includes(c.k)){ continue; }
     c.ch.userData.gl.material.opacity = 0.5 + Math.sin(now*3)*0.3;
-    if(!R.air && Math.hypot(P.x - c.pos.x, P.z - c.pos.z) < 1.5 && Math.abs(P.y - c.pos.y) < 0.6) cvChest(c);
+    if(!I.guest && !R.air && Math.hypot(P.x - c.pos.x, P.z - c.pos.z) < 1.5 && Math.abs(P.y - c.pos.y) < 0.6) cvChest(c);
   }
   // акула кружит вокруг островка
   if(U.shark && U.shark.visible){
@@ -457,7 +458,7 @@ function cvStep(dt){
   for(const d of U.doors){
     d.lbl.position.y = 3.6 + Math.sin(now*2.4 + d.D.x)*0.12;
     if(!d.g.visible || d.opening) continue;
-    if(Math.hypot(P.x - d.pos.x, P.z - d.pos.z) < 2.3){ if(cvHas(d.D.k)) cvDoorOpen(d); else near = d; }
+    if(Math.hypot(P.x - d.pos.x, P.z - d.pos.z) < 2.3){ if(cvHas(d.D.k) && !I.guest) cvDoorOpen(d); else near = d; }   // в гостях двери открывает хозяйка
   }
   if(!near && Math.hypot(P.x - U.exit.pos.x, P.z - U.exit.pos.z) < 1.8) near = U.exit;
   U.exit.ring.scale.setScalar(1 + Math.sin(now*3)*0.08);
@@ -476,7 +477,8 @@ function cvGoShow(){
     el.querySelector('button').addEventListener('click', e => { e.stopPropagation(); sfx.tap(); cvExit(); });
   } else {
     const K = CV_KEYS[o.D.k];
-    el.innerHTML = `<p>🔒 ${L('Дверь заперта', 'The door is locked')}</p><p class="lock">${L(`Нужен ${K.ic} ${K.name.toLowerCase()} — он ${K.where}`, `You need the ${K.ic} ${K.name.toLowerCase()} — it is ${K.where}`)}</p>`;
+    el.innerHTML = `<p>🔒 ${L('Дверь заперта', 'The door is locked')}</p><p class="lock">${I.guest ? L(`Ключи — у хозяйки острова (${V.name}). Позови сюда — откроете вместе 🗝️`, `The keys are with ${V.name}. Call them over — open it together 🗝️`)
+      : L(`Нужен ${K.ic} ${K.name.toLowerCase()} — он ${K.where}`, `You need the ${K.ic} ${K.name.toLowerCase()} — it is ${K.where}`)}</p>`;
     sfx.bad();
   }
   el.hidden = false; sfx.tick();

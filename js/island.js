@@ -648,7 +648,7 @@ function islQuestStep(dt){
 }
 // коснулась подписи места — малыш идёт туда сам
 function islHit(cx, cy){
-  if(ISL && ISL.cave) return cvHit(cx, cy);
+  if(ISL && ISL.cave) return (typeof iduHit === 'function' && iduHit(cx, cy)) || cvHit(cx, cy);   // в пещере вдвоём — тоже можно обнять второго
   const pal = typeof iduHit === 'function' && iduHit(cx, cy); if(pal) return pal;   // 🗺️ коснулась второго (вдвоём) — сердечки и подойти
   let best = null, bd = 60;
   const U = islRoot.userData;
@@ -793,7 +793,7 @@ async function islFish(o){
   const c = await fishCast({hole:ISL_POS.clone().add(hole), cam:[mid, 3], pick:() => islPick(F), diver:s});
   unfocusCam();
   // северная — малышу на обед (сыт — в ведёрко домой), гостьи и редкие — в «Рыбки моря» и в океанариум
-  const p = save.pet, hungry = p.needs.food < 0.95;
+  const p = save.pet, hungry = !!p && !I.guest && p.needs.food < 0.95;   // в гостях (js/isleduo.js) улов — в свою коллекцию и в ведёрко
   const ate = await fishLand(c, () => hungry ? worldOf(s, s.mouthLocal) : headTop(s).add(new V3(0, 1.2, 0)));
   if(ate && hungry){
     p.needs.food = Math.min(1, p.needs.food + 0.34);
@@ -801,7 +801,8 @@ async function islFish(o){
     await wait(0.35); s.mouthO.visible = false; s.smile.visible = true;
   } else if(ate){
     save.fish++; sfx.pop();
-    toast(L(`${save.pet.name} ${gg('сыт', 'сыта')} — рыбка в ведёрко домой! Там ${save.fish} 🐟`, `${save.pet.name} is full — the fish goes in the bucket at home! It holds ${save.fish} 🐟`), 2600);
+    if(I.guest) toast(L(`Улов — в твоё ведёрко дома! Там ${save.fish} 🐟`, `Your catch goes in your bucket at home! It holds ${save.fish} 🐟`), 2600);
+    else if(p) toast(L(`${p.name} ${gg('сыт', 'сыта')} — рыбка в ведёрко домой! Там ${save.fish} 🐟`, `${p.name} is full — the fish goes in the bucket at home! It holds ${save.fish} 🐟`), 2600);
   }
   // ракушки: за новую рыбку и за первые уловы дня
   const today = ymd(); if(sv.d.d !== today) sv.d = {d:today, n:0};

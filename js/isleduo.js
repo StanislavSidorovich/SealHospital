@@ -37,6 +37,13 @@ function iduWire(){
     if(iduOn() && ISL.guest){ islStarsShow(); islHud(); }
   });
   netOn('ist', m => iduStarBeam(m.i | 0));
+  // 🗝️ пещера хозяйки: какие двери открыты, сундуки, кристаллики — гость ходит по ней же (cvSv в cave.js)
+  netOn('icv', m => {
+    if(!V || V.role !== 'guest') return;
+    const A = a => Array.isArray(a) ? a.filter(x => typeof x === 'string' || Number.isInteger(x)).slice(0, 20) : [];
+    V.hcv = {keys:A(m.keys), open:A(m.open), chest:A(m.chest), gem:A(m.gem), n:+m.n || 1};
+    if(iduOn() && ISL.cave && typeof cvShow === 'function') cvShow();
+  });
   netOn('ihug', () => {
     if(!iduOn()) return;
     const s = ISL.s; burst(TEX.heart, headTop(s), 12, 2, 0.3); sfx.purr(); squash(s, 0.15, 0.35);
@@ -98,7 +105,7 @@ function iduStart(){
   vsMic(bar.querySelector('.co-mic'));
   const arrow = mgNode('div', 'isl-arrow idu-arrow', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 L20 20 L12 15.5 L4 20Z" fill="#FF9BB8" stroke="#3B3A4A" stroke-width="2.2" stroke-linejoin="round"/></svg>');
   arrow.hidden = true;
-  I.duo = {v:V, lbl, ownLbl:V.role !== 'host', tagSp, waitSp, waitTex, waitK:'', inCave:false, bar, arrow, sendT:0, igT:0, awayT:0, photoT:0, rideO:{duo:'ride'}, offO:{duo:'off'}, beams:[], stSeen:new Set(), landT:0};
+  I.duo = {v:V, lbl, ownLbl:V.role !== 'host', tagSp, waitSp, waitTex, waitK:'', inCave:false, bar, arrow, sendT:0, igT:0, cvKey:'', cvN:0, awayT:0, photoT:0, rideO:{duo:'ride'}, offO:{duo:'off'}, beams:[], stSeen:new Set(), landT:0};
   V.tag = null; V.ride = null;
   if(V.role === 'host') toast(L(`${V.name} гуляет с тобой по острову! 🏃 — салки, в воде — покатай на спинке 🐢`, `${V.name} is walking the island with you! 🏃 — tag, in the water — give a ride on your back 🐢`), 4200);
   else {
@@ -147,7 +154,11 @@ function iduStep(dt){
     if(V.h && +V.h.sc) pal.root.scale.setScalar(+V.h.sc);
   }
   if((D.sendT -= dt) <= 0){ D.sendT = IDU_SEND; iduSend(); }
-  if(V.role === 'host' && (D.igT -= dt) <= 0){ D.igT = 1; netSend({t:'ig', got:save.isl.got}); }
+  if(V.role === 'host' && (D.igT -= dt) <= 0){
+    D.igT = 1; netSend({t:'ig', got:save.isl.got});
+    const cv = save.isl.cave, key = cv ? JSON.stringify(cv) : '';   // пещера: раз в секунду, если что-то открылось, и раз в 5 с на всякий случай
+    if(cv && (key !== D.cvKey || ++D.cvN % 5 === 0)){ D.cvKey = key; netSend({t:'icv', ...cv}); }
+  }
   // где второй: в своём мире (в пещере — не видно)
   const same = !!q && now - q.t < 2.5 && q.cv === !!I.cave;
   if(V.ride === 'pal' && same && !I.cave) iduCarry(pal, dt);
@@ -170,7 +181,7 @@ function iduStep(dt){
 // второй тюлень: плавно догоняет присланную точку (чуть вперёд по скорости — сеть запаздывает)
 function iduFollow(s, q, dt, vis){
   s.root.visible = vis; if(!vis) return;
-  const age = now - q.t, tgt = ISL_POS.clone().add(q.p).addScaledVector(q.v, Math.min(0.12, age));
+  const age = now - q.t, tgt = (ISL.cave ? CV_POS : ISL_POS).clone().add(q.p).addScaledVector(q.v, Math.min(0.12, age));   // в пещере свой мир (js/cave.js)
   if(q.snap || s.root.position.distanceTo(tgt) > 8){ s.root.position.copy(tgt); q.snap = false; }
   else s.root.position.lerp(tgt, Math.min(1, dt*12));
   const k = Math.min(1, dt*14);
@@ -285,13 +296,13 @@ function iduWaitStep(q){
   // хозяйка ушла в пещеру — скажем ей, что второй ждёт снаружи
   if(!I.guest && !!I.cave !== D.inCave){
     D.inCave = !!I.cave;
-    if(D.inCave) setTimeout(() => { if(iduOn() && ISL.cave) toast(L(`${V.name} ждёт тебя у входа в пещеру 🗝️`, `${V.name} is waiting for you at the cave entrance 🗝️`), 3200); }, 4200);
+    if(D.inCave) setTimeout(() => { if(iduOn() && ISL.cave && !(V.ip && V.ip.cv)) toast(L(`${V.name} может прийти к тебе в пещеру — вход в скалах 🗝️`, `${V.name} can come into the cave with you — the entrance is in the rocks 🗝️`), 3200); }, 4200);
   }
   if(k !== D.waitK){
     D.waitK = k; I.near = null;   // стою у входа — подпись внизу обновится
     if(k){ D.waitSp.material.map = D.waitTex[k]; D.waitSp.material.needsUpdate = true; }
     if(k && I.guest){
-      mgHint(k === 'cave' ? L(`${V.name} в пещере 🗝️ Подожди у входа — скоро ${V.name} выйдет!`, `${V.name} is in the cave 🗝️ Wait by the entrance — out soon!`)
+      mgHint(k === 'cave' ? L(`${V.name} в пещере 🗝️ Иди следом — вход в скалах, стрелка покажет!`, `${V.name} is in the cave 🗝️ Follow — the entrance is in the rocks, the arrow shows the way!`)
         : L(`${V.name} ловит рыбку 🎣 Подожди рядом!`, `${V.name} is fishing 🎣 Wait nearby!`));
       setTimeout(() => { if(iduOn() && /🗝️|🎣/.test(mgHintEl.textContent)) mgHint(''); }, 5000);
     }
@@ -324,7 +335,7 @@ function iduHit(cx, cy){
   if(Math.hypot(q.x - cx, q.y - cy) > 64) return null;
   burst(TEX.heart, headTop(pal), 10, 1.8, 0.3); sfx.purr(); squash(pal, 0.15, 0.35);
   netSend({t:'ihug'});
-  return {p:() => pal.root.position.clone().sub(ISL_POS), r:1.4};
+  return {p:() => pal.root.position.clone().sub(ISL.cave ? CV_POS : ISL_POS), r:1.4};
 }
 function iduPhotoStep(dt, pal, same){
   const D = ISL.duo, R = ISL.R;
@@ -360,11 +371,15 @@ function iduGoShow(el, o){
     return true;
   }
   const G = ISL.guest;
-  if(o.fish || o.cave){
+  if(o.fish) return false;   // 🎣 рыбачит каждый у своей лунки, улов — себе (js/island.js, islFish)
+  if(o.cave){   // 🗝️ в пещеру хозяйки: её двери и сундуки (V.hcv), гость ходит и смотрит, открывает — она
     if(!G) return false;
-    const inCave = o.cave && ISL.duo && ISL.duo.waitK === 'cave';
-    el.innerHTML = `<p>${o.fish ? `🎣 ${o.F.name}` : `🗝️ ${L('Пещера', 'The cave')}`}</p><p class="lock">${inCave ? L(`${V.name} там! Подожди здесь — скоро ${V.name} выйдет 🙂`, `${V.name} is inside! Wait here — out soon 🙂`) : L('Это — когда гуляешь у себя 🙂', 'That’s for your own island 🙂')}</p>`;
-    el.hidden = false; return true;
+    const inCave = ISL.duo && ISL.duo.waitK === 'cave';
+    if(!V.hcv){ el.innerHTML = `<p>🗝️ ${L('Пещера', 'The cave')}</p><p class="lock">${L('Секундочку… 🙂', 'Just a moment… 🙂')}</p>`; el.hidden = false; return true; }
+    el.innerHTML = `<button class="btn">🗝️ ${inCave ? L(`В пещеру — там ${V.name}!`, `Into the cave — ${V.name} is there!`) : L('В пещеру', 'Into the cave')} ▶</button>`;
+    el.hidden = false; sfx.tick();
+    el.querySelector('button').addEventListener('click', e => { e.stopPropagation(); sfx.tap(); cvEnter(); });
+    return true;
   }
   if(o.npc || !o.k) return false;
   const g = IDU_GAME[o.k], ok = g && CO_GAMES[g] && (G || (!o.lock && vsGames().includes(g)));

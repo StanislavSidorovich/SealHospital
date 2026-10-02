@@ -1163,3 +1163,11 @@ body.ed-on .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 252px)}
 .ed-tb{position:absolute;z-index:4;display:flex;gap:8px;pointer-events:auto}
 .ed-tb button{width:52px;height:52px;border-radius:50%;border:2.5px solid var(--ink);background:var(--paper);box-shadow:0 3px 0 var(--ink);font-size:26px;line-height:1;padding:0;color:var(--ink)}
 .ed-tb button[data-a="turn"]{background:var(--pink);font-weight:800}
+/* 🚪 стучатся в дверь, пока занята; 📡 связь пропала, ждём (js/visit.js) */
+.door-badge,.vs-lost{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 62px);z-index:70;
+  min-height:44px;padding:0 16px;border:2.5px solid var(--ink);border-radius:22px;box-shadow:0 4px 0 var(--ink);
+  font:800 16px/40px Nunito,sans-serif;color:var(--ink);white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}
+.door-badge{background:#FFE3EC;cursor:pointer;animation:doorPing 1.4s ease-in-out infinite}
+@keyframes doorPing{50%{transform:translateX(-50%) scale(1.06)}}
+.door-badge:active{box-shadow:0 1px 0 var(--ink)}
+.vs-lost{background:#FFFDF8;pointer-events:none;opacity:.95}
