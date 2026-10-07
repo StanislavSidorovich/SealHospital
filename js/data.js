@@ -9,7 +9,7 @@ const store = {
 };
 
 /* ---------------- save ---------------- */
-// Всё сохранение живёт под одним ключом sh.save: {version, who, album, progress, muted, music, free, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story, storm, sl, pt, bg, isl, sw}.
+// Всё сохранение живёт под одним ключом sh.save: {version, who, album, progress, muted, music, free, fish, shells, owned, decor, shifts, pet, mail, home, adv, hol, sea, nb, coop, dive, st, story, storm, sl, pt, bg, isl, sw, lv}.
 // Новое поле: добавь значение по умолчанию в sanitize(); если меняется смысл старых
 // данных — подними SAVE_VERSION и добавь функцию в MIGRATIONS (индекс = версия «из»).
 // Игроки на устройстве (Фаза 11, часть 2): sh.players = [{id, name}], sh.player = кто играет сейчас. У каждого своё сохранение.
@@ -71,7 +71,20 @@ function sanitize(d){
     pt:sanitizePt(d.pt),            // 🐙🐻‍❄️ гости-пациенты (js/guests.js)
     bg:sanitizeBg(d.bg),            // 🎲 Игротека (js/boardgames.js)
     isl:sanitizeIsl(d.isl),         // 🗺️ прогулка по острову (js/island.js)
-    sw:sanitizeSwim(d.sw)};         // 🏊 заплыв (js/swimrace.js)
+    sw:sanitizeSwim(d.sw),          // 🏊 заплыв (js/swimrace.js)
+    lv:sanitizeLv(d.lv)};           // 🧱 свои уровни (js/builder.js)
+}
+// lv = {my:[{name, ic, p:[[кусок, x, z, поворот]], ok — сама прошла до флажка, bt — лучшее время, bs — лучшие звёзды}] — свои уровни (до 6),
+//       n — сколько раз дошли до флажка, day:{d, n — сколько уровней сегодня впервые прошли (ракушки за первые)}} (js/builder.js)
+function sanitizeLv(a){
+  a = a && typeof a === 'object' ? a : {};
+  const num = v => Number.isFinite(v) ? Math.max(0, v) : 0, dy = a.day && typeof a.day === 'object' ? a.day : {};
+  const piece = q => Array.isArray(q) && typeof q[0] === 'string' && /^[a-zA-Z]{1,2}$/.test(q[0]) && [1, 2, 3].every(k => Number.isFinite(q[k]));
+  const my = (Array.isArray(a.my) ? a.my : []).filter(v => v && typeof v === 'object').slice(0, 6).map(v => ({
+    name:typeof v.name === 'string' && v.name.trim() ? v.name.trim().slice(0, 16) : '🧱', ic:typeof v.ic === 'string' && v.ic ? v.ic.slice(0, 4) : '🧱',
+    p:(Array.isArray(v.p) ? v.p : []).filter(piece).slice(0, 80).map(q => [q[0], Math.round(q[1]*2)/2, Math.round(q[2]*2)/2, Math.round(q[3]*100)/100]),
+    ok:!!v.ok, bt:Math.round(num(v.bt)*10)/10, bs:Math.floor(num(v.bs))}));
+  return {my, n:Math.floor(num(a.n)), day:{d:typeof dy.d === 'string' ? dy.d.slice(0, 20) : '', n:Math.floor(num(dy.n))}};
 }
 // isl = {got:[номера найденных звёздочек острова], n — сколько раз гуляли по острову,
 //        cave:{keys, open, chest — буквы ключей r/b/y: найденные ключи, открытые двери, открытые сундуки; gem — номера 💎; n — сколько раз заходили}} (js/island.js, js/cave.js)

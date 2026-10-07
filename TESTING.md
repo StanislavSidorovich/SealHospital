@@ -186,6 +186,12 @@
 - Руками: `await homeEnter(); homeIdleT = 999; heToggle()` (или `#homeEditBtn`); состояние — `ED` (`sel`, `drag {key, from, p, ok}`, `undo`, `anim`), `HE.tab` (`mine|shop|paint`) + `heBarRender()`. Выбрать — `edSelect('rug_heart')`, кнопки над вещью — `#edTb [data-a="turn"|"box"]`, панель — `#edBar .ed-card[data-id]`, `[data-y]`/`[data-n]` (вопрос «купить?»), `.ed-sw[data-k="w"|"f"][data-id]`, `#edUndo`, `#edDone`. Тащить — мышь `down` на `toScreen(homeItems[id].getWorldPosition(new V3()))`, несколько `move`, `up` (порог — `ED_TAP` 12 px). Можно ли встать — `heOk(id, room, {x, z, r})`, свободное место — `heFree(id, room, near)`.
 - Камера редактора — `HE_CAM` (`dry` / `ocean`), подбирать: `Object.assign(HE_CAM.dry, {up, lift, p}); heView(true)`. Сбросить краски — `save.home.paint = {}; hePaint()`.
 
+## 🧱 Конструктор полосы (js/builder.js)
+
+- Целиком одной командой: `node tools/bdtest.js --shots` (≈1 мин, headless Edge 375×812): «Поиграть» → 🧱 → новый уровень из заготовки → кусок из панели, тащить, повернуть горку, ↩️ → ▶ стрелками и пробелом через воду до 🏁 (✅ и +3 🐚) → 🔁 → в воду сбоку (вынырнула) → пингвин толкает → ✏️ назад → поменяла кусок (снова не проверен) → без 🏁 не пускает → полка: ➕ и 🗑️ → домой → перезагрузка. Снимки — `tools/out/bd*.png`.
+- Руками: `funPre = 'build'; petDo('fun')` (без уровней сразу стройка, иначе полка `.bd-shelf`); `bdEdit(0)`, `bdPlay()`, `bdShelf()`. Состояние — `BD` (`mode` `shelf|edit|play|done`, `i`, `p` — куски уровня = `save.lv.my[i].p`, `items` — модельки, `cz` — куда смотрит камера стройки, `R` — прогулка, `safe`, `falls`, `got`). Кусок по ключу `'p' + номер` (`edSelect('p3')`, `BD_A.set('p0', {x, z, r})`). Панель — `.bd-bar [data-t="f"…]`, `[data-a="undo"|"shelf"|"play"]`. Можно ли встать — `bdOk(i, {x, z, r})`, высота мира — `bdGround(x, z)`.
+- В игре прыгать пробелом, идти стрелками. Над водой в прыжке `R.water` уже `true` — «упала» считаем только после приземления (`!R.air`).
+
 ## 🚪 Комнаты иглу и 🐾 «Ходить» (js/rooms.js, gameroom.js, trophyroom.js, homewalk.js)
 
 - Быстро: сохранение с малышом и `save.home.rooms = {games: 2, trophy: 2, ocean: 2}` → `await homeEnter(); await rmGo('games' | 'trophy')` (так делает `smoke.js`, режимы `games`, `trophy`, `homewalk`). Стройка: `rmOrder('games')` → `#rmBuy` (в `?test=1` строится сразу), «на завтра» — `save.home.build = {id:'games', d:'вчера'}` → `rmReady('games')`. Назад — `rmBack()` (океанариум — `ocBack()`). Комната стоит далеко: `RM.games.pos` x=320, `RM.trophy.pos` x=380.

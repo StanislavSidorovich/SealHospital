@@ -350,7 +350,7 @@ const STAT_NAMES = {hosp:['🏥 Больница', '🏥 Hospital'], pet:['🦭 
   run:['🏃 Забег', '🏃 Run'], road:['☁️ Дорога к Туче', '☁️ Road to the Cloud'], cloud:['⛈️ Бой с Тучей', '⛈️ Cloud battle'], gull:['🕊️ Чайка', '🕊️ Gull'],
   bay:['🌊 Потеряшка: Бухта', '🌊 Lost pup: Bay'], grot:['🕯️ Потеряшка: Грот', '🕯️ Lost pup: Grotto'], snow:['❄️ Потеряшка: Метель', '❄️ Lost pup: Blizzard'],
   dive:['🤿 Бухта под водой', '🤿 Underwater bay'], chase:['🦈 Салки с акулой', '🦈 Shark tag'], slide:['🛷 Ледяная горка', '🛷 Ice slide'], swim:['🏊 Заплыв', '🏊 Swim race'], gloom:['🌑 Мгла', '🌑 Gloom'],
-  ice:['🧊 Ледяной код', '🧊 Ice code'], visit:['🏝️ Остров в гостях', '🏝️ Island visit'], shop:['🛍️ Лавка', '🛍️ Shop'], mail:['✉️ Почта', '✉️ Mail'], book:['📖 Книга острова', '📖 Island book'], storm:['🌪️ Великий шторм', '🌪️ The Great Storm'], party:['🎉 Праздник острова', '🎉 Island party'], games:['🎲 Игротека', '🎲 Game shelf'], isle:['🗺️ Остров пешком', '🗺️ Island walk']};
+  ice:['🧊 Ледяной код', '🧊 Ice code'], visit:['🏝️ Остров в гостях', '🏝️ Island visit'], shop:['🛍️ Лавка', '🛍️ Shop'], mail:['✉️ Почта', '✉️ Mail'], book:['📖 Книга острова', '📖 Island book'], storm:['🌪️ Великий шторм', '🌪️ The Great Storm'], party:['🎉 Праздник острова', '🎉 Island party'], games:['🎲 Игротека', '🎲 Game shelf'], isle:['🗺️ Остров пешком', '🗺️ Island walk'], build:['🧱 Стройка', '🧱 Builder']};
 let statLastIn = -1e9, statAcc = 0, statWas = null;
 ['pointerdown', 'keydown'].forEach(e => addEventListener(e, () => statLastIn = performance.now(), {capture:true, passive:true}));
 const statDay = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -367,6 +367,7 @@ function statPlace(){
   if(b.contains('chase-on')) return 'chase';
   if(b.contains('slide-on')) return 'slide';
   if(b.contains('swim-on')) return 'swim';
+  if(b.contains('bd-on')) return 'build';
   if(b.contains('isle-on')) return 'isle';
   if(b.contains('ocean-on')) return 'ocean';
   if(b.contains('dive-on')) return 'dive';

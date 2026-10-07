@@ -1161,6 +1161,23 @@ body.ed-on .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 252px)}
 .ed-row .btn{flex:1;min-height:50px;font-size:19px;padding:4px 8px;margin:0;white-space:nowrap}
 .ed-row .btn.ghost{flex:0.85}
 .ed-tb{position:absolute;z-index:4;display:flex;gap:8px;pointer-events:auto}
+/* 🧱 стройка своей полосы (js/builder.js): та же кнопочная панель, что в «Обустроить», и полка уровней */
+body.bd-edit .ed-tb:not([hidden]){display:flex!important}
+.bd-bar{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);z-index:4;max-width:560px;margin:0 auto;
+  background:var(--paper);border:2.5px solid var(--ink);border-radius:22px;box-shadow:0 4px 0 var(--ink);padding:8px 8px 6px;box-sizing:border-box;pointer-events:auto}
+.bd-bar .ed-strip{height:92px}
+.bd-bar .ed-card{flex:0 0 74px;justify-content:center;gap:0}
+.bd-bar .ed-card b{font-size:30px;line-height:1.1}
+.bd-bar .ed-card small{font:700 10px/1.1 "Nunito",sans-serif;color:var(--soft);text-align:center}
+.bd-bar .ed-card.want{background:#FFF7DD;animation:pulse 1.1s ease-in-out infinite}
+.bd-name{margin:4px 2px 0;font-size:12.5px;font-weight:700;color:var(--soft);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bd-shelf h3,.bd-done h3{margin:0 0 8px;text-align:center}
+.bd-shelf .picks button{min-height:104px}
+.bd-del{position:absolute;top:-8px;right:-8px;width:34px;height:34px;border-radius:50%;border:2px solid var(--ink);background:var(--paper);font-style:normal;font-size:16px;line-height:30px;text-align:center}
+.bd-big{font-size:22px;text-align:center;margin:6px 0}
+.bd-done p{text-align:center}
+body.bd-on .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 200px)}
+
 .ed-tb button{width:52px;height:52px;border-radius:50%;border:2.5px solid var(--ink);background:var(--paper);box-shadow:0 3px 0 var(--ink);font-size:26px;line-height:1;padding:0;color:var(--ink)}
 .ed-tb button[data-a="turn"]{background:var(--pink);font-weight:800}
 /* 🚪 стучатся в дверь, пока занята; 📡 связь пропала, ждём (js/visit.js) */

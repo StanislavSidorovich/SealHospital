@@ -41,6 +41,8 @@ const MODES = {
   cave: { pet: 1, run: `save.owned.push('gball'); save.isl.cave.keys = ['r', 'b', 'y']; funPre = 'isle'; petDo('fun'); setTimeout(() => cvEnter(), 2500)`, wait: 3 },
   'isle-fish': { pet: 1, run: `funPre = 'isle'; petDo('fun'); setTimeout(() => { const o = islRoot.userData.fish[1]; ISL.R.pos.copy(o.pos); setTimeout(() => islFish(o), 600); }, 2500)`, wait: 3 },
   chase: { pet: 1, run: `funPre = 'chase'; petDo('fun')`, wait: 3 },
+  build: { pet: 1, run: `funPre = 'build'; petDo('fun')`, wait: 3 },   // 🧱 стройка: случайные касания двигают куски
+  'build-play': { pet: 1, run: `funPre = 'build'; petDo('fun'); setTimeout(() => bdPlay(), 2500)`, wait: 3 },
   'slide-race': { run: `${HIDE} slideGame('race')` },
   'slide-time': { run: `${HIDE} slideGame('time')` },
   'swim-race': { run: `${HIDE} swimGame('race')` },

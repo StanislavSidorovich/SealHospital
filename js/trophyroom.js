@@ -122,6 +122,7 @@ const TR_MEDALS = [
   {ic:'🎲', name:L('Игрок', 'Player'),            how:L('Выиграй 5 настольных игр', 'Win 5 board games'),            n:() => [Math.min(5, Object.values(save.bg.w).reduce((a, b) => a + b, 0)), 5]},
   {ic:'🛷', name:L('Ледяной гонщик', 'Ice racer'), how:L('Найди золотую ракушку на горке', 'Find the golden shell on the slide'), n:() => [save.sl.gold ? 1 : 0, 1]},
   {ic:'🏊', name:L('Пловец', 'Swimmer'),          how:L('Найди короткий путь черепахи в заплыве', 'Find the turtle\'s shortcut in the swim race'), n:() => [save.sw.sec ? 1 : 0, 1]},
+  {ic:'🧱', name:L('Строитель', 'Builder'),     how:L('Построй и пройди 3 своих уровня', 'Build and beat 3 levels of your own'), n:() => [Math.min(3, save.lv.my.filter(l => l.ok).length), 3]},
   {ic:'🦈', name:L('Друг акулы', 'Shark friend'), how:L('Подружись с акулой', 'Make friends with the shark'),          n:() => [save.dive.shark.friend ? 1 : 0, 1]},
   {ic:'☁️', name:L('Друг Тучи', 'Cloud friend'),  how:L('Вылечи Большую Тучу', 'Cure the Big Cloud'),               n:() => [save.coop.cs.cure >= 2 ? 1 : 0, 1]},
   {ic:'🌪️', name:L('Хранитель маяка', 'Lighthouse keeper'), how:L('Пройди Великий шторм', 'Get through the Great Storm'), n:() => [save.storm.st >= 4 ? 1 : 0, 1]},

@@ -105,7 +105,8 @@ async function petFun(s){
   if(k !== 'no'){ s.happyUntil = now + 99; setMood(s, 'happy'); }   // играть с тобой — радость, даже если голоден
   if(k === 'tricks'){ const t = await pickTrick(s); if(!t){ s.happyUntil = 0; return false; } funKind = 'tricks'; return TRICK_GAMES[t.id](s, t); }
   if(k === 'run'){ const lv = await advMap(); if(!lv){ s.happyUntil = 0; return false; } funKind = 'run'; return petRun(s, lv); }   // js/adventure.js
-  if(k === 'isle'){ funKind = 'isle'; return isleGo(s); }   // 🗺️ гуляем по острову сами (js/island.js)
+  if(k === 'isle'){ funKind = 'isle'; return isleGo(s); }
+  if(k === 'build'){ funKind = 'build'; return bdGo(s); }   // 🧱 свои уровни (js/builder.js)   // 🗺️ гуляем по острову сами (js/island.js)
   if(k === 'dive'){ funKind = 'dive'; return petDive(s); }   // подводная бухта (js/dive.js)
   if(k === 'chase'){ funKind = 'chase'; const r = await chaseGame(typeof pengMet === 'function' && pengMet() ? 'ping' : 'solo'); s.root.position.copy(PET_SPOT); s.happyUntil = r ? now + 3 : 0; return r ? undefined : false; }   // салки с акулой (js/chase.js), с Пингом, если знакомы
   if(k === 'swim'){ funKind = 'swim'; const r = await swimGame(); s.root.position.copy(PET_SPOT); s.happyUntil = r ? now + 3 : 0; return r ? undefined : false; }   // 🏊 заплыв (js/swimrace.js)
@@ -132,6 +133,7 @@ async function funMenu(s){
       ${typeof swimGame === 'function' ? `<button data-k="swim"><span class="ic">🏊</span><b>${L('Заплыв', 'Swim race')}</b><small>${L(`гладь и глубина · ${swTheme().ic}`, `waves and deep · ${swTheme().ic}`)}</small></button>` : ''}
       ${typeof petDive === 'function' ? `<button data-k="dive"${typeof chaseGame === 'function' ? '' : ' class="wide"'}><span class="ic">🤿</span><b>${L('Нырнуть', 'Dive')}</b><small>${L(`в гостях: ${dvDef(dvGuest()).name}`, `guest: ${dvDef(dvGuest()).name}`)}</small></button>` : ''}
       ${typeof chaseGame === 'function' ? `<button data-k="chase"><span class="ic">🦈</span><b>${L('Салки', 'Tag')}</b><small>${L(`с акулой · ${chTheme().ic} ${chTheme().name}`, `with the shark · ${chTheme().ic} ${chTheme().name}`)}</small></button>` : ''}
+      ${typeof bdGo === 'function' ? `<button data-k="build" class="wide"><span class="ic">🧱</span><b>${L('Стройка', 'Builder')}</b><small>${L(`своя полоса препятствий · ✅ ${save.lv.my.filter(l => l.ok).length}`, `your own obstacle course · ✅ ${save.lv.my.filter(l => l.ok).length}`)}</small></button>` : ''}
       ${typeof nbHere === 'function' && nbHere() ? `<button data-k="ping" class="wide"><span class="ic">🐧</span><b>${L('Мяч с Пингом', 'Ball with Ping')}</b><small>${L('втроём', 'all three')}</small></button>` : ''}
       ${typeof coopFromPet === 'function' ? `<button data-k="coop" class="wide"><span class="ic">☁️</span><b>${L('Вместе', 'Together')}</b><small>${L('с папой, другом или Пингом', 'with Dad, a friend or Ping')}</small></button>` : ''}
     </div>
@@ -159,13 +161,14 @@ async function funDice(panel){
   return bs[pick].dataset.k;
 }
 // что меняется после игры: гуляли — проголодался и испачкался сильнее
-const FUN_COST = {ball:{food:0.12, bath:0.25}, ping:{food:0.15, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}, run:{food:0.2, bath:0.3, sleep:0.2}, dive:{food:0.25, bath:0.15, sleep:0.2}, isle:{food:0.2, bath:0.3, sleep:0.15}, chase:{food:0.25, bath:0.15, sleep:0.2}, slide:{food:0.2, bath:0.3, sleep:0.2}, swim:{food:0.25, bath:0.1, sleep:0.2}};
+const FUN_COST = {ball:{food:0.12, bath:0.25}, ping:{food:0.15, bath:0.25}, walk:{food:0.25, bath:0.35, sleep:0.15}, tricks:{food:0.08, sleep:0.1}, run:{food:0.2, bath:0.3, sleep:0.2}, dive:{food:0.25, bath:0.15, sleep:0.2}, isle:{food:0.2, bath:0.3, sleep:0.15}, chase:{food:0.25, bath:0.15, sleep:0.2}, slide:{food:0.2, bath:0.3, sleep:0.2}, swim:{food:0.25, bath:0.1, sleep:0.2}, build:{food:0.15, bath:0.2, sleep:0.15}};
 const FUN_SAY = {
   ball: () => L(`${gg('Наигрался', 'Наигралась')}! И немножко ${gg('испачкался', 'испачкалась')} 🛁`, 'All played out! And a little bit dirty 🛁'),
   ping: () => L(`Вот это игра! ${save.pet.name} и Пинг — лучшие друзья 🐧`, `What a game! ${save.pet.name} and Ping are best friends 🐧`),
   walk: () => L(`${gg('Нагулялся', 'Нагулялась')}! Лапки в снегу — пора купаться 🛁`, 'What a walk! Paws full of snow — bath time 🛁'),
   dive: () => diveSay,
   isle: () => isleSay,   // 🗺️ прогулка по острову (js/island.js)
+  build: () => L(`Вот это полоса! ${save.pet.name} ${gg('набегался', 'набегалась')} по льдинкам 🧱`, `What a course! ${save.pet.name} ran all over the floes 🧱`),
   chase: () => L('Вот это салки! Акула застряла, а мы уплыли 🦈💨', 'What a game of tag! The shark got stuck and we got away 🦈💨'),
   swim: () => L(`Вот это заплыв! ${save.pet.name} ${gg('плавал', 'плавала')} как рыбка — и ${gg('проголодался', 'проголодалась')} 🐟`, `What a swim! ${save.pet.name} swam like a fish — and got hungry 🐟`),
   slide: () => L('Вжух! Вот это горка! Лапки в снегу — пора купаться 🛁', 'Whoosh! What a slide! Snowy flippers — bath time 🛁'),

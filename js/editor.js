@@ -10,8 +10,9 @@
      A.get(key) → {x, z, r};   A.put(key, p, lift) — показать вещь в точке p (lift — приподнята, пока тащим; в сохранение не пишет)
      A.set(key, p) — поставить по-настоящему и записать;   A.ok(key, p) → можно ли тут стоять;   A.snap(key, p) → p на сетке
      A.step(key) → шаг поворота в радианах (0 — не поворачивается);   A.ring(key, p) → {at:V3, r, q:кватернион или null, top:V3 — где кнопки}
-     A.save() → снимок для ↩️;   A.load(s) — вернуть снимок;   A.box(key) — убрать (в коробку);   A.yaw(dx, start) — провели по пустому
-     необязательные: A.sel(key) — выбрали (null — сняли), A.bad() — не получилось (тесно), A.moved(key) — вещь встала на новое место
+     A.save() → снимок для ↩️;   A.load(s) — вернуть снимок;   A.box(key) — убрать (в коробку);   A.yaw(dx, start, dy) — провели по пустому
+     необязательные: A.sel(key) — выбрали (null — сняли), A.bad() — не получилось (тесно), A.moved(key) — вещь встала на новое место,
+     A.boxIc — значок кнопки «убрать» (в конструкторе полосы — 🗑️)
    Подключается после homewalk.js и до homeedit.js. */
 const ED_TAP = 12, ED_UNDO = 30, ED_OK = 0xFF6F9F, ED_NO = 0xE2493B;
 let ED = null;   // {A, sel, dn, drag, undo, anim}
@@ -33,6 +34,8 @@ function edStart(A){
     $('#app').appendChild(tb);
   }
   tb.hidden = true;
+  const bx = tb.querySelector('[data-a="box"]'); bx.querySelector('span').textContent = A.boxIc || '📦';
+  bx.setAttribute('aria-label', A.boxIc ? L('Убрать', 'Remove') : L('Убрать в коробку', 'Put away'));
 }
 function edStop(){
   if(!ED) return;
@@ -83,7 +86,7 @@ function edDown(e){
   const A = ED.A, key = A.hit(e.clientX, e.clientY);
   ED.dn = {id:e.pointerId, x:e.clientX, y:e.clientY, key, moved:false, off:{x:0, z:0}};
   if(key){ const q = A.at(key, e.clientX, e.clientY), g = A.get(key); if(q) ED.dn.off = {x:g.x - q.x, z:g.z - q.z}; }
-  else A.yaw(0, true);
+  else A.yaw(0, true, 0);
   return true;
 }
 addEventListener('pointermove', e => {
@@ -95,7 +98,7 @@ addEventListener('pointermove', e => {
   }
   if(!d.moved) return;
   const g = ED.drag;
-  if(!g){ A.yaw(e.clientX - d.x, false); return; }
+  if(!g){ A.yaw(e.clientX - d.x, false, e.clientY - d.y); return; }
   const q = A.at(g.key, e.clientX, e.clientY); if(!q) return;
   const p = A.snap(g.key, {x:q.x + d.off.x, z:q.z + d.off.z, r:g.from.r});
   if(g.p && p.x === g.p.x && p.z === g.p.z) return;

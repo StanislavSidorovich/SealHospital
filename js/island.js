@@ -102,6 +102,7 @@ const ISL_PL = {
   dive:  {x:-17, z:32.6, at:[-17, 29], make:islPier, flat:true},
   chase: {x:12,  z:36,  make:islFin, water:true},
   swim:  {x:-3,  z:38,  make:islSwimStart, water:true},
+  build: {x:27,  z:-1,  make:g => islSign(g, '🧱')},
   storm: {x:33,  z:32.4, at:[33, 30], make:islLighthouse}
 };
 
@@ -497,7 +498,7 @@ async function islChat(o){
 
 /* ---------- прогулка ---------- */
 let ISL = null, isleSay = '', isleAt = null;   // isleAt — вернулись из игры: встаём там, откуда ушли
-const ISL_BACK = new Set(['walk', 'run', 'road', 'rescue', 'slide', 'dive', 'chase', 'swim', 'storm']);   // после этих игр возвращаемся на остров, к тому же знаку
+const ISL_BACK = new Set(['walk', 'run', 'road', 'rescue', 'slide', 'dive', 'chase', 'swim', 'storm', 'build']);   // после этих игр возвращаемся на остров, к тому же знаку
 // o.guest — в гостях у хозяйки острова (js/isleduo.js): свой тюлень, её звёздочки, в игры — только вместе; o.at — где появиться
 async function isleGo(s, o = {}){
   const G = !!o.guest, sv = save.isl, back = G ? null : isleAt; if(!G) isleAt = null;
