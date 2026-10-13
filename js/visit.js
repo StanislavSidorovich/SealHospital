@@ -30,7 +30,7 @@ if(!save.coop.visit) save.coop.visit = {n:0, d:''};   // Pages мог отдат
 let V = null;   // идёт визит: {role:'host'|'guest', ...}
 const vsW = p => PET_POS.clone().add(p);   // льдина → мир
 const vsSc = d => Math.min(VS_SC, d && d.coat ? STAGES[Math.min(SHINY, Math.max(0, d.stage | 0))].sc : VS_SC);
-const vsGames = () => ['build', 'slide', 'chase', 'dive', 'road', 'fight', 'rescue', 'storm', 'bg'].filter(g => CO_GAMES[g] && (g === 'build'   // 🧱 площадка хозяйки (js/buildduo.js)
+const vsGames = () => ['build', 'slide', 'swim', 'chase', 'dive', 'road', 'fight', 'rescue', 'storm', 'bg'].filter(g => CO_GAMES[g] && (g === 'build'   // 🧱 площадка хозяйки (js/buildduo.js)
   ? typeof bdGo === 'function' && (V && V.role === 'guest' || typeof stGate !== 'function' || stGate('build') < 0) : coGamesOn().includes(g)));
 const vsAng = (a, b) => ((b - a + Math.PI*3) % (Math.PI*2)) - Math.PI;   // кратчайший поворот от a к b
 function vsSeal(d, name){
@@ -172,7 +172,7 @@ function vsAskGame(g){
    У игр, где гость может быть с ней, — значок 👫; касание — «Вдвоём или сама?», вдвоём — сразу приглашение гостю.
    '' — место, а не игра: гость приходит туда сам (остров — isleduo.js, площадка — buildduo.js), спрашивать нечего.
    Плитка «Вместе» в визите — 🎮 выбор игры вдвоём (vsPick), а не новая комната. */
-const VS_FUN = {slide:'slide', chase:'chase', dive:'dive', isle:'', build:''};
+const VS_FUN = {slide:'slide', swim:'swim', chase:'chase', dive:'dive', isle:'', build:''};
 const vsFunOn = () => V && V.role === 'host' && !V.game;
 const vsFunDuo = k => k in VS_FUN && (VS_FUN[k] === '' || vsGames().includes(VS_FUN[k]));
 function vsFunMark(panel){

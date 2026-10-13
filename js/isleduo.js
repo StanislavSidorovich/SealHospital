@@ -20,7 +20,7 @@ const IDU_RIDE_R = 2.4;                // как близко подплыть, 
 const IDU_LIFT = 0.34;                 // насколько всплывает тот, кто везёт (иначе спинка под водой и наездник «сидит на воде»)
 const IDU_FAR = 14;                    // дальше — стрелка, где второй
 const IDU_PHOTO_R = 3.2;               // фото, когда стоите рядом на суше
-const IDU_GAME = {chase:'chase', dive:'dive', road:'road', rescue:'rescue', slide:'slide', storm:'storm'};   // знак на острове → игра вдвоём
+const IDU_GAME = {chase:'chase', dive:'dive', road:'road', rescue:'rescue', slide:'slide', swim:'swim', storm:'storm'};   // знак на острове → игра вдвоём
 const iduOn = () => !!(typeof V !== 'undefined' && V && typeof ISL !== 'undefined' && ISL && (ISL.guest || V.role === 'host'));
 const iduPal = () => V.role === 'host' ? V.s : V.pup;   // тюлень второго
 const iduMe = () => V.role === 'host' ? 'h' : 'g';

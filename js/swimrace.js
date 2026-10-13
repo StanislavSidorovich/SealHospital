@@ -9,7 +9,11 @@
    на спинке с ракушкой, 🐙 Клякса плывёт рывками и иногда «пшик» — «ой, прости!».
    Финиш — всегда праздник. Звёзды за своё: все обручи / короткий путь черепахи / 5 рывков в такт подряд;
    место — только весёлая табличка. Режимы: 🏁 с друзьями и ⏱️ на время (заплыв дня: тема и трасса каждый день свои).
-   Сохранение — save.sw (sanitizeSwim в data.js). Сеть с папой и эстафета — вторым заходом (план в ROADMAP).
+   Сохранение — save.sw (sanitizeSwim в data.js). Эстафета — потом (план в ROADMAP).
+   🌐 По сети с папой (13.10, как на горке): 'net' — хозяин шлёт трассу дня 'swgo' {seed, th} (гость ждёт, шлёт 'swready'),
+   у каждого свой пловец и своя физика, второго видно по 'swp' (10 раз/с), финиш — 'swf', «Ещё раз» решает хозяин ('swagain'),
+   'emo' — сердечко, 'bye' — ушёл. Начало у обоих одной длины, без «замедления-учёбы», чтобы стартовали вместе.
+   Вход: «Вместе» → «Заплыв» → 🌐, визит (vsGames), буйки на острове вдвоём (IDU_GAME), 👫 в «Поиграть» (VS_FUN).
    Подключается после slide.js и до story.js: берёт модели из dive.js, gloom.js, adventure.js, seal.js, coop.js. */
 const SW_POS = new V3(2600, 0, -2000);    // старт: далеко от других сцен
 const SW_DS = 0.5;                         // шаг, с которым считаем трассу (м)
@@ -261,13 +265,13 @@ function swBuildItems(){
 function swRider(kind, name, look){
   let root = new THREE.Group(), piv = new THREE.Group(), seal = null, lie = 0, dy = -0.28, anim = null;
   root.add(piv); root.rotation.order = 'YXZ';
-  if(look === 'me' || look.col){ seal = look === 'me' ? coSealOf(coPetDesc()) : makeSeal({name:'', f:false, color:look.col}); seal.root.scale.setScalar(SW_SC); piv.add(seal.root); seal.swimming = true; if(seal.bubble) seal.bubble.visible = false; }
+  if(look === 'me' || look.col || look.net){ seal = look === 'me' ? coSealOf(coPetDesc()) : look.net ? coSealOf(look.net.coat ? look.net : null) : makeSeal({name:'', f:false, color:look.col}); seal.root.scale.setScalar(SW_SC); piv.add(seal.root); seal.swimming = true; if(seal.bubble) seal.bubble.visible = false; }
   else if(look.pen){ seal = makePenguin(look.pen); seal.root.scale.setScalar(SW_SC*0.95); piv.add(seal.root); lie = 1.25; dy = -0.1; }
   else if(look.dv){ const o = DV_MAKE[look.dv](); o.rotation.y = -Math.PI/2; o.scale.setScalar(look.sc); piv.add(o); anim = o.userData.fl || null; dy = look.dy || 0; }
   else if(look.blot){ const o = glOctoModel(); o.scale.setScalar(0.5); o.position.y = -0.3; piv.add(o); dy = -0.1; }
   SW.grp.add(root);
   let lbl = null;
-  if(kind !== 'me'){ lbl = textSprite(name, '#3B8F5E'); lbl.scale.set(0.35 + name.length*0.16, 0.36, 1); SW.grp.add(lbl); }
+  if(kind !== 'me'){ lbl = textSprite(name, kind === 'net' ? '#3E8DB8' : '#3B8F5E'); lbl.scale.set(0.35 + name.length*0.16, 0.36, 1); SW.grp.add(lbl); }
   return {kind, name, look, root, piv, seal, lie, dy, anim, lbl, s:0, u:0, ut:0, y:0, yt:0, v:0, vy:0, air:false, dash:0, dashK:1, bump:0, spin:0, cur:null, weed:false,
     fin:0, ai:null, bubT:0, secT:0, shells:0};
 }
@@ -294,7 +298,8 @@ function swFriends(){
 
 /* ---------- состояние ---------- */
 let SW = null;
-const swAll = () => [SW.me, ...SW.bots];
+const swOwn = () => [SW.me, ...SW.bots];                          // кого считаем сами
+const swAll = () => SW.pal ? [...swOwn(), SW.pal] : swOwn();        // + напарник по сети (его шлёт он сам)
 // надпись над пловцом — чуть впереди по скорости, чтобы камера не наехала на неё
 const swFloat = (t, r, dy = 1.2, col) => floatText(t, swPt(r.s + 2.5 + r.v*1.1, r.u, Math.max(r.y, -0.2) + dy), col);
 function swSay(t, ms){ mgHint(t); setTimeout(() => { if(SW && mgHintEl.textContent === t) mgHint(''); }, ms); }
@@ -450,7 +455,7 @@ function swStep(dt0){
   if(C.st === 'go' || C.st === 'end'){
     C.t += dt;
     for(const b of C.bots) swAI(b, dt);
-    for(const r of swAll()) swBody(r, dt);
+    for(const r of swOwn()) swBody(r, dt);
     // ракушки — только свои
     const me = C.me;
     for(const sh of C.shells){
@@ -461,6 +466,12 @@ function swStep(dt0){
     const bn = Math.floor((C.t - C.t0)/SW_BEAT);
     if(C.st === 'go' && bn !== C.tickN){ C.tickN = bn; sfx.tick(); if(C.streak && bn - C.lastBeat > 2) C.streak = 0; }
   }
+  // по сети — шлём себя, напарника тянем к тому, что пришло
+  if(C.mode === 'net' && C.pal && (C.st === 'go' || C.st === 'end') && (C.sendT -= dt0) <= 0){
+    C.sendT = 0.1; const m = C.me; netSend({t:'swp', s:+m.s.toFixed(2), u:+m.u.toFixed(2), y:+m.y.toFixed(2), vy:+m.vy.toFixed(1), a:m.air ? 1 : 0, d:m.dash > 0 ? 1 : 0});
+  }
+  const pal = C.pal;
+  if(pal && !pal.gone){ const k = Math.min(1, dt0*10); pal.s += (pal.ns - pal.s)*k; pal.u += (pal.nu - pal.u)*k; pal.y += (pal.ny - pal.y)*k; pal.ut = pal.u; pal.yt = pal.y; }
   // рисуем
   for(const sh of C.shells) if(!sh.got && Math.abs(sh.s - C.me.s) < 40) sh.o.rotation.y += dt0*3;
   for(const c of C.crests){ c.o.position.y = SW_POS.y - 0.12 + Math.sin(now*2 + c.ph)*0.06; }
@@ -495,8 +506,8 @@ function swDraw(r, dt){
   if(r.seal){ const s = r.seal; s.flap = r.dash > 0 ? 1 : r.air ? 0.9 : 0.45; updateSeal(s, now, dt); }
   if(r.anim) r.anim.forEach((f, i) => f.rotation.y = Math.sin(now*(r.dash > 0 ? 14 : 8) + i)*0.5);
   const close = r !== SW.me && r.s < SW.me.s - 1 && r.s > SW.me.s - 11;   // сзади у самой камеры — не загораживать
-  r.root.visible = !close;
-  if(r.lbl){ swPt(r.s, r.u, r.y + 1.1, r.lbl.position); r.lbl.visible = !close && r.s > SW.me.s + 1.5 && r.s < SW.me.s + 28; }
+  r.root.visible = !close && !r.gone;
+  if(r.lbl){ swPt(r.s, r.u, r.y + 1.1, r.lbl.position); r.lbl.visible = !close && !r.gone && r.s > SW.me.s + 1.5 && r.s < SW.me.s + 28; }
   // пузырьки за ластами, брызги на глади
   if((r.bubT -= dt) < 0 && Math.abs(r.s - SW.me.s) < 22){
     r.bubT = r.dash > 0 ? 0.09 : 0.22;
@@ -572,6 +583,7 @@ function swFinish(r){
   for(let i = 0; i < 3; i++) setTimeout(() => { if(SW){ burst(TEX.star, p, 14, 2.6, 0.32); burst(TEX.heart, p, 6, 2, 0.28); } }, i*250);
   swFloat(L('Финиш!', 'Finish!'), r, 1.6, '#D9527E');
   if(r.seal){ r.seal.happyUntil = now + 5; setMood(r.seal, 'happy'); }
+  if(SW.mode === 'net') netSend({t:'swf', tm:+r.fin.toFixed(2)});
 }
 
 /* ---------- управление: держи палец и веди (влево-вправо, вверх — к глади, вниз — в глубину); касание — гребок ----------
@@ -614,8 +626,18 @@ function swControls(){
   });
 }
 
-/* ---------- сам заплыв: mode — 'race' (с друзьями) или 'time' (на время). Возвращает {res, again} или null ---------- */
-async function swimRun(mode){
+/* ---------- сеть ---------- */
+function swNetWire(){
+  netOn('swp', m => { const p = SW && SW.pal; if(!p) return; p.ns = m.s; p.nu = m.u; p.ny = m.y; p.vy = m.vy; p.air = !!m.a; p.dash = m.d ? 0.2 : 0; p.v = SW_V*(m.d ? SW_DASH_K : 1); });
+  netOn('swf', m => { const p = SW && SW.pal; if(p && !p.fin){ p.fin = m.tm; if(Math.abs(p.s - SW.me.s) < 30) swFloat(L('Ура!', 'Yay!'), p, 1.4, '#3E8DB8'); } });
+  netOn('emo', () => { if(SW && SW.pal){ burst(TEX.heart, SW.pal.root.position.clone().add(new V3(0, 0.9, 0)), 8, 1.6, 0.3); sfx.purr(); } });
+  netOn('bye', () => { if(!SW || !SW.pal) return; SW.pal.gone = true; toast(L('Напарник ушёл домой 👋', 'Your partner went home 👋')); });
+  net.onLost = () => { if(SW && SW.pal) SW.pal.lost = true; };
+  net.onBack = () => { if(SW && SW.pal){ SW.pal.lost = false; toast(L('Снова вместе! 💗', 'Together again! 💗')); } };
+}
+
+/* ---------- сам заплыв: mode — 'race' (с друзьями), 'time' (на время) или 'net' (с папой). Возвращает {res, again} или null ---------- */
+async function swimRun(mode, pal0){
   sfx.whoosh(); flash();
   const fog = scene.fog, bg = scene.background, fov = camera.fov;
   swRoot.visible = true; runCam.on = true; snow.visible = false;
@@ -624,10 +646,22 @@ async function swimRun(mode){
   homeB.innerHTML = '<span aria-hidden="true">🏠</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
   let done; const fin = new Promise(r => done = r);
   homeB.addEventListener('click', () => { sfx.tap(); done('quit'); });
-  const sv = save.sw, {seed, th} = swDay(), T = SW_DAYS[th];
-  SW = {mode, st:'ready', t:0, t0:0, T, seed, grp:new THREE.Group(), me:null, bots:[], hud:null, dots:[], sway:[], shells_:0, hoopsGot:0, leaps:0,
-    streak:0, best:0, good:0, lastBeat:-9, tickN:-1, sec:false, first:!sv.n, teach:!tipSeen('sw_leap'), taught:false, tips:new Set(), camY:1, under:null, teachN:0};
+  const sv = save.sw, net1 = mode === 'net';
+  let {seed, th} = swDay();
+  SW = {mode, st:'ready', t:0, t0:0, T:null, seed, grp:new THREE.Group(), me:null, bots:[], pal:null, hud:null, dots:[], sway:[], shells_:0, hoopsGot:0, leaps:0, sendT:0,
+    streak:0, best:0, good:0, lastBeat:-9, tickN:-1, sec:false, first:!sv.n && !net1, teach:!net1 && !tipSeen('sw_leap'), taught:false, tips:new Set(), camY:1, under:null, teachN:0};
   swRoot.add(SW.grp);
+  if(net1){   // трассу дня решает хозяин (у гостя мог быть другой день)
+    swNetWire();
+    if(net.host){ await Promise.race([new Promise(r => netOn('swready', r)), wait(8), fin]); netSend({t:'swgo', seed, th}); }
+    else {
+      const gm = new Promise(r => netOn('swgo', m => r(m))), iv = setInterval(() => netSend({t:'swready'}), 400);
+      netSend({t:'swready'}); const m = await Promise.race([gm, fin]); clearInterval(iv);
+      if(m && m.seed != null) seed = m.seed;
+      if(m && SW_DAYS[m.th]) th = m.th;
+    }
+  }
+  const T = SW.T = SW_DAYS[th]; SW.seed = seed;
   SW.L0 = swLayout(seed, SW.first, T.gap); SW.P = swPath(SW.L0);
   swBuildWorld(); swBuildItems();
   scene.fog = new THREE.Fog(T.fog, 40, 150); scene.background = new THREE.Color(T.sky);
@@ -635,6 +669,7 @@ async function swimRun(mode){
   camera.fov = camera.aspect < 1 ? 56 : 50; camera.updateProjectionMatrix();
   // пловцы на старте
   const me = SW.me = swRider('me', '', 'me'); me.s = 1.5;
+  if(net1){ const p = SW.pal = swRider('net', (pal0 && pal0.name) || L('Папа', 'Dad'), {net:pal0 || {}}); p.s = p.ns = 1.5; p.u = p.nu = net.host ? 1.2 : -1.2; me.u = me.ut = -p.u; p.ny = 0; }
   if(mode === 'race') swFriends().forEach((f, i) => {
     const b = swRider('bot', f.name, f.look); b.s = 3.2 + (i === 2 ? 1 : 0); b.u = b.ut = [-1.4, 1.4, 0][i]; b.y = b.yt = 0;
     b.ai = {id:f.id, pace:f.pace, skill:f.skill, tier:f.tier, bye:f.bye, mult:0, line:[-0.6, 0.6, 0][i], ph:i*2, lead:[3, 0, -2][i], did:new Set(), showT:5 + i*2, hopT:1 + i}; SW.bots.push(b); b.hi = f.hi;
@@ -642,13 +677,16 @@ async function swimRun(mode){
   mgOpen('', {hintBottom:true});
   SW.hud = mgNode('div', 'run-hud sl-hud sw-hud', `<span class="pill">🐚 <b class="sh">0</b></span><span class="pill">⭕ <b class="hp">0</b></span>${mode === 'time' ? '<span class="pill">⏱️ <b class="tm">0.0</b></span>' : '<span class="pill pl-pill"><b class="pl">1</b></span>'}<span class="bar"><i></i><span class="flag" aria-hidden="true">🏁</span></span>`);
   const bar = SW.hud.querySelector('.bar');
-  SW.dots = SW.bots.map(r => { const el = document.createElement('b'); el.className = 'sl-dot'; bar.appendChild(el); return [r, el]; });
+  SW.dots = [...SW.bots, SW.pal].filter(Boolean).map(r => { const el = document.createElement('b'); el.className = 'sl-dot' + (r.kind === 'net' ? ' net' : ''); bar.appendChild(el); return [r, el]; });
+  const btns = mgNode('div', 'co-btns', net1 ? `<button class="round co-heart" aria-label="${L('Сердечко напарнику', 'A heart for your partner')}">💗</button>` : '');
+  const hb = btns.querySelector('.co-heart');
+  if(hb) mgOn(hb, 'pointerdown', e => { e.stopPropagation(); burst(TEX.heart, SW.me.root.position.clone().add(new V3(0, 0.9, 0)), 8, 1.6, 0.3); sfx.purr(); netSend({t:'emo'}); });
   SW.beatEl = mgNode('div', 'sw-beat', '<i class="o"></i><i class="c"></i><b></b>'); SW.beatEl.hidden = true;
   swControls(); swStep(0); swHud();
   mgTick(dt => {
     swStep(dt);
     if(SW && SW.st === 'end' && !SW.over){
-      const wait4 = SW.mode === 'race' ? SW.bots.every(b => b.fin || b.s < SW.me.s - 45) : true;
+      const wait4 = SW.mode === 'race' ? SW.bots.every(b => b.fin || b.s < SW.me.s - 45) : SW.mode === 'net' ? !SW.pal || SW.pal.gone || SW.pal.fin : true;
       SW.endT = (SW.endT || 0) + dt;
       if(SW.endK >= 1 && (wait4 || SW.endT > 6) && SW.endT > 2.6){ SW.over = true; done('win'); }
     }
@@ -659,19 +697,21 @@ async function swimRun(mode){
   SW.bots.forEach((b, i) => setTimeout(() => { if(SW && SW.st === 'ready'){ floatText(b.hi, swPt(b.s + 0.5, b.u, 1.3 + i*0.35), '#3B8F5E'); sfx.tap(); } }, 300 + i*900));   // друзья здороваются
   await tick(SW.bots.length ? 3 : 2.4);
   if(mode === 'time'){ mgHint(L(`⏱️ На время! Цель дня — ${swGoal()} с${sv.bt ? `, рекорд — ${sv.bt} с` : ''}`, `⏱️ Against the clock! Today's goal is ${swGoal()} s${sv.bt ? `, your record is ${sv.bt} s` : ''}`)); await tick(2.4); }
-  if(SW.first || !tipSeen('sw_steer')){ tipDone('sw_steer'); mgHint(L('Держи палец и веди: вверх — к глади, вниз — в глубину ↕️', 'Hold and steer: up — to the top, down — to the deep ↕️')); await tick(3); }
-  if(SW.first || !tipSeen('sw_beat')){ tipDone('sw_beat'); mgHint(L('Жми, когда кружок сойдётся с малышом, — рывок ластами! В такт — ещё быстрее 〰️', 'Tap when the ring closes on your pup — a flipper dash! In rhythm — even faster 〰️')); await tick(3.4); }
+  if(net1) floatText(L('Поплыли вместе!', "Let's swim together!"), swPt(SW.pal.s + 0.5, SW.pal.u, 1.3), '#3E8DB8');   // по сети подсказки — обоим и одной длины: стартуем вместе
+  if(net1 || SW.first || !tipSeen('sw_steer')){ tipDone('sw_steer'); mgHint(L('Держи палец и веди: вверх — к глади, вниз — в глубину ↕️', 'Hold and steer: up — to the top, down — to the deep ↕️')); await tick(3); }
+  if(net1 || SW.first || !tipSeen('sw_beat')){ tipDone('sw_beat'); mgHint(L('Жми, когда кружок сойдётся с малышом, — рывок ластами! В такт — ещё быстрее 〰️', 'Tap when the ring closes on your pup — a flipper dash! In rhythm — even faster 〰️')); await tick(3.4); }
   for(const n of ['3', '2', '1']){ mgHint(n); sfx.tick(); await tick(0.5); }
   if(SW && SW.st === 'ready'){ SW.st = 'go'; SW.t0 = SW.t + SW_BEAT; mgHint(L('Поплыли! 🏊', 'Swim! 🏊')); sfx.arf(); for(const r of swAll()) r.v = 3; setTimeout(() => { if(SW && mgHintEl.textContent.includes('🏊')) mgHint(''); }, 1100); }
   const how = await fin;
+  if(how === 'quit' && net1) netSend({t:'bye'});
   let res = null, again = false;
   if(how === 'win'){
     res = swResults();
-    if(res.first || res.cup){   // фото на финише — в альбом (в первый раз и за кубок)
+    if(res.first || res.cup || net1){   // и с папой — на память   // фото на финише — в альбом (в первый раз и за кубок)
       try{ res.photo = snapshot({root:{position:SW.me.root.position.clone().add(new V3(0, -0.4, 0)), scale:{x:1}}}, 2.6);
         albumAdd({name:L('Заплыв', 'Swim race'), img:res.photo, d:Date.now()}); renderAlbumCount(); }catch(e){}
     }
-    mgHint(''); SW.hud.remove(); SW.beatEl.remove(); again = await swResultPanel(res);
+    mgHint(''); SW.hud.remove(); SW.beatEl.remove(); btns.remove(); again = await swResultPanel(res);
   }
   mgHint(''); mgClose();
   swRoot.remove(SW.grp);
@@ -691,7 +731,7 @@ function swResults(){
   const time = Math.round(me.fin*10)/10, goal = Math.round(C.L0.fin/(SW_V*1.12));
   const place = C.mode === 'time' ? 0 : swPlaceOf(me);
   const r = {mode:C.mode, time, goal, shells:C.shells_, total:C.total, hoops:C.hoopsGot, hoopsN:C.hoopsN, best:C.best, sec:C.sec, leaps:C.leaps, place, T:C.T, first:!sv.n,
-    others:C.mode === 'time' ? [] : C.bots.map(o => ({name:o.name, fin:o.fin, place:swPlaceOf(o)}))};
+    others:C.mode === 'time' ? [] : swAll().filter(o => o !== me && !o.gone).map(o => ({name:o.name, fin:o.fin, place:swPlaceOf(o)}))};
   r.st = [r.hoops >= r.hoopsN, r.sec, r.best >= SW_STREAK];
   r.stars = r.st.filter(Boolean).length;
   r.rec = !sv.bt || time < sv.bt; r.prev = sv.bt;
@@ -708,6 +748,7 @@ function swResults(){
   return r;
 }
 async function swResultPanel(r){
+  const net1 = r.mode === 'net';
   const st = '⭐'.repeat(r.stars) + '☆'.repeat(3 - r.stars);
   const who = r.others.length ? `<div class="sl-podium">${[{name:save.pet ? save.pet.name : L('Ты', 'You'), place:r.place, fin:r.time, me:true}, ...r.others].sort((a, b) => a.place - b.place)
     .map(o => `<span class="${o.me ? 'me' : ''}">${slPlaceIc(o.place)} ${o.name}${o.fin ? ` <small>${o.fin.toFixed(1)} ${L('с', 's')}</small>` : ''}</span>`).join('')}</div>` : '';
@@ -726,11 +767,17 @@ async function swResultPanel(r){
     ${r.photo ? `<img class="co-photo" src="${r.photo}" alt=""><p class="got">📷 ${L('Фото — в альбоме', 'The photo is in the album')}</p>` : ''}
     ${!r.paid ? `<p class="got">${L('Ракушки за заплыв на сегодня собраны — завтра будет новый 🌊', 'Today\'s swim shells are collected — a new swim tomorrow 🌊')}</p>` : ''}
     <p class="earned display">${r.gift ? `+${r.gift} 🐚` : ''}</p>
-    <div class="row"><button class="btn" data-k="home">${L('Домой 🏠', 'Home 🏠')}</button><button class="btn ghost" data-k="again">${L('Ещё раз ↻', 'Again ↻')}</button></div>`);
+    <p class="got co-wait" hidden></p>
+    <div class="row"><button class="btn" data-k="home">${L('Домой 🏠', 'Home 🏠')}</button>${!net1 || net.host ? `<button class="btn ghost" data-k="again">${L('Ещё раз ↻', 'Again ↻')}</button>` : ''}</div>`);
   if(r.gift) setTimeout(() => addShells(r.gift, {x:innerWidth/2, y:innerHeight*0.4}), 900);
   if(save.pet && typeof petGive === 'function' && petSeal) setTimeout(() => { try{ petGive(5); }catch(e){} }, 1500);
   sfx.hug(); if(r.stars === 3) setTimeout(() => sfx.star(), 500);
-  const k = await new Promise(res => panel.querySelectorAll('[data-k]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); res(b.dataset.k); })));
+  const k = await new Promise(res => {
+    panel.querySelectorAll('[data-k]').forEach(b => mgOn(b, 'click', () => { sfx.tap(); res(b.dataset.k); }));
+    if(net1 && !net.host){ const w = panel.querySelector('.co-wait'); w.hidden = false; w.textContent = L('Напарник решает: ещё раз или домой…', 'Your partner is deciding: again or home…'); netOn('swagain', () => res('again')); }
+    if(net1) netOn('bye', () => { const w = panel.querySelector('.co-wait'); w.hidden = false; w.textContent = L('Напарник ушёл домой 👋', 'Your partner went home 👋'); const ag = panel.querySelector('[data-k="again"]'); if(ag) ag.remove(); if(!net.host) res('home'); });
+  });
+  if(net1){ if(k === 'again' && net.host) netSend({t:'swagain'}); if(k === 'home') netSend({t:'bye'}); }
   panel.classList.add('away'); await wait(0.25);
   return k === 'again';
 }
@@ -754,20 +801,21 @@ async function swimPick(){
   return k === 'no' ? null : k;
 }
 // вход: из «Поиграть» у малыша (mode не задан — спросим), из «Вместе» (свои кнопки: race / time), из книги и с острова
-async function swimGame(mode = null){
+async function swimGame(mode = null, pal0 = null){
   if(!mode) mode = await swimPick();
   if(!mode) return null;
   let res = null;
   for(;;){
-    const r = await swimRun(mode);
+    const r = await swimRun(mode, pal0);
     if(!r) break;
     res = r.res;
     if(!r.again) break;
   }
+  if(mode === 'net') netClose();
   return res;
 }
 if(typeof CO_GAMES !== 'undefined') CO_GAMES.swim = {ic:'🏊', name:() => L('Заплыв', 'Swim'),
   say:() => { const T = swTheme(); return L(`Заплыв по морю: по глади с волнами или в глубине с течениями — путь выбираешь ${pg('сам', 'сама')}. Жми в такт — рывок ластами!`, 'A swim race at sea: on top with the waves or deep with the currents — you choose the way. Tap in rhythm for a flipper dash!')
     + ' ' + L(`Сегодня: ${T.ic} ${T.name}`, `Today: ${T.ic} ${T.name}`); },
-  picks:() => swPickHtml(),
+  picks:() => swPickHtml() + (typeof netAvail === 'function' && netAvail() ? `<button data-k="net" class="wide"><span class="ic">🌐</span><b>${L('По сети', 'Online')}</b><small>${L('с папой или другом', 'with Dad or a friend')}</small></button>` : ''),
   wins:() => { const c = save.sw; return c.day.d === swToday() && c.day.st ? `${'⭐'.repeat(c.day.st)} ${L('сегодня', 'today')}` : c.bt ? `⏱️ ${L(`Рекорд: ${c.bt} с`, `Record: ${c.bt} s`)}` : ''; }};

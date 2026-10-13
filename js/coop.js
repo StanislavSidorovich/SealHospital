@@ -645,7 +645,7 @@ function coopNetGo(game, pal){
   }
   if(g === 'bg' && typeof bgNet === 'function') return bgNet(pal);   // 🎲 Игротека: хозяин открывает свою коробку (js/boardgames.js)
   return g === 'rescue' ? rescueGame('net', pal) : g === 'road' && typeof roadGame === 'function' ? roadGame('net', pal)
-    : g === 'dive' && typeof diveNet === 'function' ? diveNet(pal) : g === 'storm' && typeof stormGame === 'function' ? stormGame('net', pal) : g === 'chase' && typeof chaseGame === 'function' ? chaseGame('net', pal) : g === 'slide' && typeof slideGame === 'function' ? slideGame('net', pal) : coopFight('net', pal);
+    : g === 'dive' && typeof diveNet === 'function' ? diveNet(pal) : g === 'storm' && typeof stormGame === 'function' ? stormGame('net', pal) : g === 'chase' && typeof chaseGame === 'function' ? chaseGame('net', pal) : g === 'slide' && typeof slideGame === 'function' ? slideGame('net', pal) : g === 'swim' && typeof swimGame === 'function' ? swimGame('net', pal) : coopFight('net', pal);
 }
 function coopPlay(pick){
   if(pick.game === 'visit') return visitGo(pick.mode);   // 🏝️ «Остров в гостях» (js/visit.js)
