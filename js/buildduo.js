@@ -10,7 +10,8 @@
      Сабрина может отменить ↩️. Любая правка снимает ✅ — пробежать снова.
    • Папа нажал «▶ Побежали?» — у Сабрины подсказка и мигает её ▶.
    Сеть: 'bdh' — хозяйка: режим (shelf|edit|play|done), номер уровня, сам уровень и его версия id, номер забега run, полка (при смене и раз в 2 с);
-   'bde' — правка гостя; 'bdp' — где мой тюлень в забеге (оба, 10 раз/с); 'bdf' — дошёл до 🏁; 'bdask' — «побежали?»; 'bdpick' — гость выбрал уровень на полке.
+   'bde' — правка гостя; 'bdp' — где мой тюлень в забеге (оба, 10 раз/с); 'bdf' — дошёл до 🏁; 'bdask' — «побежали?»; 'bdpick' — гость выбрал уровень на полке;
+   'bdg' — что я выбрала или тащу в стройке (оба; у второго — голубое кольцо, имя, кусок едет за пальцем — bduEditSync).
    Крючки: builder.js — bdGo(s, {guest}), bdStep → bduStep, bdDirty → bduSendEdit, bdFinish → bduFin / bduGuestFinish, bdHud → bduHudPill;
    visit.js — vsWire → bduWire, vsWhere → 'build', vsHostTick (на площадке гостя ведём здесь), vsStart('build') / vsPick → bdVisitGo, vsEnd;
    isleduo.js — iduTick и iduGuestEnter → bdGuestEnter, iduGoShow (знак 🧱 у гостя).
@@ -30,6 +31,7 @@ function bduWire(){
     q.p.copy(np); q.r = +m.r || 0; q.ix = +m.ix || 0; q.iy = +m.iy || 0; q.iz = +m.iz || 0; q.sw = !!m.sw; q.f = +m.f || 0; q.g = m.g | 0; q.run = m.run | 0; q.t = now;
   });
   netOn('bdf', bduRes);
+  netOn('bdg', m => { if(V) V.bg = {...m, at:now}; });   // что второй выбрал или тащит в стройке (bduEditSync)
   if(V.role === 'host'){
     netOn('bde', bduHostEdit);
     netOn('bdask', () => {
@@ -68,7 +70,8 @@ function bduStep(dt){
   else { bduGuestStep(dt); if(!BD || !BD.du) return; }
   if(D.run !== BD.run){ D.run = BD.run; if(D.pal && D.pal.run !== BD.run) D.pal = null; }
   bduPalStep(dt);
-  if(BD.R && (BD.mode === 'play' || BD.mode === 'done') && (D.sendT -= dt) <= 0){ D.sendT = BDU_SEND; bduSendPos(); }
+  bduEditSync(dt);
+  if(BD.R &&(BD.mode === 'play' || BD.mode === 'done') && (D.sendT -= dt) <= 0){ D.sendT = BDU_SEND; bduSendPos(); }
 }
 function bduStart(){
   const pal = bduPal(), host = V.role === 'host';
@@ -93,7 +96,36 @@ function bduEnd(){
   BD.du = null;
   if(D.own) scene.remove(D.lbl); else { D.lbl.scale.set(0.85, 0.32, 1); D.lbl.visible = false; }
   D.bar.remove();
+  BDU_RING.visible = false; if(D.gl) scene.remove(D.gl);
   const s = D.palS; s.root.visible = false; s.swimming = false; s.flap = 0; s.inner.rotation.set(0, 0, 0); s.inner.position.set(0, 0, 0);
+}
+/* ---------- ✏️ видно, что делает второй (13.10): что выбрал — голубое кольцо и имя, тащит — кусок едет за его пальцем ----------
+   'bdg' {i — номер куска (-1 — ничего), k — вид (сверяем: номера могли сдвинуться), d — тащит, x, z, r — где сейчас}; по-настоящему
+   кусок встаёт, когда придёт правка (bde/bdh), здесь — только вид. Шлём при перемене (не чаще BDU_SEND) и раз в секунду. */
+const BDU_RING = new THREE.Mesh(new THREE.RingGeometry(0.84, 1, 48), new THREE.MeshBasicMaterial({color:0x5FB3E0, transparent:true, opacity:0.9, depthTest:false, depthWrite:false, side:THREE.DoubleSide}));
+BDU_RING.renderOrder = 9; BDU_RING.visible = false; scene.add(BDU_RING);
+function bduEditSync(dt){
+  const D = BD.du, edit = BD.mode === 'edit' && edOn();
+  // своё
+  const k = edit ? (ED.drag ? ED.drag.key : ED.sel) : null, i = k ? bdIdx(k) : -1, q = i >= 0 ? BD.p[i] : null;
+  const p = !q ? null : ED.drag && ED.drag.p ? ED.drag.p : BD_A.get(k), drag = !!(ED && ED.drag && ED.drag.p);
+  const sig = q ? [i, q[0], +drag, p.x, p.z, p.r].join() : '-';
+  D.gT = (D.gT || 0) + dt; D.gSend = (D.gSend || 0) - dt;
+  if((sig !== D.gSig || D.gT > 1) && D.gSend <= 0){
+    D.gSig = sig; D.gT = 0; D.gSend = BDU_SEND;
+    netSend(q ? {t:'bdg', i, k:q[0], d:+drag, x:p.x, z:p.z, r:+p.r.toFixed(2)} : {t:'bdg', i:-1});
+  }
+  // второго
+  const g = V.bg, mine = ED && ED.drag ? bdIdx(ED.drag.key) : -1;
+  const ok = edit && g && now - g.at < 2.5 && g.i >= 0 && BD.p[g.i] && BD.p[g.i][0] === g.k;
+  if(D.gDrag != null && (!ok || !g.d || g.i !== D.gDrag)){ if(BD.items[D.gDrag] && mine !== D.gDrag && BD.p[D.gDrag]) bdPlace(D.gDrag); D.gDrag = null; }
+  if(!ok){ BDU_RING.visible = false; if(D.gl) D.gl.visible = false; return; }
+  const at = g.d ? {x:g.x, z:g.z, r:g.r} : BD_A.get(bdKey(g.i));
+  if(g.d && mine !== g.i){ bdPlace(g.i, at, 0.25); D.gDrag = g.i; }
+  const R = BD_A.ring(bdKey(g.i), at);
+  BDU_RING.position.copy(R.at).add(new V3(0, 0.02, 0)); BDU_RING.quaternion.copy(ED_FLAT); BDU_RING.scale.setScalar(R.r*(1 + Math.sin(now*5)*0.04)); BDU_RING.visible = true;
+  if(!D.gl){ D.gl = textSprite(`💙 ${V.name}`, '#3E8DB8'); D.gl.scale.set(2.4, 0.9, 1); scene.add(D.gl); }
+  D.gl.position.copy(R.top).add(new V3(0, 0.25, 0)); D.gl.visible = true;
 }
 // второй тюлень: в забеге — где он (плавно догоняет присланную точку), иначе ждёт на льдине старта рядом с нами
 function bduPalStep(dt){

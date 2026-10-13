@@ -99,6 +99,18 @@ const ok = (c, msg, info) => { console.log(`${c ? '✓' : '✗'} ${msg}${!c && i
   await guest.evaluate(() => { BD.sid = 'stale'; BD_A.set('p0', {x:-3, z:-1.5, r:0}); });
   await host.waitForTimeout(1200);
   ok(await host.evaluate(() => BD.p[0][1] === 0) && await guest.evaluate(() => BD.p[0][1] === 0), 'устаревшая правка папы отскочила — у обоих как у неё');
+  // видно, что второй выбрал и тащит (bdg): кольцо с именем, кусок едет за пальцем, отпустил — на месте
+  await guest.evaluate(() => { edSelect('p1'); }); await host.waitForTimeout(600);
+  ok(await host.evaluate(() => BDU_RING.visible && BD.du.gl && BD.du.gl.visible), 'папа выбрал кусок — у неё голубое кольцо и «💙 Пух»');
+  await guest.evaluate(() => { ED.drag = {key:'p1', from:BD_A.get('p1'), snap:BD_A.save(), p:{x:3, z:-4, r:0}, ok:true}; }); await host.waitForTimeout(600);
+  const dr = await host.evaluate(() => ({x:BD.items[1].position.x, y:BD.items[1].position.y, p:BD.p[1][1]}));
+  ok(dr.x === 3 && dr.p === 0, 'папа тащит — у неё кусок едет за его пальцем (только вид)', dr);
+  await host.screenshot({ path: shot('host-seedrag') });
+  await guest.evaluate(() => { ED.drag = null; edSelect(null); }); await host.waitForTimeout(800);
+  ok(await host.evaluate(() => !BDU_RING.visible && BD.items[1].position.x === BD.p[1][1]), 'отпустил без правки — кусок на месте, кольца нет');
+  await host.evaluate(() => { edSelect('p0'); ED.drag = {key:'p0', from:BD_A.get('p0'), snap:BD_A.save(), p:{x:-2.5, z:-1.5, r:0}, ok:true}; }); await guest.waitForTimeout(600);
+  ok(await guest.evaluate(() => BDU_RING.visible && BD.items[0].position.x === -2.5), 'и наоборот: Сабрина тащит — папа видит');
+  await host.evaluate(() => { ED.drag = null; edSelect(null); }); await guest.waitForTimeout(700);
   await guest.click('.bd-bar [data-a="play"]'); await host.waitForTimeout(300);
   ok(await host.evaluate(() => !!document.querySelector('.bd-bar [data-a="play"].bd-want')), '«▶ Побежали?» — у неё мигает ▶');
 
