@@ -5,6 +5,7 @@
 - Репозиторий: https://github.com/StanislavSidorovich/SealHospital (публичный)
 - Игра: https://stanislavsidorovich.github.io/SealHospital/ (GitHub Pages из `main`, корень). Название сменили 27.09.2026 (заголовок, `manifest.json`, `og:*`, `icons/og-image.png`), **адрес репозитория и Pages не менять** — сломаются ярлыки и ссылки у бабушки
 - Та же игра как Claude Artifact (закрытая ссылка): https://claude.ai/artifact/AJnS2tyrX2A1QSZPkddMTA
+- **Геймдизайн: [DESIGN.md](DESIGN.md)** — перед любой игровой задачей (новая игра, уровень, финал, механика, сюжетный момент, «вместе») пройди его чек-лист и банки идей; новые ловушки и приёмы дописывай туда.
 - План работ: [ROADMAP.md](ROADMAP.md) (готовые спринты и фазы — в [ROADMAP-archive.md](ROADMAP-archive.md), читать только при нужде). Прежде чем начинать задачу, посмотри текущую фазу и отмечай сделанные пункты `[x]`.
 
 ## Технологии
