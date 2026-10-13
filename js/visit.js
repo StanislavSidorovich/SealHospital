@@ -160,10 +160,48 @@ async function vsPick(){
     <div class="picks">${vsGames().map((g, i, a) => `<button data-k="${g}"${a.length % 2 && i === a.length - 1 ? ' class="wide"' : ''}><span class="ic">${CO_GAMES[g].ic}</span><b>${CO_GAMES[g].name()}</b></button>`).join('')}</div>
     <button class="btn ghost small" data-k="">${L('Потом', 'Later')}</button>`);
   if(!g || !V || V.game) return;
+  vsAskGame(g);
+}
+function vsAskGame(g){
   if(g === 'build' && V.role === 'host') return bdVisitGo();   // на свою площадку хозяйка идёт сразу — гость придёт следом
   if(V.inv){ netSend({t:'vyes', g:V.inv}); return vsStart(V.inv); }   // пока выбирали, второй позвал сам — идём к нему
   V.ask = g; V.askT = now; netSend({t:'vask', g});
   toast(L(`Позвали: ${CO_GAMES[g].ic} ${CO_GAMES[g].name()}! Ждём ответ…`, `Invited: ${CO_GAMES[g].ic} ${CO_GAMES[g].name()}! Waiting for an answer…`), 3000);
+}
+/* ---------- 👫 «Поиграть» у малыша во время визита (хвост «Всё вдвоём», 13.10) ----------
+   У игр, где гость может быть с ней, — значок 👫; касание — «Вдвоём или сама?», вдвоём — сразу приглашение гостю.
+   '' — место, а не игра: гость приходит туда сам (остров — isleduo.js, площадка — buildduo.js), спрашивать нечего.
+   Плитка «Вместе» в визите — 🎮 выбор игры вдвоём (vsPick), а не новая комната. */
+const VS_FUN = {slide:'slide', chase:'chase', dive:'dive', isle:'', build:''};
+const vsFunOn = () => V && V.role === 'host' && !V.game;
+const vsFunDuo = k => k in VS_FUN && (VS_FUN[k] === '' || vsGames().includes(VS_FUN[k]));
+function vsFunMark(panel){
+  if(!vsFunOn()) return;
+  panel.querySelectorAll('.picks [data-k]').forEach(b => {
+    if(vsFunDuo(b.dataset.k)) b.insertAdjacentHTML('beforeend', `<span class="vs-duo" aria-label="${L('можно вдвоём', 'for two')}">👫</span>`);
+  });
+  const c = panel.querySelector('.picks [data-k="coop"]');
+  if(c){ c.querySelector('.ic').textContent = '🎮'; c.querySelector('b').textContent = L('Играем вдвоём', 'Play together'); c.querySelector('small').textContent = L(`${V.name} в гостях`, `${V.name} is visiting`); }
+}
+// выбрали плитку: вернёт ту же k (играем сама) или 'vs:игра' ('vs:' — открыть 🎮 выбор)
+async function vsFunAsk(panel, k){
+  if(!vsFunOn()) return k;
+  if(k === 'coop') return 'vs:';
+  const g = VS_FUN[k];
+  if(!g || !vsFunDuo(k)) return k;
+  panel.innerHTML = `<p class="ttl display">${CO_GAMES[g].ic} ${CO_GAMES[g].name()}</p>
+    <p class="got">${L(`${V.name} в гостях. Играем вдвоём?`, `${V.name} is visiting. Play together?`)}</p>
+    <div class="row col"><button class="btn" data-k="duo">👫 ${L('Вдвоём!', 'Together!')}</button><button class="btn ghost" data-k="solo">🦭 ${L(pg('Сам', 'Сама'), 'Just me')}</button></div>`;
+  const a = await new Promise(r => panel.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
+  return a === 'duo' ? 'vs:' + g : k;
+}
+// после «Поиграть» (petDo ещё держит busy) — ждём спокойную минуту и зовём гостя
+async function vsAfterFun(g){
+  for(let i = 0; i < 50 && V && !vsCanUi(); i++) await wait(0.1);
+  if(!V || V.game) return;
+  if(!g) return vsPick();
+  if(V.ask) return toast(L('Уже позвали — ждём ответ ✨', 'Already asked — waiting for an answer ✨'));
+  vsAskGame(g);
 }
 // панель поверх уголка (хозяйка) или острова (гость); ответ — data-k нажатой кнопки
 async function vsPanel(html){

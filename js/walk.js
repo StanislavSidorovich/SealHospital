@@ -102,6 +102,7 @@ async function petFun(s){
   focusCam(worldOf(s, new V3(0, -0.3, 0)), 2.6*petK(), 0.9);
   let k = funPre; funPre = null;
   if(!k) k = await funMenu(s);
+  if(k.startsWith('vs:')){ vsAfterFun(k.slice(3)); return false; }   // 👫 в гостях — зовём гостя (js/visit.js)
   if(k !== 'no'){ s.happyUntil = now + 99; setMood(s, 'happy'); }   // играть с тобой — радость, даже если голоден
   if(k === 'tricks'){ const t = await pickTrick(s); if(!t){ s.happyUntil = 0; return false; } funKind = 'tricks'; return TRICK_GAMES[t.id](s, t); }
   if(k === 'run'){ const lv = await advMap(); if(!lv){ s.happyUntil = 0; return false; } funKind = 'run'; return petRun(s, lv); }   // js/adventure.js
@@ -141,9 +142,11 @@ async function funMenu(s){
   if(newFind) panel.querySelector('[data-k="walk"]').classList.add('new');
   if(typeof stMarkPicks === 'function') stMarkPicks(panel);   // 📖 — куда ведёт история (js/story.js)
   if(typeof stLockPicks === 'function') stLockPicks(panel);   // 🔒 — до этих игр история ещё не дошла
+  if(typeof vsFunMark === 'function') vsFunMark(panel);   // 👫 — можно вдвоём с гостем (js/visit.js)
   const pb = panel.querySelector('[data-k="ping"]'); if(pb && nbQuest().id === 'ball' && !nbQuest().ok) pb.classList.add('new');   // Пинг сегодня просил
   let k = await new Promise(r => panel.querySelectorAll('button').forEach(b => mgOn(b, 'click', () => { sfx.tap(); r(b.dataset.k); })));
   if(k === 'dice') k = await funDice(panel);
+  if(typeof vsFunAsk === 'function') k = await vsFunAsk(panel, k);   // 👫 в гостях: вдвоём или сама? (js/visit.js)
   panel.classList.add('away'); await wait(0.25); mgClose();
   return k;
 }
