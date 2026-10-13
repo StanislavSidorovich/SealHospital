@@ -75,16 +75,20 @@ function sanitize(d){
     lv:sanitizeLv(d.lv)};           // 🧱 свои уровни (js/builder.js)
 }
 // lv = {my:[{name, ic, p:[[кусок, x, z, поворот]], ok — сама прошла до флажка, bt — лучшее время, bs — лучшие звёзды}] — свои уровни (до 6),
+//       got:[{name, ic, from, p, ok, bt, bs, nw — ещё не открывали}] — 📬 присланные ссылкой ?lv= (до 6, новые сверху),
 //       n — сколько раз дошли до флажка, day:{d, n — сколько уровней сегодня впервые прошли (ракушки за первые)}} (js/builder.js)
 function sanitizeLv(a){
   a = a && typeof a === 'object' ? a : {};
   const num = v => Number.isFinite(v) ? Math.max(0, v) : 0, dy = a.day && typeof a.day === 'object' ? a.day : {};
   const piece = q => Array.isArray(q) && typeof q[0] === 'string' && /^[a-zA-Z]{1,2}$/.test(q[0]) && [1, 2, 3].every(k => Number.isFinite(q[k]));
-  const my = (Array.isArray(a.my) ? a.my : []).filter(v => v && typeof v === 'object').slice(0, 6).map(v => ({
+  const lvl = v => ({
     name:typeof v.name === 'string' && v.name.trim() ? v.name.trim().slice(0, 16) : '🧱', ic:typeof v.ic === 'string' && v.ic ? v.ic.slice(0, 4) : '🧱',
     p:(Array.isArray(v.p) ? v.p : []).filter(piece).slice(0, 80).map(q => [q[0], Math.round(q[1]*2)/2, Math.round(q[2]*2)/2, Math.round(q[3]*100)/100]),
-    ok:!!v.ok, bt:Math.round(num(v.bt)*10)/10, bs:Math.floor(num(v.bs))}));
-  return {my, n:Math.floor(num(a.n)), day:{d:typeof dy.d === 'string' ? dy.d.slice(0, 20) : '', n:Math.floor(num(dy.n))}};
+    ok:!!v.ok, bt:Math.round(num(v.bt)*10)/10, bs:Math.floor(num(v.bs))});
+  const list = v => (Array.isArray(v) ? v : []).filter(v => v && typeof v === 'object').slice(0, 6);
+  const my = list(a.my).map(lvl);
+  const got = list(a.got).map(v => ({...lvl(v), from:typeof v.from === 'string' ? v.from.slice(0, 16) : '', nw:!!v.nw})).filter(v => v.p.length);
+  return {my, got, n:Math.floor(num(a.n)), day:{d:typeof dy.d === 'string' ? dy.d.slice(0, 20) : '', n:Math.floor(num(dy.n))}};
 }
 // isl = {got:[номера найденных звёздочек острова], n — сколько раз гуляли по острову,
 //        cave:{keys, open, chest — буквы ключей r/b/y: найденные ключи, открытые двери, открытые сундуки; gem — номера 💎; n — сколько раз заходили}} (js/island.js, js/cave.js)

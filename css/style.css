@@ -1196,3 +1196,7 @@ body.talk-on .bd-duo{visibility:hidden}
 @keyframes doorPing{50%{transform:translateX(-50%) scale(1.06)}}
 .door-badge:active{box-shadow:0 1px 0 var(--ink)}
 .vs-lost{background:#FFFDF8;pointer-events:none;opacity:.95}
+.bd-send{position:absolute;bottom:-8px;right:-8px;width:34px;height:34px;border-radius:50%;border:2px solid var(--ink);background:#DDF5EA;font-style:normal;font-size:16px;line-height:30px;text-align:center}   /* 🔗 уровень ссылкой (builder.js) */
+.bd-tip{margin:2px 0 8px;font-size:13px;font-weight:700;color:var(--soft);text-align:center}
+.bd-link{width:100%;font:600 13px/1.35 "Nunito",sans-serif;border:2px solid var(--ink);border-radius:12px;padding:8px;resize:none;box-sizing:border-box}
+.bd-del.bd-del-b{top:auto;bottom:-8px}   /* у присланного сверху — ✨ «новый» */

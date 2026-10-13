@@ -12,7 +12,8 @@
    Новый кусок — строчка в BD_KIT + модель в BD_MAKE (+ что делает — в bdPlayStep).
    Сохранение — save.lv = {my:[{name, ic, p:[[кусок, x, z, поворот]], ok, bt, bs}], n, day:{d, n}} (sanitizeLv в data.js).
    Вдвоём (заход 3): папа в гостях идёт за Сабриной на площадку сам — js/buildduo.js (BD.guest — у гостя: уровень хозяйки в BD.hl,
-   своё сохранение не трогаем). Подключается после homeedit.js и island.js (берёт islPadMake, islCyl, islBlob). Дальше: ссылка ?lv=. */
+   своё сохранение не трогаем). Подключается после homeedit.js, island.js и icecode.js (берёт islPadMake, islCyl, islBlob, iceShare).
+   🔗 Ссылка ?lv= и полка «📬 Мне прислали» — ниже, у bdPack. */
 const BD_POS = new V3(1400, 0, -1400);
 const BD_X = 6, BD_Z0 = 3, BD_Z1 = -33;          // площадка: x от −6 до 6, z от 3 (старт, к камере) до −33 (вдаль)
 const BD_STEP = 0.5, BD_TURN = Math.PI/2;
@@ -39,7 +40,7 @@ const BD_TEMPLATE = () => [['f', 0, -1.5, 0], ['st', 0, -4, 0], ['g', 0, -6.5, 0
 const bdRoot = new THREE.Group(); bdRoot.position.copy(BD_POS); bdRoot.visible = false; scene.add(bdRoot);
 const bdPieces = new THREE.Group(); bdRoot.add(bdPieces);
 let BD = null;   // {s, mode:'shelf'|'edit'|'play'|'done', i, cz, items, …}
-const bdLv = () => BD && (BD.guest ? BD.hl : save.lv.my[BD.i]);   // у гостя — уровень хозяйки (js/buildduo.js)
+const bdLv = () => BD && (BD.guest ? BD.hl : BD.gi >= 0 ? save.lv.got[BD.gi] : save.lv.my[BD.i]);   // у гостя — уровень хозяйки (js/buildduo.js), BD.gi — присланный (📬)
 const bdKey = i => 'p' + i, bdIdx = k => +k.slice(1);
 const bdExt = q => { const K = BD_KIT[q[0]], side = Math.abs(Math.sin(q[3])) > 0.5; return side ? [K.hz, K.hx] : [K.hx, K.hz]; };
 
@@ -263,19 +264,19 @@ async function bdGo(s, o = {}){
   document.body.classList.add('run-on', 'bd-on');
   if(s.bubble) s.bubble.visible = false;
   setMood(s, 'happy');
-  BD = {s, guest:G, hl:null, sid:'', run:0, mode:null, i:-1, p:[], items:[], cz:-5, cz0:-5, mpp:0.04, badT:-9, played:false, cam:new V3(), look:new V3(), camOn:false, off:[], cam0};
+  BD = {s, guest:G, hl:null, gi:-1, sid:'', run:0, mode:null, i:-1, p:[], items:[], cz:-5, cz0:-5, mpp:0.04, badT:-9, played:false, cam:new V3(), look:new V3(), camOn:false, off:[], cam0};
   mgOpen('');
   const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home'; $('#corner').prepend(homeB); BD.homeB = homeB;
   // выходим сразу, а не на следующем шаге: у гостя визит может кончиться, и следом откроется другое окно
   let done; const fin = new Promise(r => done = r);
   BD.done = k => { if(!BD || BD.out) return; BD.out = true; done(bdQuit()); };
-  homeB.addEventListener('click', () => { if(!BD) return; if(G) return vsByeTap(); sfx.tap(); if(BD.mode === 'play' || BD.mode === 'done') bdEdit(BD.i); else BD.done(); });
+  homeB.addEventListener('click', () => { if(!BD) return; if(G) return vsByeTap(); sfx.tap(); if(BD.gi >= 0) bdShelf(); else if(BD.mode === 'play' || BD.mode === 'done') bdEdit(BD.i); else BD.done(); });
   mgOn(mgRoot, 'pointerdown', e => {
     if(!BD || BD.mode !== 'edit' || (e.target.closest && e.target.closest('button, .bd-bar, .mg-panel'))) return;
     edDown(e);
   });
   mgTick(dt => { if(BD) bdStep(dt); });
-  if(G) bduWait(); else if(!save.lv.my.length) bdNew(); else bdShelf();
+  if(G) bduWait(); else if(!save.lv.my.length && !save.lv.got.length) bdNew(); else bdShelf();   // прислали уровень — сначала полка, где он лежит
   return await fin;
 }
 function bdQuit(){
@@ -311,20 +312,26 @@ function bdLvSmall(lv){
 const bdSec = t => L(`${Math.round(t)} с`, `${Math.round(t)} s`);
 function bdShelf(){
   bdPlayStop(); edStop(); bdClear();
-  BD.mode = 'shelf'; BD.i = -1; BD.p = []; bdRebuild(); bdPupHome(); bdHomeIc();
+  BD.mode = 'shelf'; BD.i = -1; BD.gi = -1; BD.p = []; bdRebuild(); bdPupHome(); bdHomeIc();
   document.body.classList.remove('bd-edit'); bdRoot.userData.grid.visible = bdRoot.userData.edge.visible = true;
   mgHint('');
-  const my = save.lv.my;
+  const my = save.lv.my, got = save.lv.got;
   const el = mgNode('div', 'mg-panel bd-shelf', `
     <h3>🧱 ${L('Мои уровни', 'My levels')}</h3>
     <div class="picks">
-      ${my.map((lv, i) => `<button data-i="${i}"><span class="ic">${lv.ic}</span><b>${stEsc(lv.name)}</b><small>${bdLvSmall(lv)}</small><i class="bd-del" data-del="${i}" role="button" aria-label="${L('Убрать уровень', 'Remove level')}">🗑️</i>${lv.ok ? `<i class="bd-run" data-run="${i}" role="button" aria-label="${L('Сразу бежать', 'Play now')}">▶</i>` : ''}</button>`).join('')}
+      ${my.map((lv, i) => `<button data-i="${i}"><span class="ic">${lv.ic}</span><b>${stEsc(lv.name)}</b><small>${bdLvSmall(lv)}</small><i class="bd-del" data-del="${i}" role="button" aria-label="${L('Убрать уровень', 'Remove level')}">🗑️</i>${lv.ok ? `<i class="bd-run" data-run="${i}" role="button" aria-label="${L('Сразу бежать', 'Play now')}">▶</i><i class="bd-send" data-send="${i}" role="button" aria-label="${L('Отправить ссылкой', 'Send as a link')}">📤</i>` : ''}</button>`).join('')}
       ${my.length < BD_LV ? `<button data-k="new"><span class="ic">➕</span><b>${L('Новый', 'New')}</b><small>${L('построить полосу', 'build a course')}</small></button>` : ''}
     </div>
+    ${my.some(l => l.ok) ? `<p class="bd-tip">📤 ${L('— отправить ✅ уровень папе или подружке ссылкой', '— send a ✅ level to Dad or a friend as a link')}</p>` : ''}
+    ${got.length ? `<h3>📬 ${L('Мне прислали', 'Sent to me')}</h3>
+    <div class="picks">${got.map((lv, j) => `<button data-g="${j}"${lv.nw ? ' class="new"' : ''}><span class="ic">${lv.ic}</span><b>${stEsc(lv.name)}</b><small>${lv.from ? `${L('от', 'from')} ${stEsc(lv.from)} · ` : ''}${lv.ok ? `✅ ⏱ ${bdSec(lv.bt)}` : L('▶ пройди!', '▶ beat it!')}</small><i class="bd-del bd-del-b" data-gdel="${j}" role="button" aria-label="${L('Убрать уровень', 'Remove level')}">🗑️</i></button>`).join('')}</div>` : ''}
     <div class="row"><button class="btn ghost small" data-k="out">🏠 ${L('Домой', 'Home')}</button></div>`);
   el.querySelectorAll('button').forEach(b => b.addEventListener('click', e => {
-    const del = e.target.closest('[data-del]'), run = e.target.closest('[data-run]');
+    const del = e.target.closest('[data-del]'), run = e.target.closest('[data-run]'), send = e.target.closest('[data-send]'), gdel = e.target.closest('[data-gdel]');
     sfx.tap();
+    if(gdel){ save.lv.got.splice(+gdel.dataset.gdel, 1); persist(); sfx.plop(); return bdShelf(); }
+    if(b.dataset.g != null) return bdGotPlay(+b.dataset.g);
+    if(send) return bdSend(+send.dataset.send);
     if(del) return bdAskDel(+del.dataset.del);
     if(run){ bdEdit(+run.dataset.run); return bdPlay(); }   // ✅ уровень — сразу бежать (с папой в гостях — вместе)
     if(b.dataset.k === 'out') return BD.done();
@@ -332,6 +339,77 @@ function bdShelf(){
     bdEdit(+b.dataset.i);
   }));
 }
+/* ---------- 🔗 уровень ссылкой (…/?lv=КОД&n=имя&i=значок&from=кто) и полка «📬 Мне прислали» ----------
+   Отправить можно только ✅ уровень (правило Mario Maker: автор сам дошёл до 🏁). Код — 3 знака на кусок:
+   вид и поворот, потом клетка (x, z по 0,5 м); первая «1» — версия, последняя — контрольная сумма (опечатку не примем).
+   Пришла ссылка — уровень ложится в save.lv.got (до BD_LV, новые сверху, тот же — не дублируем), его можно пройти
+   (ракушки за первый проход — как за свой, в тот же дневной счёт), но не строить. В визите вдвоём присланные пока не бегаем. */
+const BD_B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const BD_ZN = Math.round((BD_Z0 - BD_Z1)*2) + 1;   // клеток по z
+function bdPack(p){
+  let out = '', sum = 0;
+  for(const q of p){
+    const t = BD_ORDER.indexOf(q[0]); if(t < 0) continue;
+    const r = ((Math.round(q[3]/BD_TURN) % 4) + 4) % 4;
+    const xi = Math.max(0, Math.min(BD_X*4, Math.round((q[1] + BD_X)*2))), zi = Math.max(0, Math.min(BD_ZN - 1, Math.round((q[2] - BD_Z1)*2)));
+    const n = xi*BD_ZN + zi;
+    for(const k of [t*4 + r, n >> 6, n & 63]){ out += BD_B64[k]; sum += k; }
+  }
+  return '1' + out + BD_B64[sum % 64];
+}
+function bdUnpack(code){
+  code = String(code || '').trim();
+  if(code[0] !== '1' || (code.length - 2) % 3 || code.length < 5) return null;
+  const ks = [...code.slice(1)].map(ch => BD_B64.indexOf(ch)); if(ks.some(k => k < 0)) return null;
+  const chk = ks.pop(); if(ks.reduce((a, b) => a + b, 0) % 64 !== chk) return null;
+  const p = [];
+  for(let i = 0; i < ks.length; i += 3){
+    const t = BD_ORDER[ks[i] >> 2], n = ks[i + 1]*64 + ks[i + 2]; if(!t) return null;
+    p.push([t, Math.floor(n/BD_ZN)/2 - BD_X, (n % BD_ZN)/2 + BD_Z1, Math.round((ks[i] & 3)*BD_TURN*100)/100]);
+  }
+  return p.length <= BD_MAX && p.some(q => q[0] === 'g') ? p : null;
+}
+function bdLink(lv){
+  const base = /github\.io$|^localhost$|^127\./.test(location.hostname) ? location.origin + location.pathname : 'https://stanislavsidorovich.github.io/SealHospital/';
+  const e = encodeURIComponent;
+  return `${base}?lv=${bdPack(lv.p)}&n=${e(lv.name.slice(0, 16))}&i=${e(lv.ic)}&from=${e(pname().slice(0, 16))}${LANG === 'en' ? '&lang=en' : ''}`;
+}
+async function bdSend(i){
+  const lv = save.lv.my[i]; if(!lv || !lv.ok) return;
+  const link = bdLink(lv), text = L(`🧱 Пройди мой уровень «${lv.name}» на Тюленьем острове! ${link}`, `🧱 Beat my level “${lv.name}” on Seal Island! ${link}`);
+  const r = await iceShare(text);
+  if(r === 'copied') toast(L('Ссылка скопирована — вставь её в сообщение 📋', 'Link copied — paste it into a message 📋'), 3200);
+  else if(r === 'manual'){
+    bdClear();
+    const el = mgNode('div', 'mg-panel bd-shelf', `<h3>📤 ${L('Ссылка на уровень', 'Level link')}</h3>
+      <textarea class="bd-link" readonly rows="4">${stEsc(text)}</textarea>
+      <div class="row"><button class="btn" data-k="ok">${L('Готово', 'Done')}</button></div>`);
+    const ta = el.querySelector('textarea'); ta.addEventListener('focus', () => ta.select());
+    el.querySelector('button').addEventListener('click', () => { sfx.tap(); bdShelf(); });
+  }
+}
+function bdGotPlay(j){
+  const lv = save.lv.got[j]; if(!lv) return;
+  if(typeof V !== 'undefined' && V){ sfx.bad(); return toast(L('Присланные уровни — пока без гостей. Побегайте по твоим 🧱', 'Sent levels are solo for now. Run one of yours together 🧱'), 3200); }
+  if(lv.nw){ lv.nw = false; persist(); }
+  bdClear(); BD.i = -1; BD.gi = j; BD.p = lv.p.map(q => q.slice()); bdRebuild();
+  bdPlay();
+}
+// пришла ссылка …/?lv=КОД — кладём на полку «📬 Мне прислали»
+(function bdFromUrl(){
+  const q = new URLSearchParams(location.search), c = q.get('lv');
+  if(!c) return;
+  try{ const u = new URL(location.href); ['lv', 'n', 'i', 'from'].forEach(k => u.searchParams.delete(k)); history.replaceState(null, '', u.href); }catch(e){}
+  const p = bdUnpack(c);
+  if(!p) return setTimeout(() => toast(L('Этот уровень не читается — попроси прислать ссылку ещё раз 🧱', "That level can't be read — ask for the link again 🧱"), 4000), 900);
+  const name = (q.get('n') || '').trim().slice(0, 16) || '🧱', ic = (q.get('i') || '🧱').slice(0, 4), from = (q.get('from') || '').trim().slice(0, 16);
+  const got = save.lv.got, key = JSON.stringify(p), old = got.findIndex(l => JSON.stringify(l.p) === key);
+  if(old >= 0) got.splice(old, 1);
+  got.unshift({name, ic, from, p, ok:false, bt:0, bs:0, nw:true}); got.length = Math.min(got.length, BD_LV);
+  persist();
+  setTimeout(() => toast(L(`📬 Уровень${from ? ` от ${from}` : ''}: ${ic} «${name}»! Он в 🧱 «Стройке» → «Мне прислали»`, `📬 A level${from ? ` from ${from}` : ''}: ${ic} “${name}”! Find it in 🧱 Builder → “Sent to me”`), 6000), 1500);
+})();
+
 function bdAskDel(i){
   const lv = save.lv.my[i]; bdClear();
   const el = mgNode('div', 'mg-panel bd-shelf', `<h3>🗑️ ${L('Убрать уровень?', 'Remove this level?')}</h3>
@@ -354,7 +432,7 @@ function bdNew(){
 function bdEdit(i, fresh){
   bdPlayStop(); bdClear();
   if(!BD.guest && BD.i !== i) BD.sid = bdId();   // другой уровень — новая версия (папа в гостях сверяет правки по ней)
-  BD.mode = 'edit'; BD.i = i; BD.p = BD.guest ? BD.hl.p : save.lv.my[i].p; bdRebuild(); bdPupHome(); bdHomeIc();
+  BD.mode = 'edit'; BD.i = i; BD.gi = -1; BD.p = BD.guest ? BD.hl.p : save.lv.my[i].p; bdRebuild(); bdPupHome(); bdHomeIc();
   document.body.classList.add('bd-edit'); bdRoot.userData.grid.visible = bdRoot.userData.edge.visible = true;
   if(fresh) BD.cz = -4;
   edStart(BD_A);
@@ -515,15 +593,16 @@ async function bdFinish(){
   if(shells) addShells(shells, toScreen(headTop(s)));
   mgHint('');
   const el = mgNode('div', 'mg-panel bd-done', `
-    <h3>${first ? L('✅ Уровень проверен!', '✅ Level beaten!') : L(`🏁 ${pg('Дошёл', 'Дошла')}!`, '🏁 You made it!')}</h3>
+    <h3>${first && BD.gi >= 0 ? L('🏁 Пройдено!', '🏁 Beaten!') : first ? L('✅ Уровень проверен!', '✅ Level beaten!') : L(`🏁 ${pg('Дошёл', 'Дошла')}!`, '🏁 You made it!')}</h3>
     <p class="bd-big">⏱ <b>${bdSec(t)}</b>${all ? ` · 🌟 <b>${got}/${all}</b>` : ''}${BD.falls ? ` · 💦 ${BD.falls}` : ''}</p>
-    <p>${first ? L(`Ты ${pg('сам', 'сама')} ${pg('прошёл', 'прошла')} свою полосу — значит, она настоящая! ${shells ? `+${shells} 🐚` : ''}`, `You beat your own course — so it is a real level! ${shells ? `+${shells} 🐚` : ''}`)
+    <p>${first && BD.gi >= 0 ? L(`Ты ${pg('прошёл', 'прошла')} уровень${lv.from ? ` от ${stEsc(lv.from)}` : ''}! ${shells ? `+${shells} 🐚` : ''}`, `You beat the level${lv.from ? ` from ${stEsc(lv.from)}` : ''}! ${shells ? `+${shells} 🐚` : ''}`)
+      : first ? L(`Ты ${pg('сам', 'сама')} ${pg('прошёл', 'прошла')} свою полосу — значит, она настоящая! ${shells ? `+${shells} 🐚` : ''}`, `You beat your own course — so it is a real level! ${shells ? `+${shells} 🐚` : ''}`)
       : better ? L('Новый рекорд! ✨', 'New record! ✨') : L(`Рекорд: ⏱ ${bdSec(lv.bt)}${all ? ` · 🌟 ${lv.bs}/${all}` : ''}`, `Best: ⏱ ${bdSec(lv.bt)}${all ? ` · 🌟 ${lv.bs}/${all}` : ''}`)}</p>
     ${BD.du ? '<p class="bd-duo-res"></p>' : ''}
-    <div class="row"><button class="btn ghost" data-k="edit">✏️ ${L('Строить', 'Build')}</button><button class="btn" data-k="again">🔁 ${L('Ещё раз', 'Again')}</button></div>`);
+    <div class="row"><button class="btn ghost" data-k="edit">${BD.gi >= 0 ? `📚 ${L('Уровни', 'Levels')}` : `✏️ ${L('Строить', 'Build')}`}</button><button class="btn" data-k="again">🔁 ${L('Ещё раз', 'Again')}</button></div>`);
   if(BD.du) bduResShow();
   await wait(0.6); if(!BD) return; s.flap = 0;
-  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { sfx.tap(); if(!BD) return; if(b.dataset.k === 'again') bdPlay(); else bdEdit(BD.i); }));
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { sfx.tap(); if(!BD) return; if(b.dataset.k === 'again') bdPlay(); else if(BD.gi >= 0) bdShelf(); else bdEdit(BD.i); }));
 }
 
 /* ---------- кадр ---------- */
