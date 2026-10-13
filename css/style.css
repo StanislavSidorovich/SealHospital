@@ -1164,6 +1164,15 @@ body.ed-on .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 252px)}
 .ed-tb{position:absolute;z-index:4;display:flex;gap:8px;pointer-events:auto}
 /* 🧱 стройка своей полосы (js/builder.js): та же кнопочная панель, что в «Обустроить», и полка уровней */
 body.bd-edit .ed-tb:not([hidden]){display:flex!important}
+/* 🛋️ «Обустроить» вдвоём у гостя (js/decorduo.js): кнопки над вещью, коробка хозяйки внизу */
+body.hd-edit .ed-tb:not([hidden]){display:flex!important}
+body.hd-edit .vs-bar{display:none}
+body.hd-edit .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 200px)}
+.hd-bar{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);z-index:4;max-width:560px;margin:0 auto;
+  background:var(--paper);border:2.5px solid var(--ink);border-radius:22px;box-shadow:0 4px 0 var(--ink);padding:8px 8px 6px;box-sizing:border-box;pointer-events:auto}
+.hd-top{font-size:15px;margin:0 4px 6px}
+.hd-bar .ed-strip{height:92px}
+.hd-note{margin:6px 4px 0;font-size:14px;font-weight:700;color:var(--soft);text-align:center}
 .bd-bar{position:absolute;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 8px);z-index:4;max-width:560px;margin:0 auto;
   background:var(--paper);border:2.5px solid var(--ink);border-radius:22px;box-shadow:0 4px 0 var(--ink);padding:8px 8px 6px;box-sizing:border-box;pointer-events:auto}
 .bd-bar .ed-strip{height:92px}

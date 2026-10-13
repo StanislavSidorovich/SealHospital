@@ -546,7 +546,7 @@ function vsSendHost(){
   const s = petSeal, w = vsWhere(), r = x => Math.round(x*100)/100, inH = w === 'home';
   const q = s ? s.root.position.clone().sub(inH ? HOME_ROOMS[homeRoom].pos : PET_POS) : new V3(0, 0.25, 0.2);
   netSend({t:'vh', x:r(q.x), y:r(q.y), z:r(q.z), r:s ? r(s.root.rotation.y) : 0, sc:s ? r(s.root.scale.x) : 0.62,
-    v:!!s && s.root.visible && q.length() < 4 && (['pet', 'sleep', 'game'].includes(w) || inH && homeRoom === 'hall'), w, rm:inH ? homeRoom : '', md:s && now < s.happyUntil ? 1 : 0});
+    v:!!s && s.root.visible && q.length() < 4 && (['pet', 'sleep', 'game'].includes(w) || inH && homeRoom === 'hall'), w, rm:inH ? homeRoom : '', ed:inH && homeEdit && homeRoom === 'hall' ? 1 : 0, md:s && now < s.happyUntil ? 1 : 0});
 }
 function vsPhoto(){
   const c = save.coop.visit, today = new Date().toDateString();
@@ -647,7 +647,7 @@ function vsGuestView(on, v = V){
     mgOn(bar.querySelector('.vs-play'), 'click', () => { if(V && V.inv && !V.panel){ sfx.tap(); return vsInvite(); } vsPick(); });
     mgOn(bar.querySelector('.co-heart'), 'click', vsHeart);
     vsMic(bar.querySelector('.co-mic'));
-    mgOn(mgRoot, 'pointerdown', e => { if(e.target.closest('button, .mg-panel')) return; e.preventDefault(); vsGuestTap(e.clientX, e.clientY); });
+    mgOn(mgRoot, 'pointerdown', e => { if(e.target.closest('button, .mg-panel')) return; e.preventDefault(); if(typeof hdeDown === 'function' && hdeDown(e)) return; vsGuestTap(e.clientX, e.clientY); });
     const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home';
     homeB.innerHTML = '<span aria-hidden="true">👋</span>'; homeB.setAttribute('aria-label', L('Домой', 'Home')); $('#corner').prepend(homeB);
     homeB.addEventListener('click', vsByeTap); v.homeB = homeB;

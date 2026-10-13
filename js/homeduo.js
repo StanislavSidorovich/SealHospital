@@ -19,11 +19,12 @@ function hdWire(){
     netOn('vhq', () => { if(V){ V.hdKey = ''; V.hdT = 0; } });   // гость просит расстановку — пошлём на следующем кадре
     netOn('vhplay', m => hdHostPlay(String(m.id || '')));
   } else netOn('vhome', hdTake);
+  if(typeof hdeWire === 'function') hdeWire();   // 🛋️ «Обустроить» вдвоём (js/decorduo.js)
 }
 // что нужно homeBuild, чтобы построить прихожую хозяйки
 function hdPack(){
   const own = save.owned.filter(id => furn(id) || /^p[wf]_/.test(id));
-  return {f:save.home.f, paint:save.home.paint, owned:own, got:save.bg.got, finds:save.pet ? save.pet.finds : [], cups:save.adv.cups,
+  return {f:save.home.f, paint:save.home.paint, rooms:save.home.rooms, owned:own, got:save.bg.got, finds:save.pet ? save.pet.finds : [], cups:save.adv.cups,
     fish:save.adv.fish, sea:save.sea ? save.sea.got : [], tank:save.dive.tank || []};
 }
 const hdArr = (a, n = 200) => Array.isArray(a) ? a.filter(x => typeof x === 'string' || Number.isFinite(x)).slice(0, n) : [];
@@ -36,14 +37,19 @@ function hdTake(m){
   }
   const paint = {};
   if(m.paint && typeof m.paint === 'object') for(const [r, P] of Object.entries(m.paint)) if(P && typeof P === 'object') paint[r] = {w:String(P.w || ''), f:String(P.f || '')};
-  V.hh = {f, paint, owned:hdArr(m.owned), got:hdArr(m.got), finds:hdArr(m.finds), cups:hdArr(m.cups), fish:hdArr(m.fish), sea:hdArr(m.sea), tank:hdArr(m.tank)};
-  if(V.inH) hdBuild();
+  const rooms = {};
+  if(m.rooms && typeof m.rooms === 'object') for(const [r, n] of Object.entries(m.rooms)) if(HOME_ROOMS[r] && Number.isFinite(+n)) rooms[r] = +n;
+  const hh = {f, paint, rooms, owned:hdArr(m.owned), got:hdArr(m.got), finds:hdArr(m.finds), cups:hdArr(m.cups), fish:hdArr(m.fish), sea:hdArr(m.sea), tank:hdArr(m.tank)};
+  if(V.hh && typeof hdeHold === 'function' && hdeHold()){ V.hhNext = hh; return; }   // папа тащит вещь или ждёт ответа на свою правку — потом (js/decorduo.js)
+  V.hh = hh; V.hhNext = null;
+  if(V.inH){ hdBuild(); if(typeof hdeBar === 'function') hdeBar(); }
 }
 
 /* ---------- у хозяйки ---------- */
 function hdHostStep(dt){
+  if(typeof hdeHostStep === 'function' && homeMode && !V.game) hdeHostStep(dt);   // 🛋️ папа помогает обустраивать (js/decorduo.js)
   if(!homeMode || V.game || (V.hdT = (V.hdT || 0) - dt) > 0) return;
-  V.hdT = 1; V.hdN = (V.hdN || 0) + 1;
+  V.hdT = homeEdit && V.gin ? 0.15 : 1;   // обустраивают вдвоём — расстановку чаще V.hdN = (V.hdN || 0) + 1;
   const p = hdPack(), key = JSON.stringify(p);
   if(key !== V.hdKey || V.hdN % 5 === 0){ V.hdKey = key; netSend({t:'vhome', ...p}); }
 }
@@ -72,6 +78,7 @@ function hdGuestStep(dt){
   if(!v.inH && hall){ if(!v.hh){ if((v.hqT = (v.hqT || 0) - dt) <= 0){ v.hqT = 2; netSend({t:'vhq'}); } return; } hdIn(); }
   else if(v.inH && h.w !== 'home') hdOut(v);
   if(v.inH) homeAnim(Object.keys(homeItems).filter(id => homeItems[id].parent === homeRoot), now, dt);
+  if(typeof hdeGuestStep === 'function') hdeGuestStep(dt);   // 🛋️ она в «Обустроить» — и у нас редактор (js/decorduo.js)
 }
 function hdIn(){
   const v = V; v.inH = true;
@@ -87,6 +94,7 @@ function hdIn(){
 // quiet — визит кончился или ушли в игру: без анимации
 function hdOut(v = V, quiet){
   if(!v || !v.inH) return;
+  if(typeof hdeStop === 'function') hdeStop(v);
   v.inH = false;
   for(const id of Object.keys(homeItems)) homeDrop(id);   // свои вещи построятся заново, когда зайдём к себе
   if(typeof hePaint === 'function') hePaint();
@@ -98,6 +106,7 @@ function hdOut(v = V, quiet){
 }
 // камера — как у хозяйки в прихожей (homeView): спереди-сверху, видна вся комната
 function hdCam(dt, snap){
+  if(V.hde && !snap) return hdeCam(dt);   // обустраивают вдвоём — сверху, как у неё (js/decorduo.js)
   const portrait = innerWidth < innerHeight, size = portrait ? 6.2 : 7.4, lift = portrait ? -1.2 : -0.2;
   const tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), fd = Math.max(size/2/(tv*camera.aspect), size*1.5/2/tv);
   const look = HOME_POS.clone().add(new V3(0.2, 0.6 - lift, -0.3)), pos = look.clone().add(new V3(0, fd*0.5, fd));
