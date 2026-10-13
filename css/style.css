@@ -1177,6 +1177,13 @@ body.bd-edit .ed-tb:not([hidden]){display:flex!important}
 .bd-big{font-size:22px;text-align:center;margin:6px 0}
 .bd-done p{text-align:center}
 body.bd-on .toast{bottom:calc(env(safe-area-inset-bottom,0px) + 200px)}
+.bd-run{position:absolute;top:-8px;left:-8px;width:38px;height:38px;border-radius:50%;border:2px solid var(--ink);background:var(--pink);font-style:normal;font-size:17px;font-weight:800;line-height:34px;text-align:center;color:var(--ink)}
+.bd-want{animation:pulse 1s ease-in-out infinite;box-shadow:0 0 0 4px #9FD3F0!important}   /* 🧱 вдвоём: папа просит этот уровень / «побежали?» */
+.bd-duo{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 132px);display:flex;flex-direction:column;gap:8px;z-index:3}
+.bd-duo .round{font-size:20px;line-height:1;width:46px;height:46px}
+.bd-duo .co-mic.on{background:#DDF5EA}
+.bd-duo-res{font-size:17px;line-height:1.5;background:#F2F9FD;border:2px solid var(--ink);border-radius:14px;padding:6px 10px;margin:8px 0}
+body.talk-on .bd-duo{visibility:hidden}
 
 .ed-tb button{width:52px;height:52px;border-radius:50%;border:2.5px solid var(--ink);background:var(--paper);box-shadow:0 3px 0 var(--ink);font-size:26px;line-height:1;padding:0;color:var(--ink)}
 .ed-tb button[data-a="turn"]{background:var(--pink);font-weight:800}

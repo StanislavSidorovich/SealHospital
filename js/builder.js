@@ -11,8 +11,8 @@
    over — висит над (звёздочка, пингвин), turn — поворачивается, round — круглый, one — один на уровень.
    Новый кусок — строчка в BD_KIT + модель в BD_MAKE (+ что делает — в bdPlayStep).
    Сохранение — save.lv = {my:[{name, ic, p:[[кусок, x, z, поворот]], ok, bt, bs}], n, day:{d, n}} (sanitizeLv в data.js).
-   Подключается после homeedit.js и island.js (берёт islPadMake, islCyl, islBlob). Дальше (заход 3): пройти уровень вместе с папой
-   по «двери» и ссылка ?lv=. */
+   Вдвоём (заход 3): папа в гостях идёт за Сабриной на площадку сам — js/buildduo.js (BD.guest — у гостя: уровень хозяйки в BD.hl,
+   своё сохранение не трогаем). Подключается после homeedit.js и island.js (берёт islPadMake, islCyl, islBlob). Дальше: ссылка ?lv=. */
 const BD_POS = new V3(1400, 0, -1400);
 const BD_X = 6, BD_Z0 = 3, BD_Z1 = -33;          // площадка: x от −6 до 6, z от 3 (старт, к камере) до −33 (вдаль)
 const BD_STEP = 0.5, BD_TURN = Math.PI/2;
@@ -39,7 +39,7 @@ const BD_TEMPLATE = () => [['f', 0, -1.5, 0], ['st', 0, -4, 0], ['g', 0, -6.5, 0
 const bdRoot = new THREE.Group(); bdRoot.position.copy(BD_POS); bdRoot.visible = false; scene.add(bdRoot);
 const bdPieces = new THREE.Group(); bdRoot.add(bdPieces);
 let BD = null;   // {s, mode:'shelf'|'edit'|'play'|'done', i, cz, items, …}
-const bdLv = () => BD && save.lv.my[BD.i];
+const bdLv = () => BD && (BD.guest ? BD.hl : save.lv.my[BD.i]);   // у гостя — уровень хозяйки (js/buildduo.js)
 const bdKey = i => 'p' + i, bdIdx = k => +k.slice(1);
 const bdExt = q => { const K = BD_KIT[q[0]], side = Math.abs(Math.sin(q[3])) > 0.5; return side ? [K.hz, K.hx] : [K.hx, K.hz]; };
 
@@ -245,10 +245,17 @@ const BD_A = {
   moved(){ if(Math.random() < 0.3){ sfx.arf(); floatText(L(['Ух ты!', 'Вот это полоса!', 'Я пройду!'], ['Wow!', 'What a course!', 'I can do it!'])[Math.floor(Math.random()*3)], headTop(BD.s), '#D9527E'); } }
 };
 // поменяли уровень — пройти заново, чтобы снова «✅ Проверено»
-function bdDirty(){ const lv = bdLv(); lv.p = BD.p; if(lv.ok){ lv.ok = false; lv.bt = 0; lv.bs = 0; } persist(); }
+function bdDirty(){
+  const lv = bdLv(); lv.p = BD.p; if(lv.ok){ lv.ok = false; lv.bt = 0; lv.bs = 0; }
+  if(BD.guest) return bduSendEdit();   // у гостя правка уходит хозяйке (js/buildduo.js)
+  BD.sid = bdId(); persist();
+}
+const bdId = () => Math.random().toString(36).slice(2, 9);   // метка версии уровня: вдвоём правки сверяем по ней
 
 /* ---------- вход и выход ---------- */
-async function bdGo(s){
+// o.guest — папа в гостях пришёл на площадку Сабрины (js/buildduo.js): её уровень, бежим вместе, строим вместе
+async function bdGo(s, o = {}){
+  const G = !!o.guest;
   bdBuild();
   const cam0 = camOffWant.clone();
   sfx.whoosh(); flash();
@@ -256,38 +263,45 @@ async function bdGo(s){
   document.body.classList.add('run-on', 'bd-on');
   if(s.bubble) s.bubble.visible = false;
   setMood(s, 'happy');
-  BD = {s, mode:null, i:-1, p:[], items:[], cz:-5, cz0:-5, mpp:0.04, badT:-9, played:false, cam:new V3(), look:new V3(), camOn:false, off:[]};
+  BD = {s, guest:G, hl:null, sid:'', run:0, mode:null, i:-1, p:[], items:[], cz:-5, cz0:-5, mpp:0.04, badT:-9, played:false, cam:new V3(), look:new V3(), camOn:false, off:[], cam0};
   mgOpen('');
   const homeB = document.createElement('button'); homeB.id = 'btnRunHome'; homeB.className = 'round home'; $('#corner').prepend(homeB); BD.homeB = homeB;
-  let done; const fin = new Promise(r => done = r); BD.done = done;
-  homeB.addEventListener('click', () => { if(!BD) return; sfx.tap(); if(BD.mode === 'play' || BD.mode === 'done') bdEdit(BD.i); else done(); });
+  // выходим сразу, а не на следующем шаге: у гостя визит может кончиться, и следом откроется другое окно
+  let done; const fin = new Promise(r => done = r);
+  BD.done = k => { if(!BD || BD.out) return; BD.out = true; done(bdQuit()); };
+  homeB.addEventListener('click', () => { if(!BD) return; if(G) return vsByeTap(); sfx.tap(); if(BD.mode === 'play' || BD.mode === 'done') bdEdit(BD.i); else BD.done(); });
   mgOn(mgRoot, 'pointerdown', e => {
     if(!BD || BD.mode !== 'edit' || (e.target.closest && e.target.closest('button, .bd-bar, .mg-panel'))) return;
     edDown(e);
   });
   mgTick(dt => { if(BD) bdStep(dt); });
-  if(!save.lv.my.length) bdNew(); else bdShelf();
-  await fin;
-  const played = BD.played;
-  bdPlayStop(); edStop(); mgClose(); homeB.remove(); flash();
+  if(G) bduWait(); else if(!save.lv.my.length) bdNew(); else bdShelf();
+  return await fin;
+}
+function bdQuit(){
+  const played = BD.played, s = BD.s, G = BD.guest, cam0 = BD.cam0;
+  if(typeof bduEnd === 'function') bduEnd();
+  bdPlayStop(); edStop(); mgClose(); BD.homeB.remove(); flash();
   document.body.classList.remove('run-on', 'bd-on', 'bd-edit');
   while(bdPieces.children.length) bdPieces.remove(bdPieces.children[0]);
   BD = null; bdRoot.visible = false; runCam.on = false; roamView(false);
   camOff.copy(cam0); camOffWant.copy(cam0);
+  if(G) return;
   s.root.position.copy(PET_SPOT); s.root.rotation.set(0, 0, 0); s.happyUntil = now + 3;
   persist();
   return played ? undefined : false;
 }
 function bdHomeIc(){
   const b = BD.homeB, back = BD.mode === 'play' || BD.mode === 'done';
+  if(BD.guest){ b.innerHTML = '<span aria-hidden="true">👋</span>'; b.setAttribute('aria-label', L('Попрощаться', 'Say goodbye')); return; }
   b.innerHTML = `<span aria-hidden="true">${back ? '✏️' : '🏠'}</span>`; b.setAttribute('aria-label', back ? L('Строить дальше', 'Back to building') : L('Домой', 'Home'));
 }
 // малыш ждёт на льдине старта и смотрит на полосу
 function bdPupHome(){
-  const s = BD.s; s.root.position.copy(BD_POS).add(new V3(BD_START.x - 1.1, 0.3, BD_START.z + 0.6)); s.root.rotation.set(0, Math.PI, 0);
+  const s = BD.s; s.root.position.copy(BD_POS).add(new V3(BD_START.x + (BD.guest ? 1.1 : -1.1), 0.3, BD_START.z + 0.6)); s.root.rotation.set(0, Math.PI, 0);
   s.swimming = false; s.flap = 0;
 }
-function bdClear(){ mgStage.querySelectorAll('.bd-shelf, .bd-bar, .bd-done, .bd-hud, .isl-jump').forEach(n => n.remove()); }
+function bdClear(){ mgStage.querySelectorAll('.bd-shelf, .bd-bar, .bd-done, .bd-hud, .isl-jump').forEach(n => n.remove()); BD.bar = null; }
 
 /* ---------- 📚 полка «Мои уровни» ---------- */
 function bdLvSmall(lv){
@@ -304,14 +318,15 @@ function bdShelf(){
   const el = mgNode('div', 'mg-panel bd-shelf', `
     <h3>🧱 ${L('Мои уровни', 'My levels')}</h3>
     <div class="picks">
-      ${my.map((lv, i) => `<button data-i="${i}"><span class="ic">${lv.ic}</span><b>${stEsc(lv.name)}</b><small>${bdLvSmall(lv)}</small><i class="bd-del" data-del="${i}" role="button" aria-label="${L('Убрать уровень', 'Remove level')}">🗑️</i></button>`).join('')}
+      ${my.map((lv, i) => `<button data-i="${i}"><span class="ic">${lv.ic}</span><b>${stEsc(lv.name)}</b><small>${bdLvSmall(lv)}</small><i class="bd-del" data-del="${i}" role="button" aria-label="${L('Убрать уровень', 'Remove level')}">🗑️</i>${lv.ok ? `<i class="bd-run" data-run="${i}" role="button" aria-label="${L('Сразу бежать', 'Play now')}">▶</i>` : ''}</button>`).join('')}
       ${my.length < BD_LV ? `<button data-k="new"><span class="ic">➕</span><b>${L('Новый', 'New')}</b><small>${L('построить полосу', 'build a course')}</small></button>` : ''}
     </div>
     <div class="row"><button class="btn ghost small" data-k="out">🏠 ${L('Домой', 'Home')}</button></div>`);
   el.querySelectorAll('button').forEach(b => b.addEventListener('click', e => {
-    const del = e.target.closest('[data-del]');
+    const del = e.target.closest('[data-del]'), run = e.target.closest('[data-run]');
     sfx.tap();
     if(del) return bdAskDel(+del.dataset.del);
+    if(run){ bdEdit(+run.dataset.run); return bdPlay(); }   // ✅ уровень — сразу бежать (с папой в гостях — вместе)
     if(b.dataset.k === 'out') return BD.done();
     if(b.dataset.k === 'new') return bdNew();
     bdEdit(+b.dataset.i);
@@ -338,13 +353,15 @@ function bdNew(){
 /* ---------- ✏️ стройка ---------- */
 function bdEdit(i, fresh){
   bdPlayStop(); bdClear();
-  BD.mode = 'edit'; BD.i = i; BD.p = save.lv.my[i].p; bdRebuild(); bdPupHome(); bdHomeIc();
+  if(!BD.guest && BD.i !== i) BD.sid = bdId();   // другой уровень — новая версия (папа в гостях сверяет правки по ней)
+  BD.mode = 'edit'; BD.i = i; BD.p = BD.guest ? BD.hl.p : save.lv.my[i].p; bdRebuild(); bdPupHome(); bdHomeIc();
   document.body.classList.add('bd-edit'); bdRoot.userData.grid.visible = bdRoot.userData.edge.visible = true;
   if(fresh) BD.cz = -4;
   edStart(BD_A);
   BD.bar = mgNode('div', 'bd-bar', ''); bdBar();
   bdHint();
-  if(fresh && !tipSeen('bd')){
+  if(BD.guest) bduGuestHint();
+  else if(fresh && !tipSeen('bd')){
     tipDone('bd');
     (async () => {
       mgHint(L('Это твоя площадка! Внизу — куски: коснись, и он появится 🧱', 'This is your playground! The pieces are below: tap one and it appears 🧱'));
@@ -370,12 +387,12 @@ function bdBar(){
   const el = BD.bar; if(!el) return;
   const lv = bdLv(), hasG = BD.p.some(q => q[0] === 'g');
   el.innerHTML = `<div class="ed-strip">${BD_ORDER.map(t => `<button class="ed-card${t === 'g' && !hasG ? ' want' : ''}" data-t="${t}"><b aria-hidden="true">${BD_KIT[t].ic}</b><span>${BD_KIT[t].name}</span><small>${BD_SAY[t]}</small></button>`).join('')}</div>
-    <div class="ed-row"><button class="btn ghost" data-a="undo" aria-label="${L('Отменить', 'Undo')}">↩️</button><button class="btn ghost" data-a="shelf">📚 ${L('Уровни', 'Levels')}</button><button class="btn" data-a="play">▶ ${L('Пройти', 'Play')}</button></div>
-    <p class="bd-name">${lv.ic} ${stEsc(lv.name)} · ${lv.ok ? L('✅ проверен', '✅ beaten') : L('✏️ пройди сам' + pg('', 'а') + ' до 🏁', '✏️ beat it yourself to 🏁')} · ${BD.p.length}/${BD_MAX}</p>`;
+    <div class="ed-row"><button class="btn ghost" data-a="undo" aria-label="${L('Отменить', 'Undo')}">↩️</button>${BD.guest ? '' : `<button class="btn ghost" data-a="shelf">📚 ${L('Уровни', 'Levels')}</button>`}<button class="btn" data-a="play">▶ ${BD.guest ? L('Побежали?', 'Run?') : L('Пройти', 'Play')}</button></div>
+    <p class="bd-name">${lv.ic} ${stEsc(lv.name)}${BD.guest ? ` · ${stEsc(BD.who || '')}` : ''} · ${lv.ok ? L('✅ проверен', '✅ beaten') : BD.guest ? L('✏️ ещё не пройден', '✏️ not beaten yet') : L('✏️ пройди сам' + pg('', 'а') + ' до 🏁', '✏️ beat it yourself to 🏁')} · ${BD.p.length}/${BD_MAX}</p>`;
   el.querySelectorAll('[data-t]').forEach(b => b.addEventListener('click', () => bdAdd(b.dataset.t)));
   el.querySelector('[data-a="undo"]').addEventListener('click', () => { if(edUndo()) bdHint(); });
-  el.querySelector('[data-a="shelf"]').addEventListener('click', () => { sfx.tap(); bdShelf(); });
-  el.querySelector('[data-a="play"]').addEventListener('click', () => { sfx.tap(); bdPlay(); });
+  if(!BD.guest) el.querySelector('[data-a="shelf"]').addEventListener('click', () => { sfx.tap(); bdShelf(); });
+  el.querySelector('[data-a="play"]').addEventListener('click', () => { sfx.tap(); if(BD.guest) bduAskRun(); else bdPlay(); });
 }
 function bdAdd(t){
   if(!BD || BD.mode !== 'edit' || ED.drag || ED.anim) return;
@@ -397,7 +414,8 @@ function bdPlay(){
     sfx.bad(); toast(L('Поставь 🏁 финиш — куда добежать', 'Add a 🏁 finish to run to'), 2600);
     const c = BD.bar && BD.bar.querySelector('[data-t="g"]'); if(c) wiggle(c); return;
   }
-  edStop(); bdClear(); BD.bar = null;
+  bdPlayStop(); edStop(); bdClear();   // 🔁 «ещё раз» — снять прошлый забег (вещи-умения, касания)
+  if(!BD.guest) BD.run++;   // новый забег — у папы в гостях начнётся тоже (js/buildduo.js)
   document.body.classList.remove('bd-edit'); bdRoot.userData.grid.visible = false; bdRoot.userData.edge.visible = false;
   BD.mode = 'play'; bdHomeIc(); bdPlaceAll();
   const s = BD.s;
@@ -409,7 +427,7 @@ function bdPlay(){
   const jump = mgNode('button', 'isl-jump', '<span aria-hidden="true">⤴</span>'); jump.setAttribute('aria-label', L('Прыжок', 'Jump'));
   jump.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if(BD && BD.R) roamJump(BD.R); });
   const n0 = mgCleanup.length; roamControls(BD.R, mgRoot, null); BD.off = mgCleanup.splice(n0);   // касания прогулки снимем, когда вернёмся строить
-  mgHint(L('Беги до флажка 🏁 ⤴ — прыжок', 'Run to the flag 🏁 ⤴ jumps'));
+  mgHint(BD.du ? L('Бежим вместе! Кто первым до 🏁? ⤴ — прыжок', 'Run together! Who gets to 🏁 first? ⤴ jumps') : L('Беги до флажка 🏁 ⤴ — прыжок', 'Run to the flag 🏁 ⤴ jumps'));
   setTimeout(() => { if(BD && BD.mode === 'play' && BD.t > 2) mgHint(''); }, 3500);
   sfx.whoosh();
 }
@@ -423,7 +441,7 @@ function bdPlayStop(){
 function bdHud(){
   if(!BD.hud) return;
   const n = BD.stars.length;
-  BD.hud.innerHTML = `<span class="pill">⏱ <b>${Math.floor(BD.t)}</b></span>` + (n ? `<span class="pill">🌟 <b>${BD.got}/${n}</b></span>` : '');
+  BD.hud.innerHTML = `<span class="pill">⏱ <b>${Math.floor(BD.t)}</b></span>` + (n ? `<span class="pill">🌟 <b>${BD.got}/${n}</b></span>` : '') + (BD.du ? bduHudPill() : '');
 }
 // упала в воду — выныриваем на последнем куске, где стояли
 function bdRespawn(){
@@ -480,9 +498,12 @@ async function bdFinish(){
   const R = BD.R, s = BD.s, lv = bdLv(), first = !lv.ok, t = Math.round(BD.t*10)/10, got = BD.got, all = BD.stars.length;
   BD.mode = 'done'; R.vel.set(0, 0, 0); R.hold = false; R.tgt = null; R.goal = null;
   BD.off.forEach(f => f()); BD.off = [];
-  BD.played = true; save.lv.n++;
+  BD.played = true;
+  if(BD.guest) return bduGuestFinish(t, got, all);   // у гостя уровень хозяйки: ✅ ставит только она сама (js/buildduo.js)
+  save.lv.n++;
   const better = !lv.ok || got > lv.bs || (got === lv.bs && t < lv.bt);
   lv.ok = true; if(better){ lv.bs = got; lv.bt = t; }
+  if(BD.du) bduFin(t, got, all);
   let shells = 0;
   if(first){
     const sv = save.lv, d = ymd(); if(sv.day.d !== d) sv.day = {d, n:0};
@@ -498,7 +519,9 @@ async function bdFinish(){
     <p class="bd-big">⏱ <b>${bdSec(t)}</b>${all ? ` · 🌟 <b>${got}/${all}</b>` : ''}${BD.falls ? ` · 💦 ${BD.falls}` : ''}</p>
     <p>${first ? L(`Ты ${pg('сам', 'сама')} ${pg('прошёл', 'прошла')} свою полосу — значит, она настоящая! ${shells ? `+${shells} 🐚` : ''}`, `You beat your own course — so it is a real level! ${shells ? `+${shells} 🐚` : ''}`)
       : better ? L('Новый рекорд! ✨', 'New record! ✨') : L(`Рекорд: ⏱ ${bdSec(lv.bt)}${all ? ` · 🌟 ${lv.bs}/${all}` : ''}`, `Best: ⏱ ${bdSec(lv.bt)}${all ? ` · 🌟 ${lv.bs}/${all}` : ''}`)}</p>
+    ${BD.du ? '<p class="bd-duo-res"></p>' : ''}
     <div class="row"><button class="btn ghost" data-k="edit">✏️ ${L('Строить', 'Build')}</button><button class="btn" data-k="again">🔁 ${L('Ещё раз', 'Again')}</button></div>`);
+  if(BD.du) bduResShow();
   await wait(0.6); if(!BD) return; s.flap = 0;
   el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { sfx.tap(); if(!BD) return; if(b.dataset.k === 'again') bdPlay(); else bdEdit(BD.i); }));
 }
@@ -515,6 +538,7 @@ function bdStep(dt){
     if(d.t === 'st' && d.sp){ d.sp.material.rotation = Math.sin(now*2 + g.position.x)*0.35; if(!(ED && ED.drag && ED.drag.key === d.key)) d.sp.position.y = d.y + Math.sin(now*2.2 + g.position.z)*0.12; }
     if(d.t === 'b' && d.cap){ const k = Math.max(0, 1 - (now - (d.hit || -9))/0.4); d.cap.scale.set(0.85*(1 + k*0.25), 0.36*(1 - k*0.45), 0.85*(1 + k*0.25)); }
   }
+  if(typeof bduStep === 'function'){ bduStep(dt); if(!BD) return; }   // 🤝 вдвоём с папой (js/buildduo.js)
   if(BD.mode === 'play'){ bdPlayStep(dt); return; }
   if(BD.mode === 'done'){ roamPose(BD.R, dt); roamCam(BD.R, dt); return; }
   // стройка и полка: камера сверху-сзади, весь край площадки в кадре; ведём её пальцем по воде

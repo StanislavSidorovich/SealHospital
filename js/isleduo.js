@@ -130,6 +130,7 @@ function iduTick(){
   const v = V;
   if(!v || v.role !== 'guest' || v.game || v.panel || v.isleBusy || !v.view || v.arr) return;
   if(v.h && v.h.w === 'isle' && !(typeof ISL !== 'undefined' && ISL)) iduGuestEnter();
+  else if(v.h && v.h.w === 'build' && typeof bdGuestEnter === 'function' && !(typeof BD !== 'undefined' && BD)) bdGuestEnter();   // 🧱 она на площадке — и мы (js/buildduo.js)
 }
 async function iduGuestEnter(){
   const v = V; v.isleBusy = true;
@@ -139,7 +140,9 @@ async function iduGuestEnter(){
   v.me.root.visible = true;
   try{ await isleGo(v.me, {guest:true, at}); }catch(e){ console.error(e); }
   v.isleBusy = false;
-  if(V === v && !v.game) vsGuestView(true);
+  if(V !== v || v.game) return;
+  if(v.h && v.h.w === 'build' && typeof bdGuestEnter === 'function') return bdGuestEnter();   // ушла с острова на площадку 🧱 — идём прямо туда
+  vsGuestView(true);
 }
 
 /* ---------- кадр (зовёт islStep) ---------- */
@@ -382,6 +385,12 @@ function iduGoShow(el, o){
     return true;
   }
   if(o.npc || !o.k) return false;
+  if(o.k === 'build' && G && typeof bdVisitGo === 'function'){   // 🧱 у гостя: позвать хозяйку на её площадку (js/buildduo.js)
+    el.innerHTML = `<button class="btn">🧱 ${L(`Уровни ${V.name}`, `${V.name}'s levels`)} ▶</button>`;
+    el.hidden = false; sfx.tick();
+    el.querySelector('button').addEventListener('click', e => { e.stopPropagation(); sfx.tap(); iduAsk('build'); });
+    return true;
+  }
   const g = IDU_GAME[o.k], ok = g && CO_GAMES[g] && (G || (!o.lock && vsGames().includes(g)));
   if(!ok){
     if(!G) return false;

@@ -568,6 +568,7 @@ const coGamesOn = () => Object.keys(CO_GAMES).filter(g => g === 'rescue' ? typeo
   : g === 'road' ? typeof roadGame === 'function' : g === 'code' ? typeof iceGame === 'function'
   : g === 'dive' ? typeof diveNet === 'function' && netAvail() : g === 'visit' ? typeof visitGo === 'function' && netAvail()
   : g === 'storm' ? typeof stormGame === 'function' && smPlay() : g === 'bg' ? typeof bgGo === 'function' : true)
+  .filter(g => !CO_GAMES[g].only)   // 🧱 стройка — только в гостях (js/buildduo.js)
   .filter(g => typeof stGate !== 'function' || stGate(g) < 0)   // игры глав, до которых история не дошла, — пока прячем (js/story.js)
   .sort((a, b) => CO_ORDER.indexOf(a) - CO_ORDER.indexOf(b));
 const CO_ORDER = ['slide', 'rescue', 'chase', 'swim', 'dive', 'road', 'fight', 'storm', 'bg', 'code', 'visit'];   // 🎲 Игротека — js/boardgames.js   // вкладки — по главам книги, «Код» и «В гости» в конце   // 🌪️ шторм — когда открыта глава 8 (js/storm.js)   // 🤿 нырнуть вдвоём (js/dive.js) и 🏝️ в гости — только по сети

@@ -43,6 +43,7 @@ const MODES = {
   chase: { pet: 1, run: `funPre = 'chase'; petDo('fun')`, wait: 3 },
   build: { pet: 1, run: `funPre = 'build'; petDo('fun')`, wait: 3 },   // 🧱 стройка: случайные касания двигают куски
   'build-play': { pet: 1, run: `funPre = 'build'; petDo('fun'); setTimeout(() => bdPlay(), 2500)`, wait: 3 },
+  'build-duo': { pet: 1, run: `net.conn = {open:true, send(){}}; net.peer = {destroyed:false, destroy(){}}; visitHost({name:'Папа', want:'visitor'}); funPre = 'build'; petDo('fun'); setTimeout(() => bdPlay(), 2500)`, wait: 3 },   // 🧱 вдвоём — tools/bdduo.js; здесь хозяйка с молчащим гостем
   'slide-race': { run: `${HIDE} slideGame('race')` },
   'slide-time': { run: `${HIDE} slideGame('time')` },
   'swim-race': { run: `${HIDE} swimGame('race')` },
