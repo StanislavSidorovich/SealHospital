@@ -5,15 +5,22 @@
         жёлоб и открывает дверь;
      🛶 плот-льдина по подземной реке: поплывёт, когда на нём оба; упал в воду — течение несёт обратно к плоту;
      в конце Пипа сидит на высокой полке: Силач встаёт под ней, Прыгун запрыгивает ему на голову — и оттуда наверх.
+   🌊 Финал «Побег от прилива» (14.10, вместо «ледышек-прыгунов» — финалы «Потеряшки» не повторяют глагол, DESIGN.md §3):
+     Пипу нашли — река поднимается, ледяная стенка справа трескается: там шахта наверх, к солнцу. Пипа едет у Силача на спине.
+     Два этажа, на каждом: 🦘 Прыгун дёргает кольцо под потолком — люк открывается; 💪 Силач толкает глыбу к уступу (ступенька)
+     и вторую — под люк (она сама встаёт точно под ним), с глыбы — ⬆️ в люк (кнопка, без прыжка-на-миллиметр).
+     Вода догоняет, но не выше того, кто ниже всех (−0,3 м): упал — вода держит, как льдина (проиграть нельзя).
+     Оба наверху — солнышко, Пипа спрыгивает, фото. Пинг идёт «в ногу»: Прыгун лезет в люк, только когда Силач уже у люка.
    3 жемчужинки 🦪: на дне реки (Силач ныряет с плота), над рекой (Прыгун — двойной прыжок с плота),
    на уступе над обрывом (Прыгун — с головы Силача).
    Физика, пузыри, кнопки, сеть и итоги — общие, в rescue.js; тут только сам уровень (RS_LVS.grot).
-   Сеть: комы запускает хозяин (qball), разбились — qbx; плот поплыл — qraft; верёвку привязали — qrope; Пипа — qfree.
+   Сеть: комы запускает хозяин (qball), разбились — qbx; плот поплыл — qraft; верёвку привязали — qrope; Пипа — qfree;
+   прилив: люк открыли — qgh {i}, глыбы шлёт тот, у кого Силач (qgb {i, x}), оба наверху — qgtop; вода у каждого своя (по обоим тюленям).
    Подключается после rescue.js. */
 const GR = {
   ground:[[-3, 10.9, -3.2, 0], [10.9, 20, -3.2, 2.4], [20, 21.2, -3.2, 2.8], [21.2, 22.4, -3.2, 3.2], [22.4, 23.6, -3.2, 3.6],
-    [23.6, 24.8, -3.2, 4.0], [24.8, 33.2, -3.2, 4.4], [33.2, 38.6, -3.2, 0], [57, 71, -3.2, 0.8]],
-  walls:[[-2.2, -1, 0, 7], [69.4, 71, 0.8, 9], [38.6, 57, -4.4, -3.2]],   // левый край, стена в конце, дно реки
+    [23.6, 24.8, -3.2, 4.0], [24.8, 33.2, -3.2, 4.4], [33.2, 38.6, -3.2, 0], [57, 81.4, -3.2, 0.8]],
+  walls:[[-2.2, -1, 0, 7], [81.4, 83, 0.8, 18], [68.8, 69.4, 3.0, 18], [38.6, 57, -4.4, -3.2]],   // левый край, стены шахты, дно реки
   ledge:[15.4, 16.8, 5.1, 5.35],       // уступ с жемчужинкой над обрывом (только с головы Силача)
   shelf:[66, 68.8, 3.5, 3.85],         // полка, где сидит Пипа
   water:[38.6, 57],
@@ -24,8 +31,16 @@ const GR = {
   raft:{x0:38.8, w:2.8, end:54.15, v:1.4, top:-0.05},
   pearls:[{x:46.5, y:-2.7}, {x:49.5, y:2.75}, {x:16.1, y:5.75}],   // на дне реки, над рекой, на уступе
   spotP:14.6, spot:65.1,               // где встать Силачу: под уступом и под полкой Пипы
-  pipa:67.6
+  pipa:67.6,
+  // 🌊 шахта прилива (x 69,4–81,4): стенка-проход, два этажа с люками, уступы, глыбы (w × h) и где они ездят
+  door:[68.95, 69.4, 0.8, 3.0],
+  slabs:[{y0:4.5, y1:4.8, hole:[78.4, 80.2], hop:77.85, ring:70.8, rb:3.95},
+         {y0:8.6, y1:8.9, hole:[70.4, 72.2], hop:72.85, ring:77.0, rb:8.05}],
+  ledges:[[75.6, 81.4, 2.3, 2.6], [69.4, 74.6, 6.4, 6.7]],
+  blocks:[{x:72.6, y0:0.8, min:70.5, max:75.1}, {x:77.2, y0:2.6, min:76.1, max:79.3}, {x:76.5, y0:4.8, min:75.1, max:76.9}, {x:72.9, y0:6.7, min:71.3, max:73.9}],
+  blockW:1.0, blockH:0.9, shaft:[69.4, 81.4], sky:15.5
 };
+GR.more = [...GR.slabs.flatMap(s => [[GR.shaft[0], s.hole[0], s.y0, s.y1], [s.hole[1], GR.shaft[1], s.y0, s.y1]]), ...GR.ledges];
 const GR_BALL = {r:0.36, v:2.7, every:2.5, melt:13.2};
 
 /* ---------- постройка ---------- */
@@ -42,8 +57,8 @@ function grBuild(){
   // стена грота позади, потолок, сосульки-сталактиты и светящиеся кристаллы
   const back = new THREE.Mesh(new THREE.PlaneGeometry(240, 40), GR_MAT.back); back.position.copy(rsAt(34, 5, -7)); grRoot.add(back);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(240, 14), GR_MAT.deep); floor.rotation.x = -Math.PI/2; floor.position.copy(rsAt(34, -3.2, -2)); grRoot.add(floor);
-  grBox(-4, 74, 9.2, 13, GR_MAT.deep, 4);
-  for(let x = -2; x < 72; x += 2.4 + R()*1.6){
+  grBox(-4, 68.8, 9.2, 13, GR_MAT.deep, 4); grBox(83, 92, 9.2, 13, GR_MAT.deep, 4);   // потолок; над шахтой — открыто
+  for(let x = -2; x < 68; x += 2.4 + R()*1.6){
     const h = 0.8 + R()*1.4, c = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.28 + R()*0.2, h, 7), GR_MAT.rock), 1.06);
     c.rotation.x = Math.PI; c.position.copy(rsAt(x, 9.2 - h/2, -1.2 - R()*2.4)); grRoot.add(c);
   }
@@ -60,10 +75,11 @@ function grBuild(){
     grBox(g[0] + 0.02, g[1] - 0.02, g[3] - 0.02, g[3] + 0.1, RS_MAT.snow, 1.14);
   }
   for(const w of G.walls) grBox(w[0], w[1], w[2], w[3], GR_MAT.rock);
-  for(const s of [G.ledge, G.shelf]){ grBox(s[0], s[1], s[2], s[3], RS_MAT.ice); grBox(s[0] + 0.02, s[1] - 0.02, s[3] - 0.02, s[3] + 0.1, RS_MAT.snow, 1.14); }
+  for(const s of [G.ledge, G.shelf, ...G.more]){ grBox(s[0], s[1], s[2], s[3], RS_MAT.ice); grBox(s[0] + 0.02, s[1] - 0.02, s[3] - 0.02, s[3] + 0.1, RS_MAT.snow, 1.14); }
+  grTideBuild();
   // подземная река
   const [wx0, wx1] = G.water, wm = new THREE.Mesh(new THREE.BoxGeometry(wx1 - wx0, RS_WS + 3.2, 2.4), GR_WATER);
-  wm.position.copy(rsAt((wx0 + wx1)/2, (RS_WS - 3.2)/2)); wm.renderOrder = 2; grRoot.add(wm);
+  wm.position.copy(rsAt((wx0 + wx1)/2, (RS_WS - 3.2)/2)); wm.renderOrder = 2; grRoot.add(wm); GRW.riverM = wm;
   const foam = new THREE.Mesh(new THREE.BoxGeometry(wx1 - wx0, 0.06, 2.42), new THREE.MeshBasicMaterial({color:0xEAF7FB, transparent:true, opacity:0.8}));
   foam.position.copy(rsAt((wx0 + wx1)/2, RS_WS)); grRoot.add(foam); GRW.foam = foam;
   // стрелочки течения на воде
@@ -101,6 +117,7 @@ function grReset(){
   for(const b of GRW.balls) grRoot.remove(b.o);
   GRW.balls.length = 0; GRW.ballT = 1;
   GRW.lid.position.y = RS_POS.y + GR.chute.y + 1.4;
+  grTideReset();
   grSync();
 }
 function grSync(){
@@ -133,6 +150,7 @@ function grWorld(dt){
   } else R.s.v = 0;
   R.flag.rotation.y = Math.sin(now*4)*0.3;
   for(const a of W.flow){ a.position.x += dt*0.8; if(a.position.x > RS_POS.x + GR.water[1] - 0.8) a.position.x -= 18; }
+  grTideWorld(dt);
   W.foam.position.y = RS_POS.y + RS_WS + Math.sin(now*2)*0.02;
   // снежные комы: катятся, пока открыт жёлоб и кто-то на обрыве; запускает хозяин комнаты
   const host = Q.mode !== 'net' || net.host;
@@ -188,6 +206,7 @@ function grTie(remote){
 
 /* ---------- верёвка: держать и лезть ---------- */
 function grClimb(p, dt){
+  if(p.hop) return grHopStep(p, dt);   // ⬆️ в люк (прилив)
   if(!(GRW.rope.tied || rsBoth().some(s => s.hold && s !== p))) return false;   // отпустили — соскальзывает
   p.x += (GR.rope.cx - p.x)*Math.min(1, dt*10); p.vx = p.vy = 0; p.air = false; p.face = 1;
   p.y += 1.7*dt;
@@ -197,6 +216,7 @@ function grClimb(p, dt){
 }
 function grAct(me){
   if(me.climb) return null;
+  if(GRW.tide.on){ const i = grHopAt(me); return i >= 0 ? {k:'hop', ic:'⬆️', aria:L('Наверх в люк', 'Up through the hatch')} : null; }
   const rp = GR.rope;
   if(!GRW.rope.tied && Math.abs(me.x - rp.post) < 0.8 && Math.abs(me.y - rp.top) < 0.15 && !me.air)
     return {k:'hold', ic:'🪢', aria:L('Держать верёвку', 'Hold the rope')};
@@ -211,11 +231,13 @@ function grDoAct(p, k){
     if(p.hold) floatText(L('Держу! 🪢', 'Holding! 🪢'), rsAt(p.x, p.y + 1.4), '#2F9E72');
     if(p === Q.me) Q.hintT = 0;
   } else if(k === 'climb' && !p.climb){ p.climb = true; sfx.whoosh(); }
+  else if(k === 'hop' && !p.climb){ const i = grHopAt(p); if(i >= 0){ p.hop = {i, k:0, x0:p.x, y0:p.y}; p.climb = true; sfx.whoosh(); } }
 }
 // течение в реке тянет к плоту (нырнул — не мешает)
 function grFlow(p){ if(p.dive) return 0; const c = GRW.raft.x + GR.raft.w/2; return Math.max(-1.6, Math.min(1.6, (c - p.x)*1.2)); }
 // вынырнул у плота — сам запрыгивает обратно
 function grPre(){
+  if(GRW.blocks) for(const B of GRW.blocks) B.dx = 0;   // сдвиг глыбы за шаг — кто стоит на ней, едет следом
   const c = GRW.raft.x + GR.raft.w/2;
   for(const p of [Q.me, Q.pal]) if(p && rsLocal(p) && !p.gone && p.inW && !p.dive && !p.bub && Math.abs(p.x - c) < 1.1 && p.y > RS_FLOAT - 0.25 && p.jq <= 0) p.jq = 0.15;
 }
@@ -234,8 +256,8 @@ function grStep(dt, go){
   if(go && !Q.cage) for(const p of [Q.me, Q.pal]) if(p && rsLocal(p) && !p.bub && p.ground && p.ground.k === 'shelf'){ grFree(); break; }
   if(!Q.cage && now > P.callT && Q.me.x > 44){ P.callT = now + 4 + Math.random()*2; floatText(L('Пи-пи! Я тут!', 'Peep-peep! I\'m here!'), rsAt(P.x, P.y + 1.1), '#6B6A7E'); sfx.mama(); }
   const s = P.s;
-  s.root.position.copy(rsAt(P.x, P.y));
-  s.root.rotation.y += (P.face*0.9 - s.root.rotation.y)*Math.min(1, dt*6);
+  if(!P.on){ s.root.position.copy(rsAt(P.x, P.y)); s.root.rotation.y += (P.face*0.9 - s.root.rotation.y)*Math.min(1, dt*6); }
+  else s.root.position.y = 1.45 + Math.abs(Math.sin(now*5))*0.06;   // едет у Силача на спине — подпрыгивает
   s.flap = Q.cage ? 1 : 0;
   updateSeal(s, now, dt);
   // над уступом жемчужинка: подскажем, как достать (один раз)
@@ -248,33 +270,52 @@ function grStep(dt, go){
     Q.hintT = now + 6;
   }
 }
+// Пипу нашли — радуемся, и тут начинается прилив (финал — grTop наверху шахты)
 async function grFree(remote){
   if(Q.cage) return;
-  Q.cage = true; Q.st = 'end';
+  Q.cage = true;
   if(!remote && Q.mode === 'net') netSend({t:'qfree'});
-  const P = Q.pipa, ping = Q.mode === 'ping';
+  const P = Q.pipa, q = Q;
   sfx.good(); sfx.sparkle(); mgHint(L('Пипа нашлась! 💗', 'Pipa is found! 💗'));
   floatText(L('Ура! Вы меня нашли!', 'Yay! You found me!'), rsAt(P.x, P.y + 1.3), '#D9527E');
   burst(TEX.heart, rsAt(P.x, P.y + 0.6), 14, 2, 0.3);
-  // тюлени спускаются и встают для фото, Пипа спрыгивает к ним
-  Q.photoX = 63.2;
-  for(const p of [Q.me, Q.pal]) if(p && rsLocal(p) && !p.gone){ p.auto = p.role === 'jump' ? 64.5 : 61.8; p.hold = false; if(p.bub) rsRevive(p); }
-  await wait(1.2); if(!Q) return;
+  await wait(1.8); if(Q !== q) return;
+  grTideGo();
+}
+// оба наверху шахты: солнышко, Пипа спрыгивает со спины, «дай пять!», фото
+async function grTop(remote){
+  const T = GRW.tide; if(!T.on || T.top) return;
+  T.top = true; Q.st = 'end';
+  if(!remote && Q.mode === 'net') netSend({t:'qgtop'});
+  const P = Q.pipa, ping = Q.mode === 'ping', y = GR.slabs[1].y1, q = Q, cx = 76;
+  sfx.good(); sfx.sparkle(); mgHint(L('Выбрались! Солнышко! ☀️', 'We made it out! Sunshine! ☀️'));
+  burst(TEX.star, rsAt(cx, y + 2.4), 18, 2.6, 0.3);
+  Q.photoX = cx; Q.photoY = y + 1.0;
+  for(const p of [Q.me, Q.pal]) if(p && rsLocal(p) && !p.gone){
+    if(p.bub) rsRevive(p);
+    if(p.x < GR.slabs[1].hole[1]){ p.x = 73.4; p.y = y; burst(TEX.puff, rsAt(p.x, y + 0.3, 0.4), 6, 1.2, 0.3); }   // стоял слева от люка — к остальным
+    p.auto = p.role === 'jump' ? 77.3 : 74.7; p.hold = false;
+  }
+  await wait(1.0); if(Q !== q) return;
+  // Пипа спрыгивает со спины
+  const st = rsBoth().find(o => o.role === 'strong');
+  if(P.on){ const w = P.s.root.getWorldPosition(new V3()); P.on.m.root.remove(P.s.root); grRoot.add(P.s.root); P.s.root.scale.setScalar(RS_SC*0.62); P.on = null; P.x = w.x - RS_POS.x; P.y = w.y - RS_POS.y; }
+  else if(st){ P.x = st.x; P.y = y; }
   const x0 = P.x, y0 = P.y;
-  P.face = -1; sfx.whoosh();
-  await tween(0.9, k => { P.x = x0 + (63.2 - x0)*k; P.y = y0 + (0.8 - y0)*k + Math.sin(k*Math.PI)*1.2; }, t => t);
-  if(!Q) return;
-  sfx.thud(); burst(TEX.puff, rsAt(P.x, 0.9, 0.4), 8, 1.3, 0.3); P.face = 1;
-  floatText(ping ? L('Пинг! Братик!', 'Ping! My brother!') : L('Спасибо! 💗', 'Thank you! 💗'), rsAt(P.x, 2.4), '#D9527E');
+  P.face = 1; sfx.whoosh();
+  await tween(0.8, k => { P.x = x0 + (cx - x0)*k; P.y = y0 + (y - y0)*k + Math.sin(k*Math.PI)*1.1; }, t => t);
+  if(Q !== q) return;
+  sfx.thud(); burst(TEX.puff, rsAt(P.x, y + 0.1, 0.4), 8, 1.3, 0.3); P.face = -1;
+  floatText(ping ? L('Пинг! Братик!', 'Ping! My brother!') : L('Спасибо! 💗', 'Thank you! 💗'), rsAt(P.x, y + 1.6), '#D9527E');
   if(ping && Q.pal) floatText(L('Сестрёнка! Кря!', 'Little sister! Quack!'), rsAt(Q.pal.x, Q.pal.y + 1.7), '#3E8DB8');
-  await wait(1.3); if(!Q) return;
+  await wait(1.3); if(Q !== q) return;
   // «дай пять!»
   const a = Q.me, b = Q.pal && !Q.pal.gone ? Q.pal : null;
   const hx = b ? (a.x + b.x)/2 : a.x;
-  floatText(L('Дай пять! ✋', 'High five! ✋'), rsAt(hx, 2.9), '#D9527E');
-  burst(TEX.star, rsAt(hx, 1.8), 16, 2.4, 0.3); sfx.hug();
+  floatText(L('Дай пять! ✋', 'High five! ✋'), rsAt(hx, y + 2.1), '#D9527E');
+  burst(TEX.star, rsAt(hx, y + 1.0), 16, 2.4, 0.3); sfx.hug();
   for(const p of [a, b]) if(p){ p.m.flap = 1; setMood(p.m, 'happy'); }
-  await wait(2.2); if(!Q) return;
+  await wait(2.2); if(Q !== q) return;
   Q.end = 'win';
 }
 
@@ -289,7 +330,7 @@ function grStackUp(p, o, x0, top, sx){
   if(p.air) return {tx:o.x};
   return {tx:o.x, jump:Math.abs(p.x - o.x) < 0.9};
 }
-function grAI(p, dt){ return p.role === 'jump' ? grAIJ(p) : grAIS(p); }
+function grAI(p, dt){ if(GRW.tide.on) return grTideAI(p); return p.role === 'jump' ? grAIJ(p) : grAIS(p); }
 // Пинг-Силач: лезет по верёвке, идёт первым к рычагу (комы о него разбиваются), ныряет за жемчужинкой, встаёт под полкой
 function grAIS(p){
   const me = Q.me, W = GRW, R = W.raft, lv = W.levers[0].on;
@@ -340,8 +381,195 @@ function grAIJ(p){
   return {tx:Math.min(me.x + 1, 64)};
 }
 
+/* ---------- 🌊 прилив: шахта наверх ---------- */
+const GR_SKY = canvasTex(64, (g, w, h) => { const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#9FD6F0'); gr.addColorStop(0.7, '#DDF2FA'); gr.addColorStop(1, '#FFF4CF'); g.fillStyle = gr; g.fillRect(0, 0, w, h); });
+function grTideBuild(){
+  const G = GR, W = GRW;
+  // ледяная стенка-проход: трескается, когда начинается прилив
+  const d = G.door; W.door = {o:grBox(d[0], d[1], d[2], d[3], RS_MAT.gate), s:{x0:d[0], x1:d[1], y0:d[2], y1:d[3], k:'ice'}, open:false};
+  // люки (крышки) и кольца под потолком
+  W.hatch = G.slabs.map((s, i) => {
+    const lid = grBox(s.hole[0], s.hole[1], s.y0 + 0.02, s.y1 - 0.02, RS_MAT.gate, 1.0);
+    const g = new THREE.Group(); g.position.copy(rsAt(s.ring, s.y0, 0.3)); grRoot.add(g);
+    const len = s.y0 - s.rb - 0.3;
+    const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, len, 6), RS_MAT.wood); cord.position.y = -len/2; g.add(cord);
+    const ring = addOutline(new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.055, 8, 18), RS_MAT.lever), 1.15); ring.position.y = -len - 0.15; g.add(ring);
+    return {lid, g, ring, open:false, k:0, s:{x0:s.hole[0], x1:s.hole[1], y0:s.y0, y1:s.y1, k:'ice'}};
+  });
+  // глыбы: Силач толкает (общий код в rescue.js — по s.pb)
+  W.blocks = G.blocks.map((b, i) => {
+    const w = G.blockW, h = G.blockH, o = addOutline(new THREE.Mesh(new THREE.BoxGeometry(w, h, 1.0), RS_MAT.block), 1.04); grRoot.add(o);
+    const B = {i, x0:b.x, x:b.x, y0:b.y0, w, h, min:b.min, max:b.max, dx:0, o, sent:b.x, nT:0};
+    B.s = {x0:0, x1:0, y0:b.y0, y1:b.y0 + h, k:'gblock', pb:B};
+    B.sync = () => { B.s.x0 = B.x - w/2; B.s.x1 = B.x + w/2; o.position.copy(rsAt(B.x, B.y0 + h/2)); };
+    B.sync(); return B;
+  });
+  // вода прилива и пена
+  const wm = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 2.6), GR_WATER); wm.renderOrder = 3; wm.visible = false; grRoot.add(wm);
+  const foam = new THREE.Mesh(new THREE.BoxGeometry(1, 0.07, 2.62), new THREE.MeshBasicMaterial({color:0xEAF7FB, transparent:true, opacity:0.85})); foam.visible = false; grRoot.add(foam);
+  W.tide = {on:false, top:false, W:RS_WS, wm, foam, sndT:0, s:{x0:G.water[0], x1:G.shaft[1], y0:0, y1:0, one:true, k:'tide'}};
+  // наверху — небо и солнышко
+  const sky = new THREE.Mesh(new THREE.PlaneGeometry(G.shaft[1] - G.shaft[0] + 1.6, 12), new THREE.MeshBasicMaterial({map:GR_SKY})); sky.position.copy(rsAt((G.shaft[0] + G.shaft[1])/2, 9.2 + 6, -6.8)); grRoot.add(sky);
+  const sun = new THREE.Sprite(new THREE.SpriteMaterial({map:emojiTex('☀️'), transparent:true, depthWrite:false})); sun.scale.setScalar(1.6); sun.position.copy(rsAt(78.5, G.sky, -6)); grRoot.add(sun);
+  const gl = glow(0xFFF3A8, 5); gl.position.copy(rsAt(78.5, G.sky, -6.2)); grRoot.add(gl);
+}
+function grTideReset(){
+  const W = GRW, T = W.tide; if(!T) return;
+  T.on = false; T.top = false; T.W = RS_WS; T.wm.visible = T.foam.visible = false;
+  if(W.riverM){ W.riverM.visible = true; W.foam.visible = true; }
+  const d = W.door, D = GR.door; d.open = false; d.o.visible = true; d.o.scale.y = 1; d.o.position.y = RS_POS.y + (D[2] + D[3])/2;
+  W.hatch.forEach((h, i) => { const s = GR.slabs[i]; h.open = false; h.k = 0; h.lid.position.x = RS_POS.x + (s.hole[0] + s.hole[1])/2; h.ring.material = RS_MAT.lever; });
+  W.blocks.forEach(B => { B.x = B.sent = B.x0; B.dx = 0; B.sync(); });
+}
+// этаж тюленя в шахте: 0 — низ (пол, первый уступ), 1 — над первым люком, 2 — наверху
+function grStage(p){
+  const S = GR.slabs, inSh = p.x > GR.shaft[0] - 0.1;
+  return inSh && p.y >= S[1].y1 - 0.1 ? 2 : inSh && p.y >= S[0].y1 - 0.1 ? 1 : 0;
+}
+const grStrongMine = () => { const S = rsBoth().find(o => o.role === 'strong'); return !S || rsLocal(S); };
+function grTideGo(){
+  const W = GRW, T = W.tide; if(T.on) return;
+  T.on = true; T.W = RS_WS; T.wm.visible = T.foam.visible = true; W.riverM.visible = false; W.foam.visible = false;
+  sfx.splash(); sfx.thud(); sfx.grr();
+  W.door.open = true;
+  burst(TEX.puff, rsAt(69.2, 1.9, 0.4), 14, 2, 0.45); burst(TEX.star, rsAt(69.2, 2, 0.4), 8, 1.6, 0.25);
+  floatText(L('Крак! Там ход наверх!', 'Crack! A way up!'), rsAt(70.4, 3.4), '#3E8DB8');
+  grPipaRide();
+  Q.hintT = 0; rsHintNow(true);
+}
+function grPipaRide(){   // Пипа запрыгивает Силачу на спину (как в Метели)
+  const P = Q.pipa, st = rsBoth().find(o => o.role === 'strong'); if(!P || !st) return;
+  burst(TEX.puff, rsAt(P.x, P.y + 0.3, 0.4), 8, 1.3, 0.3); sfx.boing();
+  if(P.s.root.parent) P.s.root.parent.remove(P.s.root);
+  st.m.root.add(P.s.root); P.on = st;
+  P.s.root.scale.setScalar(0.42); P.s.root.position.set(0, 1.45, -0.45); P.s.root.rotation.set(0, 0, 0);
+  floatText(L('Пипа, держись! 🐧', 'Hold on, Pipa! 🐧'), rsAt(st.x, st.y + 1.8), '#D9527E');
+}
+function grHatch(i, remote){
+  const h = GRW.hatch[i]; if(!h || h.open) return;
+  h.open = true; sfx.lever(); sfx.whoosh(); h.ring.material = RS_MAT.on;
+  const s = GR.slabs[i];
+  floatText(L('Дзынь! Люк открыт!', 'Ding! The hatch is open!'), rsAt((s.hole[0] + s.hole[1])/2, s.y1 + 0.9), '#2F9E72');
+  burst(TEX.star, rsAt(s.ring, s.rb, 0.4), 10, 1.8, 0.25);
+  if(!remote && Q.mode === 'net') netSend({t:'qgh', i});
+  Q.hintT = 0;
+}
+// стоит под открытым люком на глыбе (или чём-то не ниже 1,45 м от этажа) — кнопка ⬆️
+function grHopAt(p){
+  if(!GRW.tide.on || p.air || p.bub) return -1;
+  return GR.slabs.findIndex((s, i) => GRW.hatch[i].open && p.x > s.hole[0] + 0.25 && p.x < s.hole[1] - 0.25 && p.y < s.y0 && s.y1 - p.y <= 1.45);
+}
+function grHopStep(p, dt){
+  const H = p.hop, s = GR.slabs[H.i];
+  H.k = Math.min(1, H.k + dt/0.6);
+  p.x = H.x0 + (s.hop - H.x0)*H.k; p.y = H.y0 + (s.y1 - H.y0)*H.k + Math.sin(H.k*Math.PI)*0.7; p.vx = p.vy = 0; p.air = true;
+  p.face = Math.sign(s.hop - H.x0) || 1;
+  if(H.k >= 1){ p.y = s.y1; p.hop = null; p.climb = false; p.inv = 0.3; sfx.thud(); burst(TEX.puff, rsAt(p.x, s.y1 + 0.1, 0.4), 6, 1.2, 0.3); if(p === Q.me) Q.hintT = 0; }
+  return true;
+}
+function grTideSolids(out){
+  const W = GRW, T = W.tide; if(!T) return;
+  if(!W.door.open) out.push(W.door.s);
+  for(const h of W.hatch) if(!h.open) out.push(h.s);
+  for(const B of W.blocks) out.push(B.s);
+  if(T.on && T.W > 0.9) out.push(T.s);   // вода держит, как льдина
+}
+function grTideWorld(dt){
+  const W = GRW, T = W.tide; if(!T) return;
+  // стенка-проход оседает
+  const d = W.door, D = GR.door;
+  if(d.open && d.o.visible){ d.o.scale.y = Math.max(0.02, d.o.scale.y - dt*2.5); d.o.position.y = RS_POS.y + D[2] + (D[3] - D[2])*d.o.scale.y/2; if(d.o.scale.y <= 0.02) d.o.visible = false; }
+  // люки: крышка уезжает в этаж, кольцо качается
+  W.hatch.forEach((h, i) => {
+    const s = GR.slabs[i], w = s.hole[1] - s.hole[0];
+    h.k += ((h.open ? 1 : 0) - h.k)*Math.min(1, dt*4);
+    h.lid.position.x = RS_POS.x + (s.hole[0] + s.hole[1])/2 + w*h.k*(i ? 1 : -1);
+    h.g.rotation.z = Math.sin(now*2 + i)*(h.open ? 0.02 : 0.08);
+  });
+  if(!T.on) return;
+  // кольцо: Прыгун допрыгнул — люк открыт
+  if(!T.top) for(const p of rsBoth()){
+    if(!rsLocal(p) || p.bub || p.climb || p.role !== 'jump') continue;
+    W.hatch.forEach((h, i) => { const s = GR.slabs[i]; if(!h.open && Math.abs(p.x - s.ring) < 0.6 && p.y + RS_H >= s.rb && p.y < s.y0) grHatch(i); });
+  }
+  // вода: догоняет того, кто ниже всех, но не выше его лап
+  if(!T.top){
+    const ps = rsBoth().filter(p => !p.bub);
+    for(const p of ps) if(!p.air || p.grY === undefined || p.y < p.grY) p.grY = p.y;   // в прыжке считаем, где стоял: вода не обгоняет прыгнувшего
+    if(ps.length){
+      const lo = Math.min(...ps.map(p => p.grY)), tgt = Math.min(lo - 0.3, GR.slabs[1].y1 - 0.4);
+      if(tgt > T.W){ T.W = Math.min(tgt, T.W + (tgt - T.W > 1.5 ? 2.4 : 0.9)*dt); if((T.sndT -= dt) <= 0){ T.sndT = 0.5 + Math.random()*0.6; sfx.drip(); } }
+    }
+  }
+  T.s.y1 = T.W; T.s.y0 = T.W - 0.6;
+  const x0 = GR.water[0], x1 = GR.shaft[1], h = T.W + 3.2;
+  T.wm.scale.set(x1 - x0, h, 1); T.wm.position.copy(rsAt((x0 + x1)/2, -3.2 + h/2));
+  T.foam.scale.x = x1 - x0; T.foam.position.copy(rsAt((x0 + x1)/2, T.W + Math.sin(now*2)*0.02));
+  if(Math.random() < dt*5) emit(TEX.puff, rsAt(58 + Math.random()*23, T.W + 0.05, 0.6), {v:new V3(0, 0.4, 0), life:0.6, size:0.18});
+  // упал в воду — она держит: всплыл и стоит
+  for(const p of rsBoth()){
+    if(!rsLocal(p) || p.bub || p.climb) continue;
+    if(p.x > GR.water[0] && p.y < T.W - 0.05){ p.y = T.W; p.vy = Math.max(0, p.vy); }
+    const on = !!(p.ground && p.ground.k === 'tide');
+    if(on && !p.grTide){ sfx.splash(); burst(TEX.puff, rsAt(p.x, T.W + 0.1, 0.4), 8, 1.4, 0.3); if(p === Q.me) floatText(L('Плюх! Вода держит', 'Splash! The water holds you'), rsAt(p.x, p.y + 1.4), '#3E8DB8'); }
+    p.grTide = on;
+  }
+  // оба наверху — выбрались!
+  if(!T.top && Q.st === 'go'){ const ps = rsBoth(); if(ps.length && ps.every(p => !p.bub && !p.climb && grStage(p) >= 2)) grTop(); }
+}
+// камера: видно обоих и воду под ними
+function grTideCam(){
+  const T = GRW.tide; if(!T || !T.on || T.top) return null;
+  const ps = rsBoth(); if(!ps.length) return null;
+  const ys = ps.map(p => p.y), lo = Math.min(...ys), hi = Math.max(...ys), inSh = Math.min(...ps.map(p => p.x)) > GR.shaft[0] - 0.5;
+  return [inSh ? 75.4 : Math.min(72, Math.max(Q.me.x + 1.5, 66)), Math.max(0.3, (lo + hi)/2 - 0.3), 1.05 + Math.min(0.5, (hi - lo)*0.1) + (inSh ? 0.2 : 0)];
+}
+// по сети глыбы рассылает тот, у кого Силач
+function grTideNet(dt){
+  if(!GRW.tide.on || !grStrongMine()) return;
+  for(const B of GRW.blocks) if(Math.abs(B.x - B.sent) > 0.005 && (B.nT -= dt) <= 0){ B.nT = 0.08; B.sent = B.x; netSend({t:'qgb', i:B.i, x:+B.x.toFixed(3)}); }
+}
+// Пинг в шахте: Прыгун открывает люк и лезет следом, когда Силач уже у люка; Силач ставит глыбы ступенькой и под люк
+function grTideAI(p){
+  if(GRW.tide.top) return {tx:p.x};
+  const st = grStage(p);
+  if(st === 0 && p.x < GR.shaft[0] + 0.3) return {tx:71.2, far:true};   // сначала — в шахту
+  return {...(p.role === 'jump' ? grTideAIJ(p, st) : grTideAIS(p, st)), far:true};
+}
+function grTideAIJ(p, st){
+  if(st >= 2) return {tx:Math.max(73.2, Math.min(p.x, 79))};
+  const s = GR.slabs[st], h = GRW.hatch[st], L = GR.ledges[st], hc = (s.hole[0] + s.hole[1])/2;
+  if(p.air && p.y > s.y1 + 0.02) return {tx:st ? 73.4 : 77.6};   // вылетел из люка — шаг на этаж
+  if(!h.open) return {tx:s.ring, jump:!p.air && Math.abs(p.x - s.ring) < 0.3, up:true};
+  const S = rsBoth().find(o => o.role === 'strong');
+  const ready = !S || S === p || grStage(S) > st || grHopAt(S) === st || !!S.hop;   // «в ногу»: Силач уже у люка
+  if(p.y >= L[3] - 0.05){   // на уступе (или на глыбе)
+    if(!ready) return {tx:st ? 73.6 : 77.0};
+    return {tx:hc, jump:!p.air && Math.abs(p.x - hc) < 0.35, up:true};
+  }
+  if(!ready) return {tx:st ? 76.2 : 73.8};
+  const edge = st ? L[1] + 0.5 : L[0] - 0.5;   // откуда прыгать на уступ, не задев его снизу
+  if(p.air) return {tx:p.y > L[3] + 0.05 ? (st ? L[1] - 0.8 : L[0] + 0.8) : edge, up:true};
+  return {tx:edge, jump:Math.abs(p.x - edge) < 0.3, up:true};
+}
+function grTideAIS(p, st){
+  if(st >= 2) return {tx:Math.max(73.2, Math.min(p.x, 76))};
+  if(grHopAt(p) === st) return {tx:p.x, act:'hop'};
+  const L = GR.ledges[st], Bs = GRW.blocks[st*2], Bh = GRW.blocks[st*2 + 1], side = st ? 1 : -1;   // этаж 0 толкаем вправо, этаж 1 — влево
+  const push = (B, at) => {
+    if(Math.abs(B.x - at) < 0.05) return null;
+    if(p.ground && p.ground.pb === B) return {tx:B.x + side*1.2};   // слезть на нужную сторону
+    if(st ? p.x < B.x : p.x > B.x) return {tx:B.x + side*1.3};       // обойти (упрётся — перепрыгнет)
+    return {tx:st ? B.min - 2 : B.max + 2};
+  };
+  if(p.y < L[3] - 0.05) return push(Bs, st ? Bs.min : Bs.max) || {tx:st ? L[1] - 0.6 : L[0] + 0.6};   // ступенька — и по ней на уступ
+  return push(Bh, st ? Bh.min : Bh.max) || {tx:Bh.x};   // глыбу под люк — и ждать на ней
+}
+
 /* ---------- подсказки ---------- */
 function grSec(p){
+  const T = GRW.tide;
+  if(T.on && !T.top){ const st = grStage(p); return st >= 2 ? 44 : 40 + st*2 + (GRW.hatch[st].open ? 1 : 0); }
   if(Q.cage) return 7;
   if(p.x > 56.8 && p.y > 0.5) return 6;
   if(p.x > 33.2 && p.y < 3) return GRW.raft.go ? 5 : 4;
@@ -367,6 +595,12 @@ function grHint(sec, role){
     case 6: return J ? L(`Пипа на высокой полке! Встань ${solo ? 'Силачу' : n} на голову — и прыгай оттуда ⬆️⬆️`, `Pipa is on a high shelf! Stand on ${nS}'s head — and jump from there ⬆️⬆️`)
       : L(`Пипа на высокой полке! Встань под ней — ${nJ} запрыгнет тебе на голову, а оттуда к Пипе`, `Pipa is on a high shelf! Stand under it — ${nJ} jumps on your head and up to Pipa`);
     case 7: return L('Пипа нашлась! 💗', 'Pipa is found! 💗');
+    case 40: case 42: { const up = sec === 42 ? L('Ещё этаж! ', 'One more floor! ') : L('Прилив! Вода поднимается — бегом наверх! ', 'The tide! The water is rising — up we go! ');
+      return up + (J ? L('Под потолком кольцо 🔔 — прыгни под ним и ещё раз в воздухе ⬆️⬆️, люк откроется', 'There\'s a ring 🔔 under the ceiling — jump under it and again in the air ⬆️⬆️, the hatch opens')
+        : L(`Толкни глыбу к уступу 💪 — будет ступенька, а вторую — под люк. Люк откроет ${nJ}: кольцо 🔔 под потолком`, `Push a block to the ledge 💪 — it makes a step, and the second one under the hatch. ${nJ} opens the hatch: the ring 🔔 under the ceiling`)); }
+    case 41: case 43: return J ? L(`Люк открыт! Запрыгни на уступ — и в люк ⬆️⬆️. ${nS} поднимется с глыбы`, `The hatch is open! Jump onto the ledge — and up through the hatch ⬆️⬆️. ${nS} climbs from the block`)
+      : L('Люк открыт! Толкни глыбу под люк, залезь на неё и нажми ⬆️', 'The hatch is open! Push a block under the hatch, climb on it and press ⬆️');
+    case 44: return L(`Наверху светло! ☀️ Ждём ${solo ? (J ? 'Силача' : 'Прыгуна') : n}`, `It's bright up here! ☀️ Waiting for ${solo ? (J ? 'the strong one' : 'the jumper') : n}`);
   }
   return '';
 }
@@ -378,6 +612,9 @@ function grStuck(dt){
   if(Q.stuckT > 3 && !Q.said.has('stuckR')){ Q.said.add('stuckR'); mgHint(L(`${pal.name} ждёт внизу! Подойди к столбику и нажми 🪢`, `${pal.name} is waiting below! Go to the post and press 🪢`)); Q.hintT = now + 5; }
 }
 function grWire(){
+  netOn('qgh', m => { if(Q && Q.L.id === 'grot') grHatch(+m.i, true); });
+  netOn('qgb', m => { if(!Q || Q.L.id !== 'grot') return; const B = GRW.blocks[+m.i]; if(B && !grStrongMine() && Number.isFinite(+m.x)){ B.x = Math.max(B.min, Math.min(B.max, +m.x)); B.sync(); } });
+  netOn('qgtop', () => { if(Q && Q.L.id === 'grot') grTop(true); });
   netOn('qball', m => { if(Q && Q.L.id === 'grot' && !GRW.balls.some(b => b.id === m.id)) grBall(m.id); });
   netOn('qbx', m => { if(!Q || Q.L.id !== 'grot') return; const i = GRW.balls.findIndex(b => b.id === m.id); if(i >= 0) grBallGone(i, false); });
   netOn('qraft', () => { if(Q && Q.L.id === 'grot') grRaftGo(true); });
@@ -386,14 +623,14 @@ function grWire(){
 }
 
 RS_LVS.grot = {id:'grot', ic:'🕯️', name:() => L('Грот', 'Grotto'),
-  say:() => L('Пингвинёнок Пипа потерялась в гроте: верёвка, снежные комы, плот по реке — и высокая полка.', 'Pipa the penguin chick is lost in the grotto: a rope, rolling snowballs, a raft on the river — and a high shelf.'),
-  root:grRoot, ground:GR.ground, walls:GR.walls, more:[GR.ledge, [...GR.shelf, 'shelf']], water:GR.water, stack:true,
+  say:() => L('Пингвинёнок Пипа потерялась в гроте: верёвка, снежные комы, плот по реке, высокая полка — а в конце прилив 🌊!', 'Pipa the penguin chick is lost in the grotto: a rope, rolling snowballs, a raft on the river, a high shelf — and the tide at the end 🌊!'),
+  root:grRoot, ground:GR.ground, walls:GR.walls, more:[GR.ledge, [...GR.shelf, 'shelf'], ...GR.more], water:GR.water, stack:true,
   pearls:GR.pearls, pearlO:null,
-  W:() => GRW, build:grBuild, reset:grReset, solids(out){ out.push(GRW.gate.s, GRW.raft.s); }, world:grWorld, pre:grPre,
+  W:() => GRW, build:grBuild, reset:grReset, solids(out){ out.push(GRW.gate.s, GRW.raft.s); grTideSolids(out); }, world:grWorld, pre:grPre, cam:grTideCam, net:grTideNet,
   lever(){ wait(0.4).then(() => { if(Q) floatText(L('Жёлоб закрыт, дверь открыта!', 'The chute is shut, the door is open!'), rsAt(GR.gate.x0, 6.2), '#3E8DB8'); }); },
   flow:grFlow, climb:grClimb, act:grAct, doAct:grDoAct,
   ai:grAI, sec:grSec, hint:grHint, step:grStep, stuck:grStuck, wire:grWire,
-  setup:grSetup, clean(){ if(Q.pipa) grRoot.remove(Q.pipa.s.root); for(const b of GRW.balls) grRoot.remove(b.o); GRW.balls.length = 0; },
+  setup:grSetup, clean(){ if(Q.pipa && Q.pipa.s.root.parent) Q.pipa.s.root.parent.remove(Q.pipa.s.root); for(const b of GRW.balls) grRoot.remove(b.o); GRW.balls.length = 0; },
   endX:63.2, photoY:1.35,
   photo:() => L('Пипа нашлась в гроте', 'Pipa found in the grotto'),
   endTtl:() => L('Пипа нашлась! 💗', 'Pipa is found! 💗'),

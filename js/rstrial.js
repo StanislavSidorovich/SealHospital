@@ -1,35 +1,29 @@
-/* ---------------- «Спасаем потеряшку»: финальные испытания для Бухты, Грота и Метели (ROADMAP, Спринт 5) ----------------
-   У новых уровней в конце есть «мини-босс» (сосулькопад, водоворот, медведь). Теперь и у первых трёх:
+/* ---------------- «Спасаем потеряшку»: финальные испытания для Бухты и Метели (ROADMAP, Спринт 5) ----------------
+   У новых уровней в конце есть «мини-босс» (сосулькопад, водоворот, медведь). Теперь и у первых:
      🌊 Бухта — ⚪ «Лавина комов»: клетка открылась, а с горки за мамами катятся снежные комы.
-     🕯️ Грот — 🧊 «Ледышки-прыгуны»: у полки Пипы с потолка сорвались ледышки и скачут по камням.
      ❄️ Метель — 🌪️ «Сугроб-ураган»: маяк загорелся, а метель напоследок крутит снежные вихри.
+   (У Грота с 14.10 свой финал — 🌊 «Побег от прилива» в js/grotto.js: финалы не повторяют глагол, DESIGN.md §3.)
    Правило одно: 💪 Силач встаёт впереди — комы и вихри о него рассыпаются; 🦘 Прыгун прячется за ним и перепрыгивает
-   то, что проскочит (ледышки-прыгуны скачут прямо через Силача). Попало в Прыгуна — пузырь (вихрь — сдувает назад).
+   то, что проскочит. Попало в Прыгуна — пузырь (вихрь — сдувает назад).
    В конце — великан (ком, глыба, большой вихрь): он упирается в Силача, а Прыгун прыгает ему на макушку 3 раза —
    и великан рассыпается: снеговик, кристаллы, большой сугроб. Потом всё как раньше: мама по приметам / Пипа на полке.
    Проиграть нельзя: что проскочило — просто укатилось.
-   Сеть: комы запускает хозяин (qtre), разбились о Силача — qtrb (шлёт тот, чей Силач), великан — qtrg, прыжки по нему — qtrs,
-   в Гроте начало — qtr0. Подключается после всех уровней «Потеряшки» (festival.js): оборачивает их хуки. */
+   Сеть: комы запускает хозяин (qtre), разбились о Силача — qtrb (шлёт тот, чей Силач), великан — qtrg, прыжки по нему — qtrs.
+   Подключается после всех уровней «Потеряшки» (festival.js): оборачивает их хуки. */
 const TR_CFG = {
   bay:{ic:'⚪', gy:3, x0:49, x1:66, guard:55.2, cx:56.4, cy:2.1, delay:0.3,
     waves:[['ball', 1.2], ['ball', 2.2], ['ball', 2.2], ['ball', 3.4], ['ball', 1.8], ['ball', 1.8], ['ball', 1.8]],
     name:() => L('Лавина комов', 'Snowball avalanche'),
     intro:() => L('Ой! С горки покатились снежные комы! ⚪', 'Oh! Snowballs are rolling down the hill! ⚪'),
     what:() => L('комы', 'snowballs'), giant:() => L('Ком-великан', 'A giant snowball'), after:() => L('Получился снеговик! ☃️', 'It turned into a snowman! ☃️')},
-  grot:{ic:'🧊', gy:0.8, x0:57.3, x1:68.8, guard:63.2, cx:63, cy:0.8, delay:0.3,
-    waves:[['ball', 1.2], ['hop', 2.6], ['ball', 2.4], ['hop', 2.8], ['hop', 2.6], ['ball', 2.2], ['hop', 2.6]],
-    name:() => L('Ледышки-прыгуны', 'Bouncing ice'),
-    intro:() => L('Ой! С потолка сорвались ледышки — и скачут! 🧊', 'Oh! Ice chunks fell from the ceiling — and they bounce! 🧊'),
-    what:() => L('ледышки', 'ice chunks'), giant:() => L('Глыба-великан', 'A giant ice boulder'), after:() => L('Глыба рассыпалась кристаллами! 💎', 'The boulder broke into crystals! 💎')},
   snow:{ic:'🌪️', gy:0, x0:50.2, x1:71.4, guard:60.2, cx:61, cy:0.4, delay:2.4,
     waves:[['whirl', 1.2], ['whirl', 2.6], ['whirl', 2.4], ['whirl', 2.8], ['whirl', 2.2], ['whirl', 2.4]],
     name:() => L('Сугроб-ураган', 'The snow hurricane'),
     intro:() => L('Метель напоследок крутит снежные вихри! 🌪️', 'The blizzard spins its last snow whirlwinds! 🌪️'),
     what:() => L('вихри', 'whirlwinds'), giant:() => L('Большой вихрь', 'A big whirlwind'), after:() => L('Вихрь рассыпался в сугроб! ❄️', 'The whirlwind fell into a snowdrift! ❄️')}
 };
-const TR_V = {ball:2.7, hop:2.3, whirl:2.2, giant:2.3};   // скорость (м/с)
-const TR_R = {ball:0.38, hop:0.34, whirl:0.5};           // радиус
-const TR_HOP = 1.45, TR_HOPT = 0.95;                     // ледышка-прыгун: высота и время одного скачка
+const TR_V = {ball:2.7, whirl:2.2, giant:2.3};   // скорость (м/с)
+const TR_R = {ball:0.38, whirl:0.5};           // радиус
 const TR_STOMPS = 3;                                     // сколько раз прыгнуть на великана
 let TR = null;
 
@@ -41,7 +35,7 @@ function trFace(g, r, z){   // глазки и румянец — смотрят
   }
 }
 function trModel(k, big){
-  const g = new THREE.Group(), lv = TR.id;
+  const g = new THREE.Group();
   if(k === 'whirl'){
     const r = big ? 1.0 : TR_R.whirl, rings = [];
     for(let i = 0; i < 5; i++){
@@ -53,39 +47,29 @@ function trModel(k, big){
     return g;
   }
   const r = big ? 0.85 : TR_R[k];
-  const col = lv === 'grot' ? (k === 'hop' ? 0xA8DDF7 : 0xCFEFFB) : 0xFFFFFF;
-  const b = addOutline(new THREE.Mesh(SPH, toon(col)), 1.05); b.scale.setScalar(r); g.add(b); g.userData.b = b;
-  if(lv === 'grot' && (big || k === 'hop')) for(let i = 0; i < (big ? 7 : 4); i++){   // ледяные шипики
-    const c = addOutline(new THREE.Mesh(new THREE.ConeGeometry(r*0.18, r*0.5, 5), toon(0xE3F6FF)), 1.1), a = i*2.4;
-    c.position.set(Math.cos(a)*r*0.9, Math.sin(a)*r*0.9, Math.sin(a*1.7)*r*0.3); c.rotation.z = a - Math.PI/2; b.add(c); c.scale.divideScalar(r);
-  }
-  if(big || k === 'hop'){ const f = new THREE.Group(); trFace(f, r, 0); g.add(f); g.userData.face = f; }
+  const b = addOutline(new THREE.Mesh(SPH, toon(0xFFFFFF)), 1.05); b.scale.setScalar(r); g.add(b); g.userData.b = b;
+  if(big){ const f = new THREE.Group(); trFace(f, r, 0); g.add(f); g.userData.face = f; }
   g.userData.r = r;
   return g;
 }
-function trRemains(x){   // что остаётся от великана: снеговик, кристаллы, большой сугроб
+function trRemains(x){   // что остаётся от великана: снеговик или большой сугроб
   const C = TR.C, g = new THREE.Group(); g.position.copy(rsAt(x, C.gy, -0.6));
   if(TR.id === 'bay'){
     for(const [y, r] of [[0.45, 0.5], [1.15, 0.36]]){ const b = addOutline(new THREE.Mesh(SPH, toon(0xFFFFFF)), 1.05); b.scale.setScalar(r); b.position.y = y; g.add(b); }
     const n = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.3, 8), toon(0xFFA552)), 1.1); n.rotation.z = Math.PI/2; n.position.set(-0.4, 1.15, 0); g.add(n);
     const f = new THREE.Group(); f.position.y = 1.2; trFace(f, 0.36, 0); g.add(f);
     const hat = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.26, 12), toon(0x7FB8F0)), 1.08); hat.position.y = 1.52; g.add(hat);
-  } else if(TR.id === 'grot'){
-    const cols = [0xA8F0FF, 0xFFC6E0, 0xFFF3A8];
-    for(let i = 0; i < 5; i++){ const c = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7 + (i % 3)*0.25, 6), new THREE.MeshBasicMaterial({color:cols[i % 3]})), 1.08); c.position.set((i - 2)*0.24, 0.35, (i % 2)*0.2); c.rotation.z = (i - 2)*0.3; g.add(c); }
-    const gl = glow(0xFFF3A8, 1.8); gl.position.y = 0.5; g.add(gl);
   } else { const d = makeDrift(); d.scale.set(1.3, 1.1, 1); g.add(d); }
   C.root().add(g); TR.left.push(g);
 }
 
 /* ---------- начало и конец ---------- */
 // уровень дошёл до испытания: after — что было бы дальше (мама по приметам и т.п.)
-function trGo(id, after, remote){
+function trGo(id, after){
   const C = TR_CFG[id];
   if(!C || !Q || Q.L.id !== id){ if(after) after(); return; }
   if(TR && TR.q === Q){ if(after && !TR.after) TR.after = after; return; }
   TR = {q:Q, id, C:{...C, root:() => Q.L.root}, on:true, ph:'wait', t:0, ents:[], seq:0, wi:0, spawnT:C.delay + 1.6, n:0, total:C.waves.length, giant:null, after, left:[], stack0:Q.L.stack};
-  if(!remote && Q.mode === 'net' && id === 'grot') netSend({t:'qtr0', lv:id});
   Q.L.stack = true;   // на великана Прыгун может запрыгнуть и с головы Силача
   if(Q.moms) for(const m of Q.moms) m.z = -1.5;   // мамы отходят подальше
   wait(C.delay).then(() => {
@@ -109,7 +93,7 @@ function trClear(){   // уровень закрылся: убираем всё,
   if(!TR) return;
   trEnd();
   for(const g of TR.left) if(g.parent) g.parent.remove(g);
-  if(TR.id === 'grot' || TR.id === 'bay' || TR.id === 'snow') if(Q && TR.q === Q) Q.L.stack = TR.stack0;
+  if(Q && TR.q === Q) Q.L.stack = TR.stack0;
   TR = null;
 }
 
@@ -119,7 +103,7 @@ function trSpawn(k, id, remote){
   const C = T.C, o = trModel(k, false); C.root().add(o);
   const e = {id, k, x:C.x1, y:C.gy + (k === 'whirl' ? 0 : TR_R[k]), t:0, r:k === 'whirl' ? TR_R.whirl : TR_R[k], o, hit:new Set(), dead:false};
   T.ents.push(e);
-  if(k === 'hop') sfx.boing(); else sfx.whoosh();
+  sfx.whoosh();
   if(!remote && Q.mode === 'net') netSend({t:'qtre', k, id});
 }
 function trKill(e, how){
@@ -150,7 +134,6 @@ function trEntStep(e, dt){
   const C = TR.C;
   e.t += dt; e.x -= TR_V[e.k]*dt;
   if(e.k === 'ball'){ e.y = C.gy + e.r; e.o.rotation.z += TR_V.ball/e.r*dt; }
-  else if(e.k === 'hop'){ const ph = (e.t % TR_HOPT)/TR_HOPT; e.y = C.gy + e.r + Math.sin(ph*Math.PI)*TR_HOP; e.o.rotation.z += 3*dt; if(ph < 0.06 && e.t > 0.2 && !e.land){ e.land = true; if(Math.abs(e.x - Q.me.x) < 9) sfx.plop(); } if(ph > 0.5) e.land = false; }
   else { e.y = C.gy; e.o.userData.rings.forEach((r, i) => { r.rotation.z += dt*(6 + i); r.position.x = Math.sin(now*5 + i)*0.08; }); if(Math.random() < dt*8) emit(TEX.puff, rsAt(e.x, C.gy + Math.random()*1.4, 0.3), {v:new V3(-1.5, 0.8, 0), life:0.5, size:0.3, grow:0.5}); }
   e.o.position.copy(rsAt(e.x, e.y, e.k === 'whirl' ? 0.1 : 0.25));
   if(e.x < C.x0) return trKill(e, 'pass');
@@ -224,10 +207,8 @@ async function trWin(){
 }
 
 /* ---------- кадр ---------- */
-function trStep(dt, go, id){
+function trStep(dt, go){
   if(TR && TR.q !== Q) TR = null;
-  // Грот: испытание начинается, когда вышли на берег после реки
-  if(id === 'grot' && go && !Q.cage && (!TR || TR.q !== Q) && rsBoth().some(p => rsLocal(p) && p.x > 58.6 && p.y > 0.5 && p.y < 2.5 && !p.bub)) trGo('grot', null);
   const T = TR; if(!T || !T.on) return;
   if(!go){ trEnd(); return; }   // Пипу сняли с полки прямо во время испытания — всё, праздник
   const host = Q.mode !== 'net' || net.host;
@@ -251,7 +232,7 @@ function trAI(p, dt){
   }
   if(p.role === 'strong') return {tx:C.guard};
   const bx = (S && !S.bub ? S.x : C.guard) - 1.15;
-  const e = T.ents.find(o => !o.dead && o.x > p.x - 0.2 && o.x - p.x < 1.5 && (o.k === 'hop' ? o.y - C.gy < 0.95 : !S || S.bub || S.x < p.x || o.x < S.x));
+  const e = T.ents.find(o => !o.dead && o.x > p.x - 0.2 && o.x - p.x < 1.5 && (!S || S.bub || S.x < p.x || o.x < S.x));
   return {tx:bx, jump:!!e && !p.air};
 }
 function trHint(role){
@@ -260,17 +241,15 @@ function trHint(role){
   if(T.giant) return J ? L(`${C.giant()}! Запрыгни сверху — и ещё раз в воздухе ⬆️⬆️ Три раза на макушку — и рассыплется!`, `${C.giant()}! Jump on it — and once more in the air ⬆️⬆️ Land on top three times and it breaks!`)
     : solo ? L(`${C.giant()}! Силач держит его, а Прыгун (🔄) прыгает сверху три раза`, `${C.giant()}! The strong one holds it, and the jumper (🔄) lands on top three times`)
     : L(`${C.giant()}! Держи 💪 — ${n} прыгнет на макушку. Можно и с твоей головы!`, `${C.giant()}! Hold it 💪 — ${n} will jump on its top. Even from your head!`);
-  const hop = T.id === 'grot' ? L(' Ледышки-прыгуны скачут даже через Силача — прыгай, когда она внизу!', ' The bouncy ones jump right over the strong one — jump when it\'s low!') : '';
-  if(solo) return L(`${C.name()}! 💪 Поставь Силача впереди — ${C.what()} о него рассыпятся. Прыгун (🔄) прячется за ним.`, `${C.name()}! 💪 Put the strong one in front — the ${C.what()} break on him. The jumper (🔄) hides behind.`) + hop;
-  return J ? L(`${C.name()}! Прячься за Силачом 💪 и перепрыгивай то, что проскочит ⬆️`, `${C.name()}! Hide behind ${n || 'the strong one'} 💪 and jump over whatever gets past ⬆️`) + hop
-    : L(`${C.name()}! Встань впереди 💪 — ${C.what()} о тебя рассыпятся, а ${n || 'Прыгун'} спрячется за тобой`, `${C.name()}! Stand in front 💪 — the ${C.what()} will break on you, and ${n || 'the jumper'} hides behind you`) + hop;
+  if(solo) return L(`${C.name()}! 💪 Поставь Силача впереди — ${C.what()} о него рассыпятся. Прыгун (🔄) прячется за ним.`, `${C.name()}! 💪 Put the strong one in front — the ${C.what()} break on him. The jumper (🔄) hides behind.`);
+  return J ? L(`${C.name()}! Прячься за Силачом 💪 и перепрыгивай то, что проскочит ⬆️`, `${C.name()}! Hide behind ${n || 'the strong one'} 💪 and jump over whatever gets past ⬆️`)
+    : L(`${C.name()}! Встань впереди 💪 — ${C.what()} о тебя рассыпятся, а ${n || 'Прыгун'} спрячется за тобой`, `${C.name()}! Stand in front 💪 — the ${C.what()} will break on you, and ${n || 'the jumper'} hides behind you`);
 }
 function trWire(){
   netOn('qtre', m => { if(TR && TR.q === Q) trSpawn(m.k, m.id, true); });
   netOn('qtrb', m => { if(TR && TR.q === Q) trBreak(m.id, true); });
   netOn('qtrg', () => { if(TR && TR.q === Q) trGiant(true); });
   netOn('qtrs', m => { if(TR && TR.q === Q) trStomp(m.n, true); });
-  netOn('qtr0', m => { if(Q && Q.L.id === m.lv) trGo(m.lv, null, true); });
 }
 
 /* ---------- оборачиваем уровни ---------- */
@@ -278,7 +257,7 @@ for(const id of Object.keys(TR_CFG)){
   const Lv = RS_LVS[id]; if(!Lv) continue;
   const o = {step:Lv.step, ai:Lv.ai, sec:Lv.sec, hint:Lv.hint, cam:Lv.cam, solids:Lv.solids, wire:Lv.wire, clean:Lv.clean, act:Lv.act, reset:Lv.reset};
   const on = () => TR && TR.q === Q && TR.on;
-  Lv.step = function(dt, go){ o.step.call(this, dt, go); trStep(dt, go, id); };
+  Lv.step = function(dt, go){ o.step.call(this, dt, go); trStep(dt, go); };
   Lv.ai = (p, dt) => on() && !p.bub ? trAI(p, dt) : o.ai(p, dt);
   Lv.sec = p => on() ? 30 : o.sec(p);
   Lv.hint = (sec, role) => sec === 30 && TR ? trHint(role) : o.hint(sec, role);

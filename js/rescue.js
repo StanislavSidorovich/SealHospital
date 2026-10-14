@@ -339,6 +339,15 @@ function rsMove(p, dt, dir, dive){
   for(const s of sol){
     if(s.one || nx + RS_HW <= s.x0 || nx - RS_HW >= s.x1 || p.y + RS_H <= s.y0 + 0.01 || p.y >= s.y1 - 0.01) continue;   // one — только сверху (плот)
     if(!p.air && s.y1 - p.y <= RS_STEP && s.y1 - p.y > 0 && !sol.some(o => o !== s && nx + RS_HW > o.x0 && nx - RS_HW < o.x1 && s.y1 + RS_H > o.y0 && s.y1 < o.y1)){ p.y = s.y1; continue; }
+    if(s.pb && p.role === 'strong' && !p.air && Math.abs(p.vx) > 0.2){   // глыба уровня (s.pb: x, w, h, y0, min, max, dx, sync) — Силач толкает (Грот, js/grotto.js)
+      const B = s.pb, want = nx > p.x ? nx + RS_HW + B.w/2 : nx - RS_HW - B.w/2, x1 = Math.max(B.min, Math.min(B.max, want));
+      if(Math.abs(x1 - B.x) > 1e-4 && !rsBoth().some(o => o !== p && Math.abs(o.x - x1) < B.w/2 + RS_HW - 0.05 && o.y < B.y0 + B.h - 0.1 && o.y > B.y0 - 0.4)){
+        B.dx += x1 - B.x; B.x = x1; B.sync(); p.push = true;
+        if(Math.random() < dt*10) emit(TEX.puff, rsAt(B.x + Math.sign(nx - p.x)*0.5, B.y0 + 0.1, 0.5), {v:new V3(0, 0.5, 0), life:0.5, size:0.28});
+        nx = nx > p.x ? Math.min(nx, B.s.x0 - RS_HW - 1e-4) : Math.max(nx, B.s.x1 + RS_HW + 1e-4);
+        continue;
+      }
+    } else if(s.pb && p.role !== 'strong' && !p.air && p === Q.me && now - (Q.heavyT || 0) > 3){ Q.heavyT = now; floatText(L('Тяжёлая! Это для Силача 💪', 'Too heavy! That\'s for the strong one 💪'), rsAt(p.x, p.y + 1.4)); }
     if(s.k === 'block' && Q.blockMine && p.role === 'strong' && !p.air && Math.abs(p.vx) > 0.2){   // Силач толкает глыбу
       const B = RSW.block, bl = RS_LV.block, want = nx > p.x ? nx + RS_HW + bl.s/2 : nx - RS_HW - bl.s/2;
       const x1 = Math.max(bl.min, Math.min(bl.max, want));
@@ -372,6 +381,7 @@ function rsMove(p, dt, dir, dive){
   } else { p.air = !p.inW; p.ground = null; p.coy -= dt; }
   p.y = ny;
   if(p.ground && p.ground.k === 'block') p.x += RSW.block.dx;   // едет на глыбе
+  else if(p.ground && p.ground.pb) p.x += p.ground.pb.dx;
   if(p.ground && p.ground.k === 'pal'){ const o = p.ground.o; if(p.palX != null) p.x += o.x - p.palX; p.palX = o.x; } else p.palX = null;   // на голове у Силача
   if(p.ground && p.ground.v) p.x += p.ground.v*dt;   // на плоту
   if(p.ground) p.cv = p.ground.v || 0; else if(p.inW) p.cv = 0;
@@ -757,7 +767,7 @@ function rsCam(dt){
   const W = camera.aspect < 1 ? 9 : 13, d = Math.max(W/2/(tv*camera.aspect), 7.5/tv);
   let fx = me.x + me.face*0.9, fy = Math.max(-0.5, Math.min(4.5, me.y*0.6)), fz = 1;
   const f = Q.L.cam && Q.L.cam(); if(f){ fx = f[0]; fy = f[1]; fz = f[2] || 1; }   // уровень просит показать место (мам, полку Пипы) — и отъехать подальше (fz)
-  if(Q.photoX != null){ fx = Q.photoX; fy = 1.8; }
+  if(Q.photoX != null){ fx = Q.photoX; fy = Q.photoY != null ? Q.photoY : 1.8; }   // photoY — фото не на земле (Грот: наверху шахты)
   Q.cx += (fx - Q.cx)*Math.min(1, dt*3); Q.cy += (fy - Q.cy)*Math.min(1, dt*3); Q.cz = (Q.cz || 1) + (fz - (Q.cz || 1))*Math.min(1, dt*3);
   const look = rsAt(Q.cx, Q.cy + (camera.aspect < 1 ? 1.2 : 1.4), 0);
   runCam.look.copy(look); runCam.pos.copy(look).add(new V3(0, 3.2*Q.cz, d*Q.cz));   // чуть сверху — видно снежные верхушки льдин
@@ -992,7 +1002,7 @@ async function rescueGame(mode, pal0 = null){
     LV.reset();
     const fam = rsFamily(start.seed), myRole = start.role, palRole = myRole === 'jump' ? 'strong' : 'jump';
     Q = {mode, L:LV, W:LV.W(), st:'ready', seed:start.seed, me:null, pal:null, in:{dir:0, dive:false}, sol:[], stat:[], said:new Set(), hintT:0, cx:1, cy:0.5,
-      sendT:0, bT:0, bSent:RS_LV.block.x, blockMine:true, cage:false, asked:false, momAsk:0, won:false, end:null, photoX:null,
+      sendT:0, bT:0, bSent:RS_LV.block.x, blockMine:true, cage:false, asked:false, momAsk:0, won:false, end:null, photoX:null, photoY:null,
       fam, moms:[], pup:null, arrow:null, actB:null, pearl:LV.pearls.map(() => false), pearlO:LV.pearlO};
     // неподвижные бруски
     for(const g of LV.ground) Q.stat.push({x0:g[0], x1:g[1], y0:g[2], y1:g[3], k:'ice'});
@@ -1064,7 +1074,7 @@ function rsResults(){
   let photo = null;
   try{
     // фото крупнее: камера на миг подъезжает к спасённому и тюленям
-    const c = rsAt(Q.photoX != null ? Q.photoX : Q.L.endX, Q.L.photoY), tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), d = 5.4/(2*tv*Math.min(1, camera.aspect));
+    const c = rsAt(Q.photoX != null ? Q.photoX : Q.L.endX, Q.photoY != null ? Q.photoY - 0.45 : Q.L.photoY), tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2), d = 5.4/(2*tv*Math.min(1, camera.aspect));
     camera.position.copy(c).add(new V3(0, 1.2, d)); camera.lookAt(c);
     photo = snapshot({root:{position:c.clone().setY(c.y - 1), scale:{x:1}}}, 4.4);
     albumAdd({name:Q.L.photo(), img:photo, d:Date.now()}); renderAlbumCount();
