@@ -454,7 +454,7 @@ function rsCage(remote){
   burst(TEX.heart, rsAt(pp.x, 3.8), 12, 2, 0.3);
   pp.happy = now + 3;
   const go = () => { if(Q && Q.pup === pp){ pp.tx = RS_END; Q.momAsk = now + 1.6; } };
-  wait(0.9).then(() => { if(Q && Q.pup === pp){ if(typeof trGo === 'function') trGo('bay', go); else go(); } });   // сначала — «Лавина комов» (js/rstrial.js)
+  wait(0.9).then(() => { if(Q && Q.pup === pp) go(); });
 }
 function rsClue(){
   const f = Q.fam;
@@ -493,7 +493,7 @@ async function rsWin(i){
   Q.photoX = mx - 1.7;
   for(const p of [Q.me, Q.pal]) if(p && rsLocal(p) && !p.gone){ p.auto = mx - (p.role === 'jump' ? 2.2 : 3.2); if(p.bub) rsRevive(p); }
   await wait(2.6); if(!Q) return;
-  Q.end = 'win';
+  if(Q.L.won) Q.L.won(); else Q.end = 'win';   // у уровня свой финал после мамы (Бухта — 🛶 льдина домой, js/bayride.js)
 }
 
 /* ---------- Пинг: сам помогает (по участкам уровня) ----------
@@ -766,11 +766,12 @@ function rsCam(dt){
   const me = Q.me, tv = Math.tan(THREE.MathUtils.degToRad(camera.fov)/2);
   const W = camera.aspect < 1 ? 9 : 13, d = Math.max(W/2/(tv*camera.aspect), 7.5/tv);
   let fx = me.x + me.face*0.9, fy = Math.max(-0.5, Math.min(4.5, me.y*0.6)), fz = 1;
-  const f = Q.L.cam && Q.L.cam(); if(f){ fx = f[0]; fy = f[1]; fz = f[2] || 1; }   // уровень просит показать место (мам, полку Пипы) — и отъехать подальше (fz)
+  let fu = 0;
+  const f = Q.L.cam && Q.L.cam(); if(f){ fx = f[0]; fy = f[1]; fz = f[2] || 1; fu = f[3] || 0; }   // уровень просит показать место (мам, полку Пипы) — отъехать подальше (fz) и подняться выше (fu: льдина в Бухте)
   if(Q.photoX != null){ fx = Q.photoX; fy = Q.photoY != null ? Q.photoY : 1.8; }   // photoY — фото не на земле (Грот: наверху шахты)
-  Q.cx += (fx - Q.cx)*Math.min(1, dt*3); Q.cy += (fy - Q.cy)*Math.min(1, dt*3); Q.cz = (Q.cz || 1) + (fz - (Q.cz || 1))*Math.min(1, dt*3);
+  Q.cx += (fx - Q.cx)*Math.min(1, dt*3); Q.cy += (fy - Q.cy)*Math.min(1, dt*3); Q.cz = (Q.cz || 1) + (fz - (Q.cz || 1))*Math.min(1, dt*3); Q.cu = (Q.cu || 0) + (fu - (Q.cu || 0))*Math.min(1, dt*3);
   const look = rsAt(Q.cx, Q.cy + (camera.aspect < 1 ? 1.2 : 1.4), 0);
-  runCam.look.copy(look); runCam.pos.copy(look).add(new V3(0, 3.2*Q.cz, d*Q.cz));   // чуть сверху — видно снежные верхушки льдин
+  runCam.look.copy(look); runCam.pos.copy(look).add(new V3(0, 3.2*Q.cz + Q.cu, d*Q.cz));   // чуть сверху — видно снежные верхушки льдин
 }
 function rsDraw(p, dt){
   const m = p.m, sw = p.inW && !p.bub;

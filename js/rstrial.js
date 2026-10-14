@@ -1,21 +1,16 @@
-/* ---------------- «Спасаем потеряшку»: финальные испытания для Бухты и Метели (ROADMAP, Спринт 5) ----------------
-   У новых уровней в конце есть «мини-босс» (сосулькопад, водоворот, медведь). Теперь и у первых:
-     🌊 Бухта — ⚪ «Лавина комов»: клетка открылась, а с горки за мамами катятся снежные комы.
+/* ---------------- «Спасаем потеряшку»: финальное испытание Метели (ROADMAP, Спринт 5) ----------------
+   У новых уровней в конце есть «мини-босс» (сосулькопад, водоворот, медведь). Здесь — для Метели:
      ❄️ Метель — 🌪️ «Сугроб-ураган»: маяк загорелся, а метель напоследок крутит снежные вихри.
-   (У Грота с 14.10 свой финал — 🌊 «Побег от прилива» в js/grotto.js: финалы не повторяют глагол, DESIGN.md §3.)
+   (Финалы не повторяют глагол, DESIGN.md §3: у Грота с 14.10 — 🌊 «Побег от прилива» в js/grotto.js,
+   у Бухты — 🛶 «Льдина домой» в js/bayride.js; раньше тут же была бухтина «Лавина комов».)
    Правило одно: 💪 Силач встаёт впереди — комы и вихри о него рассыпаются; 🦘 Прыгун прячется за ним и перепрыгивает
    то, что проскочит. Попало в Прыгуна — пузырь (вихрь — сдувает назад).
    В конце — великан (ком, глыба, большой вихрь): он упирается в Силача, а Прыгун прыгает ему на макушку 3 раза —
-   и великан рассыпается: снеговик, кристаллы, большой сугроб. Потом всё как раньше: мама по приметам / Пипа на полке.
+   и великан рассыпается в большой сугроб. Потом всё как раньше: мама по приметам / Пипа на полке.
    Проиграть нельзя: что проскочило — просто укатилось.
    Сеть: комы запускает хозяин (qtre), разбились о Силача — qtrb (шлёт тот, чей Силач), великан — qtrg, прыжки по нему — qtrs.
    Подключается после всех уровней «Потеряшки» (festival.js): оборачивает их хуки. */
 const TR_CFG = {
-  bay:{ic:'⚪', gy:3, x0:49, x1:66, guard:55.2, cx:56.4, cy:2.1, delay:0.3,
-    waves:[['ball', 1.2], ['ball', 2.2], ['ball', 2.2], ['ball', 3.4], ['ball', 1.8], ['ball', 1.8], ['ball', 1.8]],
-    name:() => L('Лавина комов', 'Snowball avalanche'),
-    intro:() => L('Ой! С горки покатились снежные комы! ⚪', 'Oh! Snowballs are rolling down the hill! ⚪'),
-    what:() => L('комы', 'snowballs'), giant:() => L('Ком-великан', 'A giant snowball'), after:() => L('Получился снеговик! ☃️', 'It turned into a snowman! ☃️')},
   snow:{ic:'🌪️', gy:0, x0:50.2, x1:71.4, guard:60.2, cx:61, cy:0.4, delay:2.4,
     waves:[['whirl', 1.2], ['whirl', 2.6], ['whirl', 2.4], ['whirl', 2.8], ['whirl', 2.2], ['whirl', 2.4]],
     name:() => L('Сугроб-ураган', 'The snow hurricane'),
@@ -52,14 +47,9 @@ function trModel(k, big){
   g.userData.r = r;
   return g;
 }
-function trRemains(x){   // что остаётся от великана: снеговик или большой сугроб
+function trRemains(x){   // что остаётся от великана: большой сугроб
   const C = TR.C, g = new THREE.Group(); g.position.copy(rsAt(x, C.gy, -0.6));
-  if(TR.id === 'bay'){
-    for(const [y, r] of [[0.45, 0.5], [1.15, 0.36]]){ const b = addOutline(new THREE.Mesh(SPH, toon(0xFFFFFF)), 1.05); b.scale.setScalar(r); b.position.y = y; g.add(b); }
-    const n = addOutline(new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.3, 8), toon(0xFFA552)), 1.1); n.rotation.z = Math.PI/2; n.position.set(-0.4, 1.15, 0); g.add(n);
-    const f = new THREE.Group(); f.position.y = 1.2; trFace(f, 0.36, 0); g.add(f);
-    const hat = addOutline(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.26, 12), toon(0x7FB8F0)), 1.08); hat.position.y = 1.52; g.add(hat);
-  } else { const d = makeDrift(); d.scale.set(1.3, 1.1, 1); g.add(d); }
+  const d = makeDrift(); d.scale.set(1.3, 1.1, 1); g.add(d);
   C.root().add(g); TR.left.push(g);
 }
 
@@ -89,7 +79,7 @@ function trEnd(){
   T.giant = null;
   if(Q && T.q === Q){ Q.L.stack = T.stack0; if(Q.moms) for(const m of Q.moms) m.z = 0; }
 }
-function trClear(){   // уровень закрылся: убираем всё, и снеговика тоже
+function trClear(){   // уровень закрылся: убираем всё, и сугроб тоже
   if(!TR) return;
   trEnd();
   for(const g of TR.left) if(g.parent) g.parent.remove(g);
