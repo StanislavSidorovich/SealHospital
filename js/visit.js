@@ -510,7 +510,7 @@ function vsHostPos(m){
   if(!V || V.role !== 'host') return;
   const fresh = now - V.seen > 2;
   V.p.set(+m.x || 0, +m.y || 0, +m.z || 0); V.r = +m.r || 0; V.hy = +m.h || 0;
-  V.gin = !!m.in;   // гость в прихожей иглу (js/homeduo.js): координаты от HOME_POS
+  V.gin = !!m.in; V.grm = HOME_ROOMS[m.rm] ? m.rm : 'hall';   // гость в иглу (js/homeduo.js): в какой комнате, координаты от её pos
   if(fresh){ V.s.root.position.copy(vsHB().add(V.p)); V.s.root.rotation.y = V.r; }
   if(V.sw && !m.sw && !fresh){   // запрыгнул на льдину
     sfx.thud(); burst(TEX.puff, vsW(V.p).setY(0.3), 8, 1.4, 0.4); squash(V.s, 0.2, 0.35);
@@ -519,11 +519,11 @@ function vsHostPos(m){
   }
   V.sw = !!m.sw; V.s.swimming = V.sw; V.seen = now;
 }
-const vsHB = () => (V.gin ? HOME_POS : PET_POS).clone();   // у хозяйки: от чего считать место гостя — льдина или прихожая
+const vsHB = () => (V.gin ? HOME_ROOMS[V.grm || 'hall'].pos : PET_POS).clone();   // у хозяйки: от чего считать место гостя — льдина или комната иглу
 function vsHostTick(dt){
   if(typeof hdHostStep === 'function') hdHostStep(dt);   // 🏠 в иглу — гостю расстановка мебели (js/homeduo.js)
   if(vsIsle() || (typeof bduOn === 'function' && bduOn())){ if((V.sendT -= dt) <= 0){ V.sendT = 0.2; vsSendHost(); } return; }   // на острове гостя ведёт js/isleduo.js, на площадке — js/buildduo.js
-  const s = V.s, here = !V.game && now - V.seen < 2 && !net.lost && (V.gin ? homeMode && homeRoom === 'hall' : !homeMode);
+  const s = V.s, here = !V.game && now - V.seen < 2 && !net.lost && (V.gin ? homeMode && homeRoom === (V.grm || 'hall') : !homeMode);
   s.root.visible = here;
   if(here){
     s.root.position.lerp(vsHB().add(V.p), Math.min(1, dt*10)); s.inner.position.y = V.hy;
@@ -546,7 +546,7 @@ function vsSendHost(){
   const s = petSeal, w = vsWhere(), r = x => Math.round(x*100)/100, inH = w === 'home';
   const q = s ? s.root.position.clone().sub(inH ? HOME_ROOMS[homeRoom].pos : PET_POS) : new V3(0, 0.25, 0.2);
   netSend({t:'vh', x:r(q.x), y:r(q.y), z:r(q.z), r:s ? r(s.root.rotation.y) : 0, sc:s ? r(s.root.scale.x) : 0.62,
-    v:!!s && s.root.visible && q.length() < 4 && (['pet', 'sleep', 'game'].includes(w) || inH && homeRoom === 'hall'), w, rm:inH ? homeRoom : '', ed:inH && homeEdit && homeRoom === 'hall' ? 1 : 0, md:s && now < s.happyUntil ? 1 : 0});
+    v:!!s && s.root.visible && q.length() < 4 && (['pet', 'sleep', 'game'].includes(w) || inH), w, rm:inH ? homeRoom : '', ed:inH && homeEdit && homeRoom === 'hall' ? 1 : 0, md:s && now < s.happyUntil ? 1 : 0});
 }
 function vsPhoto(){
   const c = save.coop.visit, today = new Date().toDateString();
@@ -677,14 +677,14 @@ function vsGuestTap(cx, cy){
       V.cd = 1; netSend({t:'vpat'});
       burst(TEX.heart, headTop(P), 8, 1.6, 0.3); sfx.purr(); squash(P, 0.12, 0.3);
       const side = Math.sign(V.pos.x - V.hp.x) || -1;
-      V.tgt = vsClamp(new V3(V.hp.x + side*0.95, 0.25, V.hp.z + 0.1));   // подходит поближе
+      const t = new V3(V.hp.x + side*0.95, 0.25, V.hp.z + 0.1); V.tgt = V.inH ? hdClamp(t) : vsClamp(t);   // подходит поближе
       return;
     }
   }
   if(V.inH && hdTap(cx, cy)) return;   // 🏠 по вещи в прихожей — позвать малыша поиграть (js/homeduo.js)
   const nd = new THREE.Vector2(cx/innerWidth*2 - 1, -(cy/innerHeight)*2 + 1), ray = new THREE.Raycaster(), hit = new V3();
   ray.setFromCamera(nd, camera);
-  if(ray.ray.intersectPlane(new THREE.Plane(new V3(0, 1, 0), -0.25), hit)){ V.tgt = V.inH ? hdClamp(hit.sub(HOME_POS)) : vsClamp(hit.sub(PET_POS)); sfx.tap(); }
+  if(ray.ray.intersectPlane(new THREE.Plane(new V3(0, 1, 0), -0.25), hit)){ V.tgt = V.inH ? hdClamp(hit.sub(HOME_ROOMS[V.hrm || 'hall'].pos)) : vsClamp(hit.sub(PET_POS)); sfx.tap(); }
 }
 function vsClamp(p){   // по льдине, не на малыша и не в иглу
   p.x = Math.max(-2.4, Math.min(2.4, p.x)); p.z = Math.max(-0.9, Math.min(1.7, p.z));
@@ -716,12 +716,12 @@ function vsGuestTick(dt){
   const v = V; if(!v.view) return;
   v.cd -= dt; v.fxCd -= dt;
   if(typeof hdGuestStep === 'function') hdGuestStep(dt);   // 🏠 хозяйка в иглу — и мы туда (js/homeduo.js)
-  const me = v.me, h = v.h, B = v.inH ? HOME_POS : PET_POS, bw = p => B.clone().add(p);
+  const me = v.me, h = v.h, B = v.inH ? HOME_ROOMS[v.hrm || 'hall'].pos : PET_POS, bw = p => B.clone().add(p);
   // малыш хозяйки — там, где у неё
   if(h){
     const vis = !!h.v, P = v.pup;
     v.hp.set(+h.x || 0, +h.y || 0.25, +h.z || 0.2);
-    const inSame = v.inH ? h.w === 'home' : h.w !== 'home';   // её малыш — там же, где мы (льдина или прихожая)
+    const inSame = v.inH ? h.w === 'home' && h.rm === v.hrm : h.w !== 'home';   // её малыш — там же, где мы (льдина или та же комната иглу)
     if(vis && inSame && !P.root.visible) P.root.position.copy(bw(v.hp));
     P.root.visible = vis && inSame; v.hv = P.root.visible;
     P.root.position.lerp(bw(v.hp), Math.min(1, dt*8)); P.root.rotation.y += vsAng(P.root.rotation.y, +h.r || 0)*Math.min(1, dt*8);
@@ -758,14 +758,12 @@ function vsGuestTick(dt){
   else { const off = vsView(); runCam.pos.lerp(camBase.clone().add(off), Math.min(1, dt*2)); runCam.look.lerp(camTarget.clone().add(off), Math.min(1, dt*2)); }
   if((v.sendT -= dt) <= 0){
     v.sendT = 0.125; const r = x => Math.round(x*100)/100;
-    netSend({t:'vp', x:r(v.pos.x), y:r(v.pos.y), z:r(v.pos.z), r:r(me.root.rotation.y), sw:v.sw ? 1 : 0, h:r(v.hy), in:v.inH ? 1 : 0});
+    netSend({t:'vp', x:r(v.pos.x), y:r(v.pos.y), z:r(v.pos.z), r:r(me.root.rotation.y), sw:v.sw ? 1 : 0, h:r(v.hy), in:v.inH ? 1 : 0, rm:v.inH ? v.hrm : ''});
   }
 }
 function vsGuestSay(){   // где хозяйка: на льдине, в домике, в больнице, в игре, малыш спит
-  const n = V.name, w = V.w, rm = V.h && V.h.rm, R = rm && typeof RM !== 'undefined' && RM[rm];
-  const room = R ? `${R.ic} ${R.name}` : rm === 'ocean' ? L('🐠 океанариум', '🐠 the oceanarium') : '';
-  const say = w === 'home' && rm && rm !== 'hall' ? L(`${n} сейчас в комнате ${room} — подожди в прихожей 🙂`, `${n} is in ${room} right now — wait in the hallway 🙂`)
-    : w === 'home' ? (V.inH ? '' : L(`${n} в домике 🏠 Идём туда!`, `${n} is in the igloo 🏠 Let's go in!`))
+  const n = V.name, w = V.w;
+  const say = w === 'home' ? (V.inH ? '' : L(`${n} в домике 🏠 Идём туда!`, `${n} is in the igloo 🏠 Let's go in!`))   // в иглу идём за ней в любую комнату (js/homeduo.js)
     : w === 'build' ? L(`${n} на площадке 🧱 Идём туда!`, `${n} is at the playground 🧱 Let's go!`)
     : w === 'play' ? L(`${n} играет 🎮 Скоро вернётся — подожди на льдине`, `${n} is playing 🎮 Back soon — wait on the ice`)
     : w === 'away' ? L('Все ушли в больницу 🏥 Подожди на льдине 🌊', 'Everyone went to the hospital 🏥 Wait on the ice 🌊')

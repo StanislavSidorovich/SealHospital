@@ -464,23 +464,28 @@ function ocTap(cx, cy){
   const hit = ray.intersectObjects([OC.door, OC.feeder, OC.hatch], true)[0];
   if(hit){ let o = hit.object; while(o && !o.userData.oc) o = o.parent;
     const k = o && o.userData.oc; if(k === 'door') return ocBack(); if(k === 'feed') return ocFeed(); if(k === 'hatch') return ocDive(); }
-  // житель: попали в него или рядом на экране
+  const who = ocPick(cx, cy);
+  if(who) return ocShow(who);
+  const g = ray.intersectObject(OC.glass)[0];
+  if(g) ocKnock(g.point);
+}
+// житель: попали в него или рядом на экране (ray уже наведён — ocRay)
+function ocPick(cx, cy){
   const all = [...OC.res, ...OC.pals, ...OC.vis.filter(V => V.on)];
   const h2 = ray.intersectObjects(all.map(r => r.o), true)[0];
   let who = null;
   if(h2){ let o = h2.object; while(o && !o.userData.ocRes) o = o.parent; who = o && o.userData.ocRes; }
   if(!who){ let bd = 42; for(const r of all){ const q = toScreen(r.o.getWorldPosition(new V3())), dd = Math.hypot(q.x - cx, q.y - cy); if(dd < bd){ bd = dd; who = r; } } }
-  if(who){
-    sfx.pop(); floatText(who.name, who.o.getWorldPosition(new V3()).add(new V3(0, 0.9, 0)), '#D9527E');
-    if(who.fact) toast(who.fact, 4200);
-    if(who.flip !== undefined) who.flip = 1;
-    return;
-  }
-  const g = ray.intersectObject(OC.glass)[0];
-  if(g) ocKnock(g.point);
+  return who;
 }
-// тук-тук по стеклу: круги, стайки брызгают в стороны, малыш прижимается носом
-function ocKnock(pw){
+function ocShow(who){
+  sfx.pop(); floatText(who.name, who.o.getWorldPosition(new V3()).add(new V3(0, 0.9, 0)), '#D9527E');
+  if(who.fact) toast(who.fact, 4200);
+  if(who.flip !== undefined) who.flip = 1;
+}
+// тук-тук по стеклу: круги, стайки брызгают в стороны, малыш прижимается носом (quiet — стучал гость в гостях: малыш не бежит)
+function ocKnock(pw, quiet){
+  if(!quiet && typeof hdFx === 'function') hdFx('knock', pw.clone().sub(OC_POS));   // гость в океанариуме тоже увидит (js/homeduo.js)
   sfx.tap(); setTimeout(() => sfx.tap(), 140);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:OC_RING_TEX, transparent:true, depthWrite:false, depthTest:false})); sp.renderOrder = 9;
   sp.position.copy(pw).sub(OC_POS); ocRoot.add(sp); OC.ripples.push({sp, k:0});
@@ -488,7 +493,7 @@ function ocKnock(pw){
   for(const S of OC.schools){ S.boost = 1.2; for(let i = 0; i < S.n; i++){ const d = S.P[i].clone().sub(pl), l = d.length(); if(l < 6) S.sc[i].add(d.setY(d.y*0.5).normalize().multiplyScalar((6 - l)*0.9)); } }
   for(const r of OC.res){ const d = r.pos.clone().sub(pl); if(d.length() < 5){ r.look = 0; r.tgt = r.pos.clone().add(d.normalize().multiplyScalar(4)); r.tgt.z = Math.min(r.tgt.z, OC_ZMAX - 1); r.vel.add(d.multiplyScalar(2)); } }
   for(const V of OC.vis) if(V.on && V.stop <= 0) V.scare = 1.5;
-  if(!busy && petSeal){ (async () => {
+  if(!quiet && !busy && petSeal){ (async () => {
     setBusy(true); const s = petSeal, a = Math.atan2(pl.x, -pl.z);
     await homeGo([Math.sin(a)*(OC_R - 0.8), -Math.cos(a)*(OC_R - 0.8)]); await faceTo(s, pw);
     squash(s, 0.2, 0.3); homeSay(s, 'Тук-тук!', 'Knock-knock!', '#3E8DB8');
@@ -503,6 +508,17 @@ async function ocFeed(){
   await tween(0.25, k => { s.flippers[1].userData.up = (1 - k)*0.9; });
   save.home.fed = homeDay(); persist();
   homeSay(s, 'Кушать подано!', 'Dinner time!', '#D9527E');
+  if(typeof hdFx === 'function') hdFx('feed');   // гость в океанариуме тоже увидит (js/homeduo.js)
+  await ocFeedFx();
+  await wait(1.2);
+  if(first){
+    addShells(HOME_FEED, {x:innerWidth/2, y:innerHeight*0.45}); petGive(2); sfx.star();
+    toast(L(`Все рыбки сыты и довольны! +${HOME_FEED} 🐚`, `All the fish are full and happy! +${HOME_FEED} 🐚`), 2600);
+  } else toast(L('Рыбки уже обедали сегодня, но всё равно рады ♡', 'The fish already ate today, but they are happy anyway ♡'), 2600);
+  setBusy(false); homeUi();
+}
+// корм сыплется сверху, рыбки плывут к нему (и у гостя в гостях — js/homeduo.js)
+async function ocFeedFx(){
   const a = Math.atan2(OC_FEED[0], -OC_FEED[1]); OC.foodAt.set(Math.sin(a)*(OC_R + 1.6), 3.2, -Math.cos(a)*(OC_R + 1.6)); OC.foodAt.z = Math.min(OC.foodAt.z, OC_ZMAX - 0.6);
   OC.food = 6; OC.excite = 8;
   for(let i = 0; i < 18; i++){
@@ -511,17 +527,13 @@ async function ocFeed(){
     await wait(0.05);
   }
   await wait(2.2); sfx.chomp(); floatText(L('Ням! ♡', 'Yum! ♡'), ocRoot.localToWorld(OC.foodAt.clone().add(new V3(0, 1, 0))), '#D9527E');
-  await wait(1.2);
-  if(first){
-    addShells(HOME_FEED, {x:innerWidth/2, y:innerHeight*0.45}); petGive(2); sfx.star();
-    toast(L(`Все рыбки сыты и довольны! +${HOME_FEED} 🐚`, `All the fish are full and happy! +${HOME_FEED} 🐚`), 2600);
-  } else toast(L('Рыбки уже обедали сегодня, но всё равно рады ♡', 'The fish already ate today, but they are happy anyway ♡'), 2600);
-  setBusy(false); homeUi();
 }
 async function ocDive(){
   if(busy) return;
   const i = typeof stGate === 'function' ? stGate('dive') : -1;
   if(i >= 0){ sfx.bad(); return toast(stGateSay(i), 3000); }
+  if(typeof hdDuoTap === 'function' && await hdDuoTap('dive')) return;   // гость рядом — нырнуть вдвоём? (js/homeduo.js)
+  if(busy) return;
   setBusy(true);
   const s = petSeal;
   await homeGo([OC_HATCH[0] - 1.1, OC_HATCH[1] - 0.3]);

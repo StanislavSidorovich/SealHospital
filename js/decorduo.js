@@ -125,7 +125,7 @@ function hdeDown(e){
   return edDown(e);
 }
 function hdeGuestStep(dt){
-  const v = V, want = v.inH && v.h && v.h.w === 'home' && v.h.rm === 'hall' && !!v.h.ed;
+  const v = V, want = v.inH && v.hrm === 'hall' && v.h && v.h.w === 'home' && v.h.rm === 'hall' && !!v.h.ed;
   if(want && !v.hde) hdeStart(); else if(!want && v.hde) hdeStop();
   if(!v.hde) return;
   if(v.hhNext && !hdeHold()){

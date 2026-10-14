@@ -185,7 +185,7 @@ function trBuild(){
     g.fillStyle = has ? '#D9527E' : '#8A93A6'; g.font = '17px Nunito, sans-serif'; g.fillText(has ? L('Грамота', 'Certificate') : L('Скоро…', 'Soon…'), w/2, h*0.72); }, 184)})); dm.position.z = 0.04; dp.add(dm);
   trHit(dp, 'diploma');
   // витрина медалей (слева) и находок (справа)
-  D.add(trCase(-2.35, -0.55, 0.3, 'medals', TR_MEDALS.map(m => ({ic:m.ic, ok:trMedalOk(m)})), 3));
+  D.add(trCase(-2.35, -0.55, 0.3, 'medals', TR_MEDALS.map((m, i) => ({ic:m.ic, ok:TROOM.med ? !!TROOM.med[i] : trMedalOk(m)})), 3));   // TROOM.med — медали хозяйки у гостя (js/homeduo.js)
   const fin = save.pet ? save.pet.finds : [];
   D.add(trCase(2.25, -0.3, -0.35, 'finds', TREASURES.map(t => ({ic:t.ic, ok:fin.includes(t.id)})), 3));
 }

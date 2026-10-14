@@ -206,8 +206,9 @@ async function gmPlay(id){
 function gmTap(cx, cy){
   ocRay(cx, cy);
   const hit = ray.intersectObjects(GM.boxes.filter(b => b.userData.game), true)[0];
-  if(hit){ let o = hit.object; while(o && !o.userData.game) o = o.parent; if(o) return gmPlay(o.userData.game); }
-  if(ray.intersectObject(GM.table, true).length || (GM.ping && ray.intersectObject(GM.ping.root, true).length)) return gmPlay(null);
+  const duo = async id => { if(typeof hdDuoTap === 'function' && await hdDuoTap('bg')) return; gmPlay(id); };   // гость рядом — «Вдвоём или сама?» (js/homeduo.js)
+  if(hit){ let o = hit.object; while(o && !o.userData.game) o = o.parent; if(o) return duo(o.userData.game); }
+  if(ray.intersectObject(GM.table, true).length || (GM.ping && ray.intersectObject(GM.ping.root, true).length)) return duo(null);
   if(ray.intersectObject(GM.boardG, true).length) return gmBoard();
 }
 async function gmBoard(){

@@ -3,7 +3,7 @@
    сообщения сети пересылает сам скрипт (net.conn у обоих — заглушка). Сценарий: визит на льдине → хозяйка идёт гулять →
    гость сам приплывает на остров → видят друг друга → салки → спинка в воде → гость показывает звёздочку →
    пещера вдвоём (её двери, гость не берёт) → игра вдвоём прямо с острова и обратно → иглу в гостях (её мебель, «поиграй тут!»,
-   переставила — у гостя тоже, долгий обрыв связи) → гость рыбачит у своей лунки → гость прощается.
+   переставила — у гостя тоже, долгий обрыв связи, следом в океанариум / Игровую / трофеи) → гость рыбачит у своей лунки → гость прощается.
    Запуск:  node tools/duo.js   (скриншоты duo-*.png — во временной папке) */
 const { findPlaywright, serve, launch } = require('./lib');
 const os = require('os'), path = require('path');
@@ -190,6 +190,68 @@ const ok = (c, msg) => { console.log(`${c ? '✓' : '✗'} ${msg}`); if(!c) fail
   await host.evaluate(() => { net.lost = false; });
   await host.waitForTimeout(500);
   ok(await host.evaluate(() => !document.getElementById('vsLost')), 'связь вернулась — значок ушёл');
+  // 🚪 комнаты иглу: хозяйка в океанариум, Игровую, трофеи — гость идёт следом и видит её вещи
+  await host.waitForFunction(() => !busy, null, { timeout: 15000 }).catch(() => {});
+  await host.evaluate(() => { save.home.rooms = {ocean:2, games:2, trophy:2}; save.sea.got = SEA_FISH.slice(0, 3).map(f => f.id); save.bg.got = [BG_ORDER[0]]; homeBuild(); ocGo(); });
+  await guest.waitForFunction(() => V && V.hrm === 'ocean', null, { timeout: 15000 }).catch(() => {});
+  await host.waitForFunction(() => !busy, null, { timeout: 15000 }).catch(() => {});
+  await host.waitForTimeout(1500);
+  const ocN = await host.evaluate(() => OC.res.length), gocN = await guest.evaluate(() => OC.res.length);
+  ok(await guest.evaluate(() => V.hrm === 'ocean' && ocRoot.visible && !homeRoot.visible), 'хозяйка в океанариуме — гость тоже');
+  ok(ocN === 3 && gocN === ocN, `у гостя за стеклом её рыбки (${gocN} из ${ocN})`);
+  ok(await host.evaluate(() => V.grm === 'ocean' && V.s.root.visible), 'хозяйка видит гостя в океанариуме');
+  ok(await guest.evaluate(() => V.pup.root.visible), 'гость видит её малыша в океанариуме');
+  await guest.screenshot({ path: shot('guest-ocean') });
+  await host.evaluate(() => { OC.ripples.forEach(R => R.k = 1); });
+  const glass = await guest.evaluate(() => { const q = toScreen(OC_POS.clone().add(new V3(1.2, 2.2, -OC_R))); return {x:q.x, y:q.y}; });
+  await guest.evaluate(p => hdRoomTap(p.x, p.y), glass);
+  await host.waitForTimeout(300);
+  ok(await host.evaluate(() => OC.ripples.length > 0), 'гость постучал по стеклу — у хозяйки круги и рыбки брызнули');
+  await host.evaluate(() => { window.__fd = 0; const o = ocFeed; ocFeed = (...a) => { __fd++; return o(...a); }; });
+  const feed = await guest.evaluate(() => { const q = toScreen(OC.feeder.getWorldPosition(new V3()).add(new V3(0, 0.6, 0))); return {x:q.x, y:q.y}; });
+  await guest.evaluate(p => { V.cd = 0; hdRoomTap(p.x, p.y); }, feed);
+  await host.waitForTimeout(2500);
+  ok(await host.evaluate(() => __fd > 0), 'гость нажал кормушку — её малыш кормит рыбок');
+  ok(await guest.evaluate(() => OC.food > 0 || OC.excite > 0), 'у гостя корм тоже сыплется');
+  await host.waitForFunction(() => !busy, null, { timeout: 20000 }).catch(() => {});
+  await host.evaluate(() => { ocBack(); });
+  await guest.waitForFunction(() => V && V.hrm === 'hall', null, { timeout: 15000 }).catch(() => {});
+  ok(await guest.evaluate(() => V.hrm === 'hall' && homeRoot.visible && !ocRoot.visible), 'хозяйка вернулась в прихожую — гость тоже');
+  await host.waitForFunction(() => !busy, null, { timeout: 15000 }).catch(() => {});
+  await host.evaluate(() => { rmGo('games'); });
+  await guest.waitForFunction(() => V && V.hrm === 'games', null, { timeout: 15000 }).catch(() => {});
+  await host.waitForFunction(() => !busy, null, { timeout: 15000 }).catch(() => {});
+  await host.waitForTimeout(1200);
+  ok(await guest.evaluate(() => V.hrm === 'games' && RM.games.root.visible && GM.boxes.filter(b => b.userData.game).length === 1), 'Игровая: у гостя на столе её коробка');
+  await guest.screenshot({ path: shot('guest-games') });
+  const box = await guest.evaluate(() => { const b = GM.boxes.find(b => b.userData.game); const q = toScreen(b.getWorldPosition(new V3())); return {x:q.x, y:q.y}; });
+  await guest.evaluate(p => hdRoomTap(p.x, p.y), box);
+  await host.waitForTimeout(500);
+  ok(await host.evaluate(() => V.inv === 'bg'), 'гость коснулся коробки — хозяйку зовут в Игротеку');
+  await host.evaluate(() => { V.inv = null; }); await guest.evaluate(() => { V.ask = null; });
+  // хозяйка коснулась коробки, гость рядом — «Вдвоём или сама?» → вдвоём: гостя зовут
+  await host.evaluate(() => { const b = GM.boxes.find(b => b.userData.game), q = toScreen(b.getWorldPosition(new V3())); gmTap(q.x, q.y); });
+  await host.waitForTimeout(600);
+  const duoBtn = await host.$('.vs-pick [data-k="duo"]');
+  ok(!!duoBtn, 'хозяйка у коробки, гость рядом — «Вдвоём или сама?»');
+  if(duoBtn) await duoBtn.click();
+  await host.waitForTimeout(600);
+  ok(await guest.evaluate(() => V.inv === 'bg'), '«Вдвоём!» — гостя зовут в Игротеку');
+  await guest.evaluate(() => { V.inv = null; if(V.panelOff) V.panelOff(); }); await host.evaluate(() => { V.ask = null; });
+  await host.waitForFunction(() => !busy, null, { timeout: 15000 }).catch(() => {});
+  await host.evaluate(() => { rmBack(); });
+  await guest.waitForFunction(() => V && V.hrm === 'hall', null, { timeout: 15000 }).catch(() => {});
+  await host.waitForFunction(() => !busy, null, { timeout: 15000 }).catch(() => {});
+  await host.evaluate(() => { rmGo('trophy'); });
+  await guest.waitForFunction(() => V && V.hrm === 'trophy', null, { timeout: 15000 }).catch(() => {});
+  await host.waitForFunction(() => !busy, null, { timeout: 15000 }).catch(() => {});
+  await host.waitForTimeout(800);
+  ok(await guest.evaluate(() => V.hrm === 'trophy' && RM.trophy.root.visible && V.hh.med.length === TR_MEDALS.length && V.hh.med[0] === 1), 'трофеи: гость видит её медали (🩺 Доктор есть)');
+  await guest.screenshot({ path: shot('guest-trophy') });
+  await host.evaluate(() => { rmBack(); });
+  await guest.waitForFunction(() => V && V.hrm === 'hall', null, { timeout: 15000 }).catch(() => {});
+  await host.waitForFunction(() => !busy, null, { timeout: 15000 }).catch(() => {});
+  ok(await guest.evaluate(s0 => JSON.stringify(save.home) === s0, gHome0), 'после комнат свой иглу гостя не тронут');
   await host.evaluate(() => { homeLeave(); });
   await guest.waitForFunction(() => V && !V.inH, null, { timeout: 10000 }).catch(() => {});
   ok(await guest.evaluate(() => !V.inH && !homeRoot.visible && !Object.keys(homeItems).length), 'хозяйка вышла — гость на льдине, чужие вещи убраны');
