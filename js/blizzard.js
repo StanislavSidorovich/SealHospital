@@ -256,7 +256,7 @@ function bzBeacon(remote){
   mgHint(L('Метель стихает… Смотрите — пингвины! 🐧', 'The blizzard calms… Look — penguins! 🐧'));
   Q.hintT = now + 3;
   const q = Q, go = () => { if(Q === q) Q.momAsk = now + 1.6; };
-  if(typeof trGo === 'function') trGo('snow', go); else Q.momAsk = now + 2.6;   // сначала — «Сугроб-ураган» (js/rstrial.js)
+  wait(1.0).then(go);   // финал — после мамы: 🤫 «Тихонько мимо моржа» (js/walrus.js)
 }
 
 /* ---------- Пипа на спине у Силача, мамы-пингвины ---------- */
@@ -345,7 +345,7 @@ async function bzMom(i, remote){
   Q.photoX = mx - 1.4;
   for(const p of [Q.me, Q.pal]) if(p && rsLocal(p) && !p.gone){ p.auto = mx - (p.role === 'jump' ? 1.9 : 2.9); if(p.bub) rsRevive(p); }
   await wait(2.6); if(!Q) return;
-  Q.end = 'win';
+  if(Q.L.won) Q.L.won(); else Q.end = 'win';   // дальше — проводить их мимо спящего моржа (js/walrus.js)
 }
 function bzMomDraw(m, dt){
   const s = m.s;

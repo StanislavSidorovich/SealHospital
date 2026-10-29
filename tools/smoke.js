@@ -52,6 +52,7 @@ const MODES = {
   road: { run: `${HIDE} roadGame('solo')` },
   boss: { run: `${HIDE} coopFight('ping')` },
   bay: RS('bay'), grotto: RS('grot'), blizzard: RS('snow'), glow: RS('glow'), kelp: RS('kelp'), festival: RS('fest'),
+  walrus: { run: `${HIDE} rsLvPick = 'snow'; rescueGame('ping'); setTimeout(() => { if(Q && Q.st === 'go'){ Q.won = true; wlStart(Q.moms.find(m => m.ok)); } }, 2500)`, clicks: ['.rs-roles [data-r="jump"]'] },   // 🤫 финал Метели
   'storm-1': { run: `${HIDE} stormRun('ping', null, 0)` },
   'storm-2': { run: `${HIDE} stormRun('ping', null, 1)` },
   'storm-3': { run: `${HIDE} stormRun('ping', null, 2)` },

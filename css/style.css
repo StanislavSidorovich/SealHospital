@@ -992,6 +992,19 @@ body.fn-dip-on #corner{visibility:hidden}
 @keyframes swhit{0%{transform:scale(1.35);background:rgba(255,155,184,.5)}100%{transform:scale(1)}}
 @keyframes swmiss{0%{transform:translateX(-4px)}50%{transform:translateX(4px)}100%{transform:none}}
 @media (prefers-reduced-motion:reduce){.sw-beat.hit .c,.sw-beat.miss .c{animation:none}}
+/* 🤫 финал Метели (js/walrus.js): что делает морж + шум; кружок над Пипой — сейчас икнёт */
+.wl-st{position:absolute;left:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 106px);max-width:calc(100% - 120px);box-sizing:border-box;display:flex;align-items:center;gap:6px;
+  background:var(--mint);border:2.5px solid var(--ink);border-radius:18px;box-shadow:0 4px 0 var(--ink);padding:5px 12px 11px 8px;
+  font:800 17px/1.1 Nunito,sans-serif;color:var(--ink);white-space:nowrap;pointer-events:none}
+.wl-st b{font-size:24px}
+.wl-st i{position:absolute;left:10px;right:10px;bottom:4px;height:5px;border-radius:3px;background:rgba(59,58,74,.15);overflow:hidden}
+.wl-st u{display:block;height:100%;width:calc(var(--n,0)*100%);background:var(--pink-d)}
+.wl-st[data-p="w"]{background:#FFF3C4}
+.wl-st[data-p="q"],.wl-st[data-p="z"]{background:#FFE1EA}
+.wl-hic{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:2}
+.wl-hic i{position:absolute;left:-30px;top:-30px;width:60px;height:60px;border-radius:50%;box-sizing:border-box;border:4px solid var(--pink-d);
+  transform:scale(var(--r,1));opacity:calc(1.6 - var(--r,1)*.5)}
+.wl-hic b{position:absolute;left:-15px;top:-17px;font-size:28px;line-height:1}
 /* прогулка-рогатка (js/walk.js): пальчик показывает «тяни назад» */
 .sling-hand{position:absolute;font-size:42px;margin:-10px 0 0 -18px;pointer-events:none;animation:slinghand 1.3s ease-in-out infinite}
 @keyframes slinghand{0%{translate:0 0;opacity:0}20%{opacity:1}70%{translate:0 90px;opacity:1}100%{translate:0 90px;opacity:0}}
